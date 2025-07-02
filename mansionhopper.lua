@@ -13,9 +13,9 @@ local HttpService = game:GetService("HttpService")
 local MAX_HOPS = 25
 local HOP_COOLDOWN = 20
 local hopCount = 0
-local currentJobId = game.JobId
+local visitedJobIds = {[game.JobId] = true}
 
-debug("Initialized. Current JobId: " .. currentJobId)
+debug("Initialized. Current JobId: " .. game.JobId)
 
 local function loadModules()
     local RobberyUtils, RobberyConsts
@@ -56,22 +56,39 @@ local function isMansionOpen(mansion, RobberyUtils, RobberyConsts)
 end
 
 local function getNewServerJobId()
-    debug("Querying available public servers...")
-    local ok, data = pcall(function()
-        local raw = game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")
-        return HttpService:JSONDecode(raw)
-    end)
-    if not (ok and data and data.data) then
-        debug("Failed to retrieve server list.")
-        return nil
-    end
-    for _, server in ipairs(data.data) do
-        if server.playing < server.maxPlayers and server.id ~= currentJobId then
-            debug("Found server: " .. server.id .. " | Players: " .. server.playing)
-            return server.id
+    local pageCursor = ""
+    for page = 1, 5 do
+        debug("Requesting server page " .. page)
+        local ok, data = pcall(function()
+            local url = "https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100" .. (pageCursor ~= "" and "&cursor="..pageCursor or "")
+            local raw = game:HttpGet(url)
+            return HttpService:JSONDecode(raw)
+        end)
+
+        if not (ok and data and data.data) then
+            debug("Failed to retrieve server list.")
+            return nil
         end
+
+        for _, server in ipairs(data.data) do
+            if server.playing < server.maxPlayers then
+                if not visitedJobIds[server.id] then
+                    visitedJobIds[server.id] = true
+                    debug("Found new server: " .. server.id .. " | Players: " .. server.playing)
+                    return server.id
+                else
+                    debug("Skipping already visited server: " .. server.id)
+                end
+            else
+                debug("Skipping full server: " .. server.id)
+            end
+        end
+
+        pageCursor = data.nextPageCursor
+        if not pageCursor then break end
     end
-    debug("No suitable server found.")
+
+    debug("No suitable server found after checking multiple pages.")
     return nil
 end
 
@@ -84,6 +101,7 @@ local function safeTeleport()
         return false
     end
 
+    -- Requeue script for next teleport
     local queueFunc =
         (syn and syn.queue_on_teleport) or
         (queue_on_teleport) or
@@ -94,7 +112,7 @@ local function safeTeleport()
         queueFunc(string.format("loadstring(game:HttpGet('%s'))()", "%SCRIPT_URL%"))
         debug("Queued script for next teleport.")
     else
-        debug("Queue_on_teleport not available in this executor.")
+        debug("Queue_on_teleport not available.")
     end
 
     local ok, err = pcall(function()
@@ -132,10 +150,10 @@ while hopCount < MAX_HOPS do
         debug("❌ Mansion is CLOSED — server hopping...")
         hopCount += 1
         if safeTeleport() then
-            debug("🔁 Hop successful.")
+            debug("🔁 Hop initiated.")
             break
         else
-            debug("⚠️ Hop failed. Retrying in " .. HOP_COOLDOWN .. "s...")
+            debug("⚠️ Hop failed. Waiting " .. HOP_COOLDOWN .. "s...")
             task.wait(HOP_COOLDOWN)
         end
     end
