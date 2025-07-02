@@ -15,6 +15,45 @@ local currentJobId = game.JobId
 
 debug("Initialized. Current JobId: " .. currentJobId)
 
+-- Server list cache variables
+local cachedServers = nil
+local cacheIndex = 1
+
+local function refreshServerList()
+    debug("Refreshing server list from API...")
+    local ok, data = pcall(function()
+        local raw = game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")
+        return HttpService:JSONDecode(raw)
+    end)
+    if ok and data and data.data then
+        cachedServers = {}
+        for _, server in ipairs(data.data) do
+            if server.playing < server.maxPlayers and server.id ~= currentJobId then
+                table.insert(cachedServers, server.id)
+            end
+        end
+        cacheIndex = 1
+        debug("Server list refreshed. " .. #cachedServers .. " servers cached.")
+    else
+        debug("Failed to refresh server list.")
+        cachedServers = nil
+    end
+end
+
+local function getNextServerJobId()
+    if not cachedServers or cacheIndex > #cachedServers then
+        refreshServerList()
+    end
+
+    if cachedServers and #cachedServers > 0 then
+        local serverId = cachedServers[cacheIndex]
+        cacheIndex = cacheIndex + 1
+        return serverId
+    else
+        return nil
+    end
+end
+
 local function loadModules()
     local RobberyUtils, RobberyConsts
     for i = 1, 5 do
@@ -53,30 +92,10 @@ local function isMansionOpen(mansion, RobberyUtils, RobberyConsts)
     return state == RobberyConsts.ENUM_STATUS.OPENED
 end
 
-local function getNewServerJobId()
-    debug("Querying available public servers...")
-    local ok, data = pcall(function()
-        local raw = game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")
-        return HttpService:JSONDecode(raw)
-    end)
-    if not (ok and data and data.data) then
-        debug("Failed to retrieve server list.")
-        return nil
-    end
-    for _, server in ipairs(data.data) do
-        if server.playing < server.maxPlayers and server.id ~= currentJobId then
-            debug("Found server: " .. server.id .. " | Players: " .. server.playing)
-            return server.id
-        end
-    end
-    debug("No suitable server found.")
-    return nil
-end
-
 local function safeTeleport()
     local teleportData = { mansionHopper = true }
 
-    local jobId = getNewServerJobId()
+    local jobId = getNextServerJobId()
     if not jobId then
         debug("No valid server to hop to.")
         return false
