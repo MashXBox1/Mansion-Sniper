@@ -15,12 +15,12 @@ local currentJobId = game.JobId
 
 debug("Initialized. Current JobId: " .. currentJobId)
 
--- Server list cache variables
+-- Fetch server list only ONCE
 local cachedServers = nil
 local cacheIndex = 1
 
-local function refreshServerList()
-    debug("Refreshing server list from API...")
+local function fetchServerListOnce()
+    debug("Fetching server list from API (once)...")
     local ok, data = pcall(function()
         local raw = game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")
         return HttpService:JSONDecode(raw)
@@ -32,26 +32,29 @@ local function refreshServerList()
                 table.insert(cachedServers, server.id)
             end
         end
-        cacheIndex = 1
-        debug("Server list refreshed. " .. #cachedServers .. " servers cached.")
+        debug("Fetched " .. #cachedServers .. " servers to cache.")
     else
-        debug("Failed to refresh server list.")
-        cachedServers = nil
+        debug("Failed to fetch server list.")
+        cachedServers = {}
     end
 end
 
+-- Get next server ID, looping over cached list endlessly
 local function getNextServerJobId()
-    if not cachedServers or cacheIndex > #cachedServers then
-        refreshServerList()
+    if not cachedServers then
+        fetchServerListOnce()
     end
 
-    if cachedServers and #cachedServers > 0 then
-        local serverId = cachedServers[cacheIndex]
-        cacheIndex = cacheIndex + 1
-        return serverId
-    else
-        return nil
+    if #cachedServers == 0 then
+        return nil -- no servers available
     end
+
+    local serverId = cachedServers[cacheIndex]
+    cacheIndex = cacheIndex + 1
+    if cacheIndex > #cachedServers then
+        cacheIndex = 1 -- wrap back to start for continuous looping
+    end
+    return serverId
 end
 
 local function loadModules()
