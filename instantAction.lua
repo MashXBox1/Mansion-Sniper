@@ -12,7 +12,7 @@ local function MakeActionsInstant()
                     spec.Duration = 0
                 end
             end
-            task.wait(0.5) -- Re-check every half second
+            task.wait(0.1) -- Re-check every half second
         end
     end)
 end
