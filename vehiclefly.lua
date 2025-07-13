@@ -6,7 +6,7 @@ local TweenService = game:GetService("TweenService")
 
 -- Configuration
 local FLY_KEY = Enum.KeyCode.F -- Press F to toggle flying
-local DEFAULT_SPEED = 500 -- Midpoint between 100 and 1000
+local DEFAULT_SPEED = 100 -- Midpoint between 100 and 1000
 local MIN_SPEED = 100
 local MAX_SPEED = 1000
 
