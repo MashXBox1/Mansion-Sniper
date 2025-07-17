@@ -33,6 +33,20 @@ BulletEmitterModule.Emit = function(self, origin, direction, speed)
     return OriginalEmit(self, origin, newDirection, speed)
 end
 
+-- Hook into the custom collision function
+local OriginalCustomCollidableFunc = BulletEmitterModule._buildCustomCollidableFunc
+BulletEmitterModule._buildCustomCollidableFunc = function()
+    return function(part)
+        -- Only collide with parts belonging to any player's character
+        for _, player in pairs(Players:GetPlayers()) do
+            if player.Character and part:IsDescendantOf(player.Character) then
+                return true
+            end
+        end
+        return false -- Ignore all other parts
+    end
+end
+
 -- Optional: Dynamically update the target player during runtime
 game:GetService("RunService").Heartbeat:Connect(function()
     TARGET_PLAYER = Players:FindFirstChild(TARGET_PLAYER_NAME)
@@ -42,3 +56,4 @@ game:GetService("RunService").Heartbeat:Connect(function()
 end)
 
 print("Auto-targeting bullets enabled for player:", TARGET_PLAYER_NAME)
+print("Bullets will only hit players.")
