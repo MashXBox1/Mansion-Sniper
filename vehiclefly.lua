@@ -29,6 +29,9 @@ frame.BackgroundTransparency = 0.3
 frame.BorderSizePixel = 0
 frame.Visible = false
 frame.Parent = screenGui
+frame.Active = true
+frame.Draggable = true
+
 
 local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 6)
