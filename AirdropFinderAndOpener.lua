@@ -84,7 +84,7 @@ local function simulateHoldEAsync(briefcase)
 			end
 
 			if not (pressRemote and collectRemote) then break end
-            pressRemote:FireServer(true) -- Signals "E pressed"
+			pressRemote:FireServer(true) -- Signals "E pressed"
 			local start = os.clock()
 			while os.clock() - start < 25 do
 				pressRemote:FireServer(false)
@@ -117,7 +117,14 @@ task.spawn(function()
 		if not rootPart then setupCharacter() end
 
 		local drop = Workspace:FindFirstChild("Drop", true)
-		if drop and drop:GetAttribute("BriefcaseLanded") == true then
+		if drop then
+			if not drop:GetAttribute("BriefcaseLanded") then
+				print("📦 Waiting for airdrop to land...")
+				repeat
+					task.wait(1)
+				until drop:GetAttribute("BriefcaseLanded")
+			end
+
 			local dropPos = getPrimaryPosition(drop)
 			if dropPos then
 				dropFound = true
@@ -166,5 +173,4 @@ task.spawn(function()
 	end
 
 	warn("❌ No airdrop found after", MAX_SCANS, "full scans.")
-	-- optionally trigger server hop or cleanup here
 end)
