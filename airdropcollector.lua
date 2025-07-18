@@ -8,8 +8,8 @@ local BriefcaseConsts = require(ReplicatedStorage.AirDrop.BriefcaseConsts)
 -- CONFIG --
 local MAX_DISTANCE = 500 -- Studs
 local PRESS_DURATION = 25 -- Seconds (matches game's requirement)
-local HUMAN_LIKE = true -- Adds slight randomness
-local PRESS_INTERVAL = 0.1 -- How often to send press updates (critical!)
+local HUMAN_LIKE = false -- Adds slight randomness
+local PRESS_INTERVAL = 0 -- How often to send press updates (critical!)
 
 local function findNearestBriefcase()
     local char = LocalPlayer.Character
