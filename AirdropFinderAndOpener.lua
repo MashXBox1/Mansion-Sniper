@@ -3,7 +3,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-local UserInputService = game:GetService("UserInputService")
 local CollectionService = game:GetService("CollectionService")
 
 -- Player
@@ -14,59 +13,34 @@ local BriefcaseConsts = require(ReplicatedStorage:WaitForChild("AirDrop"):WaitFo
 local GRID_SIZE = 500
 local SCAN_HEIGHT = 300
 local SCAN_WAIT = 0.08
-local AREA_MIN = Vector3.new(-4000, 0, -4000)  -- increased by 1000
-local AREA_MAX = Vector3.new(4000, 0, 4000)    -- increased by 1000
+local AREA_MIN = Vector3.new(-4000, 0, -4000)
+local AREA_MAX = Vector3.new(4000, 0, 4000)
 
 -- Globals
 local character, rootPart, camera
 local heartbeatConn = nil
 local holdEActive = false
 local dropFound = false
-local npcKillLoopRunning = false
+local npcKillLoop = nil
 
--- Setup character references on spawn/respawn
+-- Setup character references
 local function setupCharacter()
 	character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 	rootPart = character:WaitForChild("HumanoidRootPart")
 	camera = Workspace.CurrentCamera
 end
 
-LocalPlayer.CharacterAdded:Connect(function()
-	setupCharacter()
-	-- If drop found, reconnect heartbeat teleport on respawn
-	if dropFound then
-		if heartbeatConn then heartbeatConn:Disconnect() end
-		heartbeatConn = RunService.Heartbeat:Connect(function()
-			if not rootPart then return end
-			local drop = Workspace:FindFirstChild("Drop", true)
-			if drop and drop:GetAttribute("BriefcaseLanded") == true then
-				local dropPos = drop.PrimaryPart and drop.PrimaryPart.Position or nil
-				if not dropPos then
-					for _, p in ipairs(drop:GetDescendants()) do
-						if p:IsA("BasePart") then
-							dropPos = p.Position
-							break
-						end
-					end
-				end
-				if dropPos then
-					local cframe = CFrame.new(dropPos + Vector3.new(0, 3, 0))
-					rootPart.CFrame = cframe
-					camera.CFrame = cframe + Vector3.new(0, 2, 0)
-				end
-			else
-				-- Drop gone, disconnect heartbeat and reset flags
-				if heartbeatConn then heartbeatConn:Disconnect() end
-				heartbeatConn = nil
-				dropFound = false
-				holdEActive = false
-				npcKillLoopRunning = false
-			end
-		end)
-	end
-end)
+LocalPlayer.CharacterAdded:Connect(setupCharacter)
+setupCharacter()
 
-setupCharacter() -- initial setup
+-- Kill all NPCs
+local function killAllNPCs()
+	for _, npc in ipairs(CollectionService:GetTagged("Humanoid")) do
+		if npc:IsA("Humanoid") and not Players:GetPlayerFromCharacter(npc.Parent) then
+			npc.Health = 0
+		end
+	end
+end
 
 -- Generate grid positions
 local positions = {}
@@ -76,7 +50,7 @@ for x = AREA_MIN.X, AREA_MAX.X, GRID_SIZE do
 	end
 end
 
--- Helper: get basepart position
+-- Get model position
 local function getPrimaryPosition(model)
 	if model:IsA("BasePart") then return model.Position end
 	for _, part in ipairs(model:GetDescendants()) do
@@ -84,9 +58,8 @@ local function getPrimaryPosition(model)
 	end
 end
 
--- Find briefcase nearby
+-- Get nearby briefcase
 local function findNearestBriefcase()
-	if not rootPart then return nil end
 	for _, obj in ipairs(Workspace:GetDescendants()) do
 		if obj:GetAttribute(BriefcaseConsts.BORN_AT_ATTR_NAME) then
 			local pp = obj.PrimaryPart
@@ -97,144 +70,122 @@ local function findNearestBriefcase()
 	end
 end
 
--- Hold-E logic (non-blocking)
-local function simulateHoldEAsync()
+-- Hold E to collect drop with retry
+local function simulateHoldEAsync(briefcase)
 	if holdEActive then return end
 	holdEActive = true
 
-	spawn(function()
-		local briefcase = findNearestBriefcase()
-		if not briefcase then
-			holdEActive = false
-			return
-		end
+	task.spawn(function()
+		while true do
+			if not briefcase or not briefcase:IsDescendantOf(Workspace) then
+				warn("❌ Briefcase no longer valid.")
+				break
+			end
 
-		local pressRemote = briefcase:FindFirstChild(BriefcaseConsts.PRESS_REMOTE_NAME)
-		local collectRemote = briefcase:FindFirstChild(BriefcaseConsts.COLLECT_REMOTE_NAME)
-		if not (pressRemote and collectRemote) then
-			holdEActive = false
-			return
-		end
+			-- Wait for remotes
+			local pressRemote = briefcase:FindFirstChild(BriefcaseConsts.PRESS_REMOTE_NAME)
+			local collectRemote = briefcase:FindFirstChild(BriefcaseConsts.COLLECT_REMOTE_NAME)
 
-		-- Start hold
-		pressRemote:FireServer(true)
-		local startTime = os.clock()
+			if not (pressRemote and collectRemote) then
+				for i = 1, 100 do
+					pressRemote = briefcase:FindFirstChild(BriefcaseConsts.PRESS_REMOTE_NAME)
+					collectRemote = briefcase:FindFirstChild(BriefcaseConsts.COLLECT_REMOTE_NAME)
+					if pressRemote and collectRemote then break end
+					task.wait(0.1)
+				end
+			end
 
-		while holdEActive and os.clock() - startTime < 25 do
-			pressRemote:FireServer(false)
-			wait(0)
-		end
+			if not (pressRemote and collectRemote) then
+				warn("❌ Remotes not found after waiting.")
+				break
+			end
 
-		-- If still active at end, fire collect
-		if holdEActive then
-			collectRemote:FireServer()
+			warn("▶️ Starting pressRemote cycle...")
+			local start = os.clock()
+			while os.clock() - start < 25 do
+				pressRemote:FireServer(false)
+				task.wait()
+			end
+			warn("✅ Finished holding E.")
+
+			-- Spam collect remote
+			for _ = 1, 6 do
+				collectRemote:FireServer()
+				task.wait(0.1)
+			end
+
+			task.wait(9)
+
+			if Workspace:FindFirstChild("Drop", true) then
+				warn("⚠️ Drop still exists, retrying collection...")
+			else
+				warn("✅ Drop collected successfully.")
+				break
+			end
 		end
 
 		holdEActive = false
 	end)
 end
 
--- NPC killer function
-local function killAllNPCs()
-	-- Method 1: Kill via Humanoid (if accessible)
-	for _, npc in ipairs(CollectionService:GetTagged("Humanoid")) do
-		if npc:IsA("Humanoid") and not Players:GetPlayerFromCharacter(npc.Parent) then
-			npc.Health = 0
-		end
-	end
-	
-	-- Method 2: Kill via NPC system (if Method 1 fails)
-	for _, obj in ipairs(Workspace:GetDescendants()) do
-		if obj:GetAttribute("NetworkOwnerId") and not Players:GetPlayerFromCharacter(obj) then
-			local humanoid = obj:FindFirstChild("Humanoid")
-			if humanoid then
-				humanoid.Health = 0
-			end
-		end
-	end
-end
-
--- Main scan & lock loop
+-- Main airdrop finder
 task.spawn(function()
 	while true do
 		if not rootPart then setupCharacter() end
 
-		if not dropFound then
-			-- Look for drop anywhere on map
+		if dropFound then
+			task.wait(0.5)
+		else
 			local drop = Workspace:FindFirstChild("Drop", true)
 			if drop and drop:GetAttribute("BriefcaseLanded") == true then
 				local dropPos = getPrimaryPosition(drop)
 				if dropPos then
-					warn("✅ Drop found at:", drop:GetFullName())
-					warn(string.format("📍 Coordinates: %.2f, %.2f, %.2f", dropPos.X, dropPos.Y, dropPos.Z))
-
 					dropFound = true
+					warn("🎯 Drop found at:", drop:GetFullName())
 
-					-- Setup heartbeat teleport to lock to drop
 					if heartbeatConn then heartbeatConn:Disconnect() end
 					heartbeatConn = RunService.Heartbeat:Connect(function()
-						if not rootPart then return end
-						local currentDrop = Workspace:FindFirstChild("Drop", true)
-						if currentDrop and currentDrop:GetAttribute("BriefcaseLanded") == true then
-							local currentDropPos = currentDrop.PrimaryPart and currentDrop.PrimaryPart.Position or nil
-							if not currentDropPos then
-								for _, p in ipairs(currentDrop:GetDescendants()) do
-									if p:IsA("BasePart") then
-										currentDropPos = p.Position
-										break
-									end
-								end
+						if rootPart and drop and drop:GetAttribute("BriefcaseLanded") then
+							local pos = getPrimaryPosition(drop)
+							if pos then
+								local cf = CFrame.new(pos + Vector3.new(0, 3, 0))
+								rootPart.CFrame = cf
+								camera.CFrame = cf + Vector3.new(0, 2, 0)
 							end
-							if currentDropPos then
-								local cframe = CFrame.new(currentDropPos + Vector3.new(0, 3, 0))
-								rootPart.CFrame = cframe
-								camera.CFrame = cframe + Vector3.new(0, 2, 0)
-							end
-						else
-							-- Drop gone, disconnect heartbeat and reset flags
-							if heartbeatConn then heartbeatConn:Disconnect() end
-							heartbeatConn = nil
-							dropFound = false
-							holdEActive = false
-							npcKillLoopRunning = false
 						end
 					end)
 
-					-- Start holding E (simulate remote press)
-					simulateHoldEAsync()
-
-					-- Start NPC killer loop
-					if not npcKillLoopRunning then
-						npcKillLoopRunning = true
-						spawn(function()
-							while dropFound do
-								killAllNPCs()
-								task.wait(2)
-							end
-							npcKillLoopRunning = false
+					-- Kill NPCs every 2s
+					if not npcKillLoop then
+						npcKillLoop = RunService.Heartbeat:Connect(function()
+							task.spawn(killAllNPCs)
+							task.wait(2)
 						end)
 					end
 
-					-- BLOCKING WAIT: wait until drop disappears before resuming scan
-					repeat
-						task.wait(0.5)
-					until not Workspace:FindFirstChild("Drop", true)
+					-- Start collection
+					simulateHoldEAsync(drop)
+
+					-- Wait for drop to disappear
+					repeat task.wait(1) until not Workspace:FindFirstChild("Drop", true)
+
+					-- Clean up
+					if heartbeatConn then heartbeatConn:Disconnect() end
+					if npcKillLoop then npcKillLoop:Disconnect() end
+					heartbeatConn, npcKillLoop = nil, nil
+					dropFound = false
 				end
 			else
-				-- No drop found, scan grid positions by teleporting around
 				for _, pos in ipairs(positions) do
-					if dropFound then break end -- stop scanning if drop found
-					if not rootPart then setupCharacter() end
-					rootPart.CFrame = CFrame.new(pos)
-					camera.CFrame = CFrame.new(pos + Vector3.new(0, 5, 0), pos)
+					if dropFound then break end
+					if rootPart then
+						rootPart.CFrame = CFrame.new(pos)
+						camera.CFrame = CFrame.new(pos + Vector3.new(0, 5, 0), pos)
+					end
 					task.wait(SCAN_WAIT)
 				end
 			end
-		else
-			-- If somehow dropFound is true here, just wait briefly
-			task.wait(0.5)
 		end
-
-		task.wait(0.1) -- slight delay before next loop
+		task.wait(0.1)
 	end
 end)
