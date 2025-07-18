@@ -12,7 +12,7 @@ local LocalPlayer = Players.LocalPlayer
 local BriefcaseConsts = require(ReplicatedStorage:WaitForChild("AirDrop"):WaitForChild("BriefcaseConsts"))
 local GRID_SIZE = 500
 local SCAN_HEIGHT = 300
-local SCAN_WAIT = 0.01 -- faster scan
+local SCAN_WAIT = 0.001 -- faster scan
 local AREA_MIN = Vector3.new(-4000, 0, -4000)
 local AREA_MAX = Vector3.new(4000, 0, 4000)
 local MAX_SCANS = 2
@@ -84,7 +84,7 @@ local function simulateHoldEAsync(briefcase)
 			end
 
 			if not (pressRemote and collectRemote) then break end
-
+            pressRemote:FireServer(true) -- Signals "E pressed"
 			local start = os.clock()
 			while os.clock() - start < 25 do
 				pressRemote:FireServer(false)
