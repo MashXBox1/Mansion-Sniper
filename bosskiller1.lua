@@ -7,29 +7,27 @@ local Workspace = game:GetService("Workspace")
 -- Path to the BulletEmitter module
 local BulletEmitterModule = require(ReplicatedStorage.Game.ItemSystem.BulletEmitter)
 
--- Path to the boss
-local function getBossTarget()
-	local boss = Workspace:FindFirstChild("MansionRobbery")
-	if not boss then return nil end
-	return boss:FindFirstChild("ActiveBoss")
+-- Path to the boss's Head
+local function getBossHead()
+	local mansion = Workspace:FindFirstChild("MansionRobbery")
+	if not mansion then return nil end
+
+	local boss = mansion:FindFirstChild("ActiveBoss")
+	if not boss or not boss:IsA("Model") then return nil end
+
+	return boss:FindFirstChild("Head")
 end
 
 -- Hook into the BulletEmitter's Emit function
 local OriginalEmit = BulletEmitterModule.Emit
 BulletEmitterModule.Emit = function(self, origin, direction, speed)
-	local boss = getBossTarget()
-	if not boss or not boss:IsA("Model") then
-		warn("ActiveBoss not found or invalid.")
+	local bossHead = getBossHead()
+	if not bossHead then
+		warn("ActiveBoss Head not found.")
 		return OriginalEmit(self, origin, direction, speed)
 	end
 
-	local bossPrimary = boss.PrimaryPart or boss:FindFirstChild("HumanoidRootPart") or boss:FindFirstChildWhichIsA("BasePart")
-	if not bossPrimary then
-		warn("ActiveBoss has no valid target part.")
-		return OriginalEmit(self, origin, direction, speed)
-	end
-
-	local newDirection = (bossPrimary.Position - origin).Unit
+	local newDirection = (bossHead.Position - origin).Unit
 	return OriginalEmit(self, origin, newDirection, speed)
 end
 
@@ -37,9 +35,9 @@ end
 local OriginalCustomCollidableFunc = BulletEmitterModule._buildCustomCollidableFunc
 BulletEmitterModule._buildCustomCollidableFunc = function()
 	return function(part)
-		-- Allow hit on ActiveBoss parts
-		local boss = getBossTarget()
-		if boss and part:IsDescendantOf(boss) then
+		-- Allow hit on ActiveBoss's parts
+		local head = getBossHead()
+		if head and (part == head or part:IsDescendantOf(head.Parent)) then
 			return true
 		end
 
@@ -54,13 +52,13 @@ BulletEmitterModule._buildCustomCollidableFunc = function()
 	end
 end
 
--- Optional: Debug print of current boss target every frame
+-- Optional: Debug print of target
 RunService.Heartbeat:Connect(function()
-	local boss = getBossTarget()
-	if boss then
-		print("Targeting Boss:", boss.Name)
+	local head = getBossHead()
+	if head then
+		print("Targeting Boss Head at:", head.Position)
 	end
 end)
 
 print("🔴 Auto-targeting bullets enabled.")
-print("🎯 Bullets will now aim at and hit ActiveBoss in MansionRobbery.")
+print("🎯 Bullets will now aim at the boss's Head.")
