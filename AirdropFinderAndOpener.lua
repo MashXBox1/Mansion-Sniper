@@ -3,6 +3,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
+local CollectionService = game:GetService("CollectionService")
 
 -- Player
 local LocalPlayer = Players.LocalPlayer
@@ -20,6 +22,7 @@ local character, rootPart, camera
 local heartbeatConn = nil
 local holdEActive = false
 local dropFound = false
+local npcKillLoopRunning = false
 
 -- Setup character references on spawn/respawn
 local function setupCharacter()
@@ -57,6 +60,7 @@ LocalPlayer.CharacterAdded:Connect(function()
 				heartbeatConn = nil
 				dropFound = false
 				holdEActive = false
+				npcKillLoopRunning = false
 			end
 		end)
 	end
@@ -130,15 +134,32 @@ local function simulateHoldEAsync()
 	end)
 end
 
+-- NPC killer function
+local function killAllNPCs()
+	-- Method 1: Kill via Humanoid (if accessible)
+	for _, npc in ipairs(CollectionService:GetTagged("Humanoid")) do
+		if npc:IsA("Humanoid") and not Players:GetPlayerFromCharacter(npc.Parent) then
+			npc.Health = 0
+		end
+	end
+	
+	-- Method 2: Kill via NPC system (if Method 1 fails)
+	for _, obj in ipairs(Workspace:GetDescendants()) do
+		if obj:GetAttribute("NetworkOwnerId") and not Players:GetPlayerFromCharacter(obj) then
+			local humanoid = obj:FindFirstChild("Humanoid")
+			if humanoid then
+				humanoid.Health = 0
+			end
+		end
+	end
+end
+
 -- Main scan & lock loop
 task.spawn(function()
 	while true do
 		if not rootPart then setupCharacter() end
 
-		if dropFound then
-			-- Already locked on a drop, just wait a bit and continue
-			task.wait(0.5)
-		else
+		if not dropFound then
 			-- Look for drop anywhere on map
 			local drop = Workspace:FindFirstChild("Drop", true)
 			if drop and drop:GetAttribute("BriefcaseLanded") == true then
@@ -175,25 +196,43 @@ task.spawn(function()
 							heartbeatConn = nil
 							dropFound = false
 							holdEActive = false
+							npcKillLoopRunning = false
 						end
 					end)
 
 					-- Start holding E (simulate remote press)
 					simulateHoldEAsync()
 
-					-- Wait for drop to disappear before resuming scan
-					repeat task.wait(0.5) until not Workspace:FindFirstChild("Drop", true)
+					-- Start NPC killer loop
+					if not npcKillLoopRunning then
+						npcKillLoopRunning = true
+						spawn(function()
+							while dropFound do
+								killAllNPCs()
+								task.wait(2)
+							end
+							npcKillLoopRunning = false
+						end)
+					end
+
+					-- BLOCKING WAIT: wait until drop disappears before resuming scan
+					repeat
+						task.wait(0.5)
+					until not Workspace:FindFirstChild("Drop", true)
 				end
 			else
 				-- No drop found, scan grid positions by teleporting around
 				for _, pos in ipairs(positions) do
-					if dropFound then break end -- if drop found during scanning, stop scanning
+					if dropFound then break end -- stop scanning if drop found
 					if not rootPart then setupCharacter() end
 					rootPart.CFrame = CFrame.new(pos)
 					camera.CFrame = CFrame.new(pos + Vector3.new(0, 5, 0), pos)
 					task.wait(SCAN_WAIT)
 				end
 			end
+		else
+			-- If somehow dropFound is true here, just wait briefly
+			task.wait(0.5)
 		end
 
 		task.wait(0.1) -- slight delay before next loop
