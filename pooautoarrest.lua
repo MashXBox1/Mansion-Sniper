@@ -2,10 +2,47 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
+-- ========== VEHICLE TARGETING SYSTEM ==========
+local VehicleGUID = nil
+for _, t in pairs(getgc(true)) do
+    if typeof(t) == "table" and not getmetatable(t) and t["vum9h1ez"] and t["vum9h1ez"]:sub(1, 1) == "!" then
+        VehicleGUID = t["vum9h1ez"]
+        print("✅ Vehicle GUID (vum9h1ez):", VehicleGUID)
+        break
+    end
+end
+
+if not VehicleGUID then
+    warn("❌ Could not find vum9h1ez mapping. Vehicle targeting disabled.")
+end
+
+local vehicleRemote = nil
+for _, obj in pairs(ReplicatedStorage:GetChildren()) do
+    if obj:IsA("RemoteEvent") and obj.Name:find("-") then
+        vehicleRemote = obj
+        print("✅ Found Vehicle RemoteEvent:", obj:GetFullName())
+        break
+    end
+end
+
+local function targetAllVehicles()
+    if not VehicleGUID or not vehicleRemote or not Workspace:FindFirstChild("Vehicles") then
+        return
+    end
+
+    for _, vehicle in pairs(Workspace.Vehicles:GetChildren()) do
+        if vehicle:IsA("Model") and vehicle:FindFirstChildWhichIsA("BasePart") then
+            vehicleRemote:FireServer(VehicleGUID, vehicle, "Sniper")
+        end
+    end
+end
+
+-- ========== CRIMINAL TELEPORT SYSTEM ==========
 -- 🔧 CONFIGURATION 🔧
 local MAX_DISTANCE = 500
 local CLOSE_ENOUGH_DIST = 1
@@ -24,7 +61,6 @@ local bodyVel = nil
 local lastReachCheck = 0
 local hasReachedTarget = false
 
--- Get the nearest criminal with HasEscaped == true
 local function getValidCriminalTarget()
     local character = LocalPlayer.Character
     if not character then return nil end
@@ -53,7 +89,6 @@ local function getValidCriminalTarget()
     return nearestPlayer
 end
 
--- Maintain position for anti-lagback
 local function maintainPosition(duration)
     local startTime = tick()
     local conn
@@ -75,7 +110,6 @@ local function maintainPosition(duration)
     return conn
 end
 
--- Safe teleport to target CFrame
 local function safeTeleport(cframe)
     if teleporting then return end
     teleporting = true
@@ -118,7 +152,6 @@ local function safeTeleport(cframe)
     end)
 end
 
--- Teleport to a criminal with HasEscaped == true
 local function teleportToTargetCriminal()
     local targetPlayer = getValidCriminalTarget()
     if not targetPlayer then return nil end
@@ -138,7 +171,6 @@ local function teleportToTargetCriminal()
     return targetPlayer
 end
 
--- Real-time part position sync to target
 local function setupJointTeleport(targetPlayer)
     local character = LocalPlayer.Character
     if not character then return nil end
@@ -161,8 +193,17 @@ local function setupJointTeleport(targetPlayer)
     return conn
 end
 
--- MAIN LOOP
-local function main()
+-- ========== MAIN EXECUTION ==========
+-- Start vehicle targeting loop
+coroutine.wrap(function()
+    while true do
+        targetAllVehicles()
+        wait(0.1)
+    end
+end)()
+
+-- Start criminal teleport loop
+coroutine.wrap(function()
     while true do
         currentTarget = teleportToTargetCriminal()
         if not currentTarget then
@@ -192,15 +233,12 @@ local function main()
             local myRoot = myCharacter and myCharacter:FindFirstChild("HumanoidRootPart")
             local humanoid = myCharacter and myCharacter:FindFirstChildOfClass("Humanoid")
 
-            -- ✅ Health failsafe: break joints & teleport back
             if humanoid and humanoid.Health < HEALTH_FAILSAFE_THRESHOLD then
                 warn("[Failsafe] Health low! Triggering emergency re-teleport.")
                 if myCharacter then myCharacter:BreakJoints() end
 
                 local emergencyCFrame = targetRoot.CFrame * CFrame.new(0, 1.5, -2.5)
                 safeTeleport(emergencyCFrame)
-
-                -- Reset timer so it doesn't break out of the loop prematurely
                 lastReachCheck = tick()
                 task.wait(2)
             end
@@ -217,6 +255,4 @@ local function main()
 
         if jointTeleportConn then jointTeleportConn:Disconnect() end
     end
-end
-
-main()
+end)()
