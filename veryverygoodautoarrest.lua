@@ -1,3 +1,52 @@
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- ========== GRID SCAN FIRST ==========
+local GRID_SIZE = 300
+local SCAN_HEIGHT = 200
+local SCAN_WAIT = 0.00001
+local AREA_MIN = Vector3.new(-5000, 0, -5000)
+local AREA_MAX = Vector3.new(5000, 0, 5000)
+local MAX_SCANS = 1
+
+local character, rootPart, camera
+local function setupCharacter()
+	character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+	rootPart = character:WaitForChild("HumanoidRootPart")
+	camera = Workspace.CurrentCamera
+end
+LocalPlayer.CharacterAdded:Connect(setupCharacter)
+setupCharacter()
+
+-- Build scan grid
+local positions = {}
+for x = AREA_MIN.X, AREA_MAX.X, GRID_SIZE do
+	for z = AREA_MIN.Z, AREA_MAX.Z, GRID_SIZE do
+		table.insert(positions, Vector3.new(x, SCAN_HEIGHT, z))
+	end
+end
+
+-- Blocking scan before rest of script runs
+do
+	local scanCount = 0
+	while scanCount < MAX_SCANS do
+		scanCount += 1
+		for _, pos in ipairs(positions) do
+			if not rootPart then setupCharacter() end
+			rootPart.CFrame = CFrame.new(pos)
+			camera.CFrame = CFrame.new(pos + Vector3.new(0, 5, 0), pos)
+			task.wait(SCAN_WAIT)
+		end
+	end
+	warn("✅ Finished full grid scan. Proceeding with main script...")
+end
+
+task.wait(6)
 -- Services
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
