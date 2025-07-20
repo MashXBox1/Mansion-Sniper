@@ -1,92 +1,11 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
--- Find the main RemoteEvent like your original method
-local MainRemote = nil
-for _, obj in pairs(ReplicatedStorage:GetChildren()) do
-    if obj:IsA("RemoteEvent") and obj.Name:find("-") then
-        MainRemote = obj
-        print("✅ Found RemoteEvent:", obj:GetFullName())
-        break
-    end
-end
-if not MainRemote then
-    error("❌ Could not find RemoteEvent with '-' in name.")
-end
-
--- Find PoliceGUID by key "mto4108g" in getgc tables
-local PoliceGUID
-for _, t in pairs(getgc(true)) do
-    if typeof(t) == "table" and not getmetatable(t) then
-        if t["mto4108g"] and t["mto4108g"]:sub(1,1) == "!" then
-            PoliceGUID = t["mto4108g"]
-            print("✅ Police GUID found:", PoliceGUID)
-            break
-        end
-    end
-end
-
-if not PoliceGUID then
-    warn("⚠️ Police GUID not found.")
-else
-    MainRemote:FireServer(PoliceGUID, "Police")
-end
-
-
+-- Services (declared once)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local LocalPlayer = Players.LocalPlayer
-
--- ========== GRID SCAN FIRST ==========
-local GRID_SIZE = 300
-local SCAN_HEIGHT = 200
-local SCAN_WAIT = 0.00001
-local AREA_MIN = Vector3.new(-5000, 0, -5000)
-local AREA_MAX = Vector3.new(5000, 0, 5000)
-local MAX_SCANS = 1
-
-local character, rootPart, camera
-local function setupCharacter()
-	character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-	rootPart = character:WaitForChild("HumanoidRootPart")
-	camera = Workspace.CurrentCamera
-end
-LocalPlayer.CharacterAdded:Connect(setupCharacter)
-setupCharacter()
-
--- Build scan grid
-local positions = {}
-for x = AREA_MIN.X, AREA_MAX.X, GRID_SIZE do
-	for z = AREA_MIN.Z, AREA_MAX.Z, GRID_SIZE do
-		table.insert(positions, Vector3.new(x, SCAN_HEIGHT, z))
-	end
-end
-
--- Blocking scan before rest of script runs
-do
-	local scanCount = 0
-	while scanCount < MAX_SCANS do
-		scanCount += 1
-		for _, pos in ipairs(positions) do
-			if not rootPart then setupCharacter() end
-			rootPart.CFrame = CFrame.new(pos)
-			camera.CFrame = CFrame.new(pos + Vector3.new(0, 5, 0), pos)
-			task.wait(SCAN_WAIT)
-		end
-	end
-	warn("✅ Finished full grid scan. Proceeding with main script...")
-end
-
-task.wait(6)
--- Services
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -104,10 +23,14 @@ if not MainRemote then
 end
 
 -- ========== FIND GUIDS ==========
-local EjectGUID, DamageGUID, ArrestGUID
+local PoliceGUID, EjectGUID, DamageGUID, ArrestGUID
 
 for _, t in pairs(getgc(true)) do
     if typeof(t) == "table" and not getmetatable(t) then
+        if t["mto4108g"] and t["mto4108g"]:sub(1,1) == "!" then
+            PoliceGUID = t["mto4108g"]
+            print("✅ Police GUID found:", PoliceGUID)
+        end
         if t["bi6lm6ja"] and t["bi6lm6ja"]:sub(1, 1) == "!" then
             EjectGUID = t["bi6lm6ja"]
             print("✅ Eject GUID:", EjectGUID)
@@ -125,6 +48,52 @@ end
 
 if not ArrestGUID then error("❌ Arrest GUID not found.") end
 
+-- ========== POLICE GUID FIRE (from your original) ==========
+if PoliceGUID then
+    MainRemote:FireServer(PoliceGUID, "Police")
+end
+
+-- ========== GRID SCAN ==========
+local GRID_SIZE = 300
+local SCAN_HEIGHT = 200
+local SCAN_WAIT = 0.00001
+local AREA_MIN = Vector3.new(-5000, 0, -5000)
+local AREA_MAX = Vector3.new(5000, 0, 5000)
+local MAX_SCANS = 1
+
+local character, rootPart, camera
+
+local function setupCharacter()
+    character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    rootPart = character:WaitForChild("HumanoidRootPart")
+    camera = Workspace.CurrentCamera
+end
+LocalPlayer.CharacterAdded:Connect(setupCharacter)
+setupCharacter()
+
+local positions = {}
+for x = AREA_MIN.X, AREA_MAX.X, GRID_SIZE do
+    for z = AREA_MIN.Z, AREA_MAX.Z, GRID_SIZE do
+        table.insert(positions, Vector3.new(x, SCAN_HEIGHT, z))
+    end
+end
+
+do
+    local scanCount = 0
+    while scanCount < MAX_SCANS do
+        scanCount += 1
+        for _, pos in ipairs(positions) do
+            if not rootPart then setupCharacter() end
+            rootPart.CFrame = CFrame.new(pos)
+            camera.CFrame = CFrame.new(pos + Vector3.new(0,5,0), pos)
+            task.wait(SCAN_WAIT)
+        end
+    end
+    warn("✅ Finished full grid scan. Proceeding with main script...")
+end
+
+task.wait(6) -- your original wait before main loops
+
 -- ========== VEHICLE LOOP ==========
 local function vehicleLoop()
     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -134,11 +103,9 @@ local function vehicleLoop()
         if vehicle:IsA("Model") then
             local base = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
             if base then
-                -- Damage all valid vehicles
                 if DamageGUID then
                     MainRemote:FireServer(DamageGUID, vehicle, "Sniper")
                 end
-                -- Eject if within 10 studs & has driver
                 if EjectGUID and vehicle:GetAttribute("VehicleHasDriver") == true then
                     if (myRoot.Position - base.Position).Magnitude <= 10 then
                         MainRemote:FireServer(EjectGUID, vehicle)
@@ -150,7 +117,7 @@ local function vehicleLoop()
     end
 end
 
--- ========== TELEPORT & ARREST LOGIC ==========
+-- ========== TELEPORT & ARREST LOGIC VARIABLES ==========
 local TELEPORT_DURATION = 5
 local REACH_TIMEOUT = 20
 
@@ -163,6 +130,8 @@ local lastReachCheck = 0
 local hasReachedTarget = false
 local handcuffsEquipped = false
 local arresting = false
+
+-- ========== HELPERS ==========
 
 local function getValidCriminalTarget()
     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -186,7 +155,8 @@ end
 
 local function maintainPosition(duration)
     local startTime = tick()
-    local conn = RunService.Heartbeat:Connect(function()
+    local conn
+    conn = RunService.Heartbeat:Connect(function()
         if tick() - startTime > duration then
             conn:Disconnect()
             return
@@ -297,6 +267,43 @@ local function startArresting(targetPlayer)
     end)
 end
 
+-- ========== SERVER HOP FUNCTION ==========
+local function serverHop()
+    print("🌐 No criminals found, searching for new server...")
+
+    local success, result = pcall(function()
+        local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)
+        return HttpService:JSONDecode(game:HttpGet(url))
+    end)
+
+    if not success or not result or not result.data then
+        warn("❌ Failed to get server list for hopping.")
+        return
+    end
+
+    local currentJobId = game.JobId
+    local candidates = {}
+
+    for _, server in ipairs(result.data) do
+        if server.id ~= currentJobId and server.playing < server.maxPlayers then
+            table.insert(candidates, server.id)
+        end
+    end
+
+    if #candidates == 0 then
+        warn("⚠️ No available servers to hop to.")
+        return
+    end
+
+    local chosenServer = candidates[math.random(1, #candidates)]
+    print("🚀 Teleporting to new server:", chosenServer)
+
+    -- queue_on_teleport with placeholder payload
+    queue_on_teleport([[print("✅ Teleported to new server! Replace this with your script.")]])
+
+    TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
+end
+
 -- ========== START LOOPS ==========
 
 -- Vehicle damage & eject loop
@@ -311,7 +318,11 @@ end)
 task.spawn(function()
     while true do
         currentTarget = teleportToCriminal()
-        if not currentTarget then task.wait(1) continue end
+        if not currentTarget then
+            serverHop()
+            task.wait(10) -- wait a bit for teleport to trigger and prevent multiple hops
+            return
+        end
 
         task.wait(TELEPORT_DURATION)
         local jointTeleportConn = setupJointTeleport(currentTarget)
@@ -334,7 +345,7 @@ task.spawn(function()
                 print("⚠️ Low health detected, restarting full teleport process.")
                 arresting = false
                 if jointTeleportConn then jointTeleportConn:Disconnect() end
-                    break -- Exit the inner loop to restart the full teleport phase
+                break
             end
 
             if myRoot and targetRoot then
