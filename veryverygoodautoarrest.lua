@@ -69,7 +69,6 @@ end
 
 -- ========== TELEPORT & ARREST LOGIC ==========
 local TELEPORT_DURATION = 5
-local HEALTH_FAILSAFE_THRESHOLD = 20
 local REACH_TIMEOUT = 20
 
 local teleporting = false
@@ -248,11 +247,11 @@ task.spawn(function()
             local targetRoot = currentTarget.Character:FindFirstChild("HumanoidRootPart")
             local humanoid = myChar and myChar:FindFirstChildOfClass("Humanoid")
 
-            if humanoid and humanoid.Health < HEALTH_FAILSAFE_THRESHOLD then
-                if myChar then myChar:BreakJoints() end
-                safeTeleport(targetRoot.CFrame * CFrame.new(0, 1.5, -2.5))
-                lastReachCheck = tick()
-                task.wait(2)
+            if humanoid and humanoid.Health < 50 then
+                print("⚠️ Low health detected, restarting full teleport process.")
+                arresting = false
+                if jointTeleportConn then jointTeleportConn:Disconnect() end
+                    break -- Exit the inner loop to restart the full teleport phase
             end
 
             if myRoot and targetRoot then
