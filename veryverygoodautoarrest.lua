@@ -301,7 +301,7 @@ local function serverHop()
     print("🚀 Teleporting to new server:", chosenServer)
 
     -- queue_on_teleport with placeholder payload
-    queue_on_teleport([[print("✅ Teleported to new server! Replace this with your script.")]])
+    queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/veryverygoodautoarrest.lua"))()]])
 
     TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
 end
