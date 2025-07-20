@@ -1,3 +1,5 @@
+task.wait(3)
+
 -- Services (declared once)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
