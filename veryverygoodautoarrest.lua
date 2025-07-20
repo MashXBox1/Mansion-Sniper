@@ -1,3 +1,37 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Find the main RemoteEvent like your original method
+local MainRemote = nil
+for _, obj in pairs(ReplicatedStorage:GetChildren()) do
+    if obj:IsA("RemoteEvent") and obj.Name:find("-") then
+        MainRemote = obj
+        print("✅ Found RemoteEvent:", obj:GetFullName())
+        break
+    end
+end
+if not MainRemote then
+    error("❌ Could not find RemoteEvent with '-' in name.")
+end
+
+-- Find PoliceGUID by key "mto4108g" in getgc tables
+local PoliceGUID
+for _, t in pairs(getgc(true)) do
+    if typeof(t) == "table" and not getmetatable(t) then
+        if t["mto4108g"] and t["mto4108g"]:sub(1,1) == "!" then
+            PoliceGUID = t["mto4108g"]
+            print("✅ Police GUID found:", PoliceGUID)
+            break
+        end
+    end
+end
+
+if not PoliceGUID then
+    warn("⚠️ Police GUID not found.")
+else
+    MainRemote:FireServer(PoliceGUID, "Police")
+end
+
+
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
