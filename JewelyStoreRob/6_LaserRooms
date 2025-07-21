@@ -1,1 +1,68 @@
 
+--// Services
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+--// Player Setup
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+local Humanoid = Character:WaitForChild("Humanoid")
+
+--// Configuration
+local SPEED = 60 -- studs per second
+local WAYPOINTS = {
+	Vector3.new(119.54, 18.70, 1339.60),
+	Vector3.new(107.28, 18.70, 1342.00),
+	Vector3.new(97.17, 36.70, 1284.67),
+	Vector3.new(108.34, 36.70, 1283.07),
+	Vector3.new(117.49, 36.70, 1341.12),
+	Vector3.new(106.89, 36.70, 1342.82),
+	Vector3.new(96.71, 54.70, 1284.31),
+	Vector3.new(108.12, 54.80, 1281.85),
+	Vector3.new(118.71, 54.80, 1340.13),
+	Vector3.new(163.78, 61.11, 1332.76),
+	Vector3.new(153.25, 78.70, 1274.70),
+	Vector3.new(125.21, 78.70, 1280.25),
+	Vector3.new(134.64, 78.75, 1337.87),
+	Vector3.new(164.14, 85.11, 1333.03),
+	Vector3.new(153.18, 102.70, 1275.02),
+	Vector3.new(135.78, 102.70, 1278.05),
+	Vector3.new(140.87, 102.70, 1307.45),
+	Vector3.new(133.34, 102.70, 1307.71),
+	Vector3.new(138.12, 102.70, 1337.73),
+	Vector3.new(123.84, 102.70, 1339.29),
+	Vector3.new(113.39, 118.70, 1282.09),
+	Vector3.new(96.42, 118.75, 1285.64),
+}
+
+--// Disable physics and enable platform stand
+Humanoid.PlatformStand = true
+Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+
+--// Flight Function
+local function flyTo(destination)
+	local reached = false
+	while not reached do
+		local currentPos = RootPart.Position
+		local direction = (destination - currentPos)
+		local distance = direction.Magnitude
+
+		if distance < 1 then
+			reached = true
+			break
+		end
+
+		local moveVector = direction.Unit * SPEED * RunService.Heartbeat:Wait()
+		RootPart.CFrame = CFrame.new(currentPos + moveVector, currentPos + moveVector + direction.Unit)
+	end
+end
+
+--// Execute flight path
+for _, point in ipairs(WAYPOINTS) do
+	flyTo(point)
+end
+
+--// Restore normal state
+Humanoid.PlatformStand = false
+Humanoid:ChangeState(Enum.HumanoidStateType.Running)
