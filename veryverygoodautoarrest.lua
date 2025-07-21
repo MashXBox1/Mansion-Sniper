@@ -100,20 +100,57 @@ task.wait(6) -- your original wait before main loops
 local function vehicleLoop()
     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not myRoot or not Workspace:FindFirstChild("Vehicles") then return end
-
+    
+    -- Find all valid criminal targets
+    local criminals = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and tostring(player.Team) == "Criminal" and player:GetAttribute("HasEscaped") == true then
+            local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                table.insert(criminals, root)
+            end
+        end
+    end
+    
+    if #criminals == 0 then return end
+    
+    -- Find all vehicles close to any criminal (within 15 studs)
+    local vehiclesToDamage = {}
     for _, vehicle in pairs(Workspace.Vehicles:GetChildren()) do
         if vehicle:IsA("Model") then
             local base = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
             if base then
-                if DamageGUID then
-                    MainRemote:FireServer(DamageGUID, vehicle, "Sniper")
-                end
-                if EjectGUID and vehicle:GetAttribute("VehicleHasDriver") == true then
-                    if (myRoot.Position - base.Position).Magnitude <= 10 then
-                        MainRemote:FireServer(EjectGUID, vehicle)
-                        print("🚗 Ejecting:", vehicle.Name)
+                for _, criminalRoot in ipairs(criminals) do
+                    local dist = (criminalRoot.Position - base.Position).Magnitude
+                    if dist <= 15 then -- Only target vehicles within 15 studs of a criminal
+                        table.insert(vehiclesToDamage, {
+                            vehicle = vehicle,
+                            distance = dist,
+                            base = base
+                        })
+                        break -- Only need to find one criminal close to this vehicle
                     end
                 end
+            end
+        end
+    end
+    
+    -- Sort vehicles by distance to criminal (closest first)
+    table.sort(vehiclesToDamage, function(a, b) return a.distance < b.distance end)
+    
+    -- Only damage the closest vehicle to any criminal
+    if #vehiclesToDamage > 0 then
+        local closestVehicle = vehiclesToDamage[1]
+        
+        if DamageGUID then
+            MainRemote:FireServer(DamageGUID, closestVehicle.vehicle, "Sniper")
+        end
+        
+        -- Eject logic remains the same (only if player is close to vehicle)
+        if EjectGUID and closestVehicle.vehicle:GetAttribute("VehicleHasDriver") == true then
+            if (myRoot.Position - closestVehicle.base.Position).Magnitude <= 10 then
+                MainRemote:FireServer(EjectGUID, closestVehicle.vehicle)
+                print("🚗 Ejecting:", closestVehicle.vehicle.Name)
             end
         end
     end
@@ -280,12 +317,14 @@ local function serverHop()
 
     if not success or not result or not result.data then
         warn("❌ Failed to get server list for hopping.")
-        return
+        task.wait(5) -- Wait before retrying
+        return serverHop() -- Retry
     end
 
     local currentJobId = game.JobId
     local candidates = {}
 
+    -- Filter out current server and full servers
     for _, server in ipairs(result.data) do
         if server.id ~= currentJobId and server.playing < server.maxPlayers then
             table.insert(candidates, server.id)
@@ -293,17 +332,46 @@ local function serverHop()
     end
 
     if #candidates == 0 then
-        warn("⚠️ No available servers to hop to.")
-        return
+        warn("⚠️ No available servers to hop to. Retrying in 10 seconds...")
+        task.wait(10)
+        return serverHop() -- Retry
     end
 
+    -- Select a random server
     local chosenServer = candidates[math.random(1, #candidates)]
-    print("🚀 Teleporting to new server:", chosenServer)
+    print("🚀 Attempting to teleport to server:", chosenServer)
 
-    -- queue_on_teleport with placeholder payload
-    queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/veryverygoodautoarrest.lua"))()]])
+    -- Set up teleport failure detection
+    local teleportFailed = false
+    local teleportCheck = task.delay(10, function()
+        teleportFailed = true
+        warn("⚠️ Teleport timed out (server may be full). Trying another...")
+    end)
 
-    TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
+    -- Attempt teleport
+    local success, err = pcall(function()
+        queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/veryverygoodautoarrest.lua"))()]])
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
+    end)
+
+    -- If teleport fails immediately (e.g., server full)
+    if not success then
+        warn("❌ Teleport failed:", err)
+        task.cancel(teleportCheck)
+        task.wait(1)
+        table.remove(candidates, table.find(candidates, chosenServer))
+        return serverHop() -- Try another server
+    end
+
+    -- If teleport times out (10s passed without success)
+    if teleportFailed then
+        task.wait(1)
+        table.remove(candidates, table.find(candidates, chosenServer))
+        return serverHop() -- Try another server
+    end
+
+    -- If teleport succeeds, cancel the timeout check
+    task.cancel(teleportCheck)
 end
 
 -- ========== START LOOPS ==========
@@ -350,6 +418,14 @@ task.spawn(function()
                 break
             end
 
+            -- New failsafe: Check if target still has HasEscaped after 6 seconds in range
+            if myRoot and targetRoot and hasReachedTarget and currentTarget:GetAttribute("HasEscaped") == true and (tick() - lastReachCheck) > 6 then
+                print("⚠️ Target still not arrested after 6 seconds, restarting full teleport process.")
+                arresting = false
+                if jointTeleportConn then jointTeleportConn:Disconnect() end
+                break
+            end
+
             if myRoot and targetRoot then
                 local dist = (myRoot.Position - (targetRoot.Position + Vector3.new(0, 3, 0))).Magnitude
 
@@ -360,6 +436,7 @@ task.spawn(function()
                 if handcuffsEquipped and not arresting and dist <= 3 then
                     startArresting(currentTarget)
                     hasReachedTarget = true
+                    lastReachCheck = tick() -- Reset timer when arrest starts
                 end
 
                 if dist > 500 or (not hasReachedTarget and tick() - lastReachCheck > REACH_TIMEOUT) then
