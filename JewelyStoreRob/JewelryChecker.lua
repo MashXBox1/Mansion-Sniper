@@ -1,6 +1,6 @@
 --== CONFIG: Paste your loadstring below ==--
 local yourLoadstring = [[
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/JewelryChecker.lua"))()
+    loadstring(game:HttpGet("https://yourdomain.com/yourfile.lua"))()
 ]]
 
 --== SERVICES ==--
@@ -15,29 +15,44 @@ local LocalPlayer = Players.LocalPlayer
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
-task.wait(10)
---== STEP 2: Robbery constants ==--
-local RobberyConsts = require(ReplicatedStorage:WaitForChild("Robbery"):WaitForChild("RobberyConsts"))
+
+--== STEP 2: Wait for RobberyConsts and Robbery folder safely ==--
+local RobberyConsts
+repeat
+    pcall(function()
+        local robberyModule = ReplicatedStorage:FindFirstChild("Robbery")
+        if robberyModule and robberyModule:FindFirstChild("RobberyConsts") then
+            RobberyConsts = require(robberyModule:FindFirstChild("RobberyConsts"))
+        end
+    end)
+    task.wait(0.5)
+until RobberyConsts
+
+--== STEP 3: Setup constants and safe state fetch ==--
 local ENUM_STATUS = RobberyConsts.ENUM_STATUS
 local ENUM_ROBBERY = RobberyConsts.ENUM_ROBBERY
 local ROBBERY_STATE_FOLDER_NAME = RobberyConsts.ROBBERY_STATE_FOLDER_NAME
 
---== STEP 3: Check Jewelry Store Status ==--
-local function isJewelryOpen()
-    local JEWELRY_ID = ENUM_ROBBERY.JEWELRY
-    local stateFolder = ReplicatedStorage:WaitForChild(ROBBERY_STATE_FOLDER_NAME)
-    local jewelryValue = stateFolder:FindFirstChild(tostring(JEWELRY_ID))
-
-    if not jewelryValue then
-        warn("❌ Jewelry state value missing.")
-        return false
+--== STEP 4: Wait for Robbery State folder and Jewelry value ==--
+local jewelryValue
+repeat
+    local stateFolder = ReplicatedStorage:FindFirstChild(ROBBERY_STATE_FOLDER_NAME)
+    if stateFolder then
+        local JEWELRY_ID = ENUM_ROBBERY and ENUM_ROBBERY.JEWELRY
+        if JEWELRY_ID then
+            jewelryValue = stateFolder:FindFirstChild(tostring(JEWELRY_ID))
+        end
     end
+    task.wait(0.5)
+until jewelryValue
 
+--== STEP 5: Check Jewelry status ==--
+local function isJewelryOpen()
     local status = jewelryValue.Value
     return status == ENUM_STATUS.OPENED or status == ENUM_STATUS.STARTED
 end
 
---== STEP 4: Teleport to New Server if Needed ==--
+--== STEP 6: Teleport logic ==--
 local function teleportToNewServer()
     local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)
 
@@ -74,7 +89,7 @@ local function teleportToNewServer()
     TeleportService:TeleportToPlaceInstance(game.PlaceId, newServer, LocalPlayer)
 end
 
---== STEP 5: Main Logic ==--
+--== STEP 7: Main Decision ==--
 if isJewelryOpen() then
     print("💎 Jewelry Store is OPEN! Staying in this server.")
 else
