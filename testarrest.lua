@@ -107,7 +107,7 @@ local function damageNearbyVehicles()
         for _, vehicle in pairs(Workspace.Vehicles:GetChildren()) do
             if vehicle:IsA("Model") then
                 local base = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
-                if base and (myRoot.Position - base.Position).Magnitude <= 5 then
+                if base and (myRoot.Position - base.Position).Magnitude <= 15 then
                     if DamageGUID then
                         MainRemote:FireServer(DamageGUID, vehicle, "Sniper")
                     end
