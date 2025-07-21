@@ -1,5 +1,4 @@
-
-task.wait(4)
+task.wait(3)
 
 -- Services (declared once)
 local Players = game:GetService("Players")
@@ -51,7 +50,7 @@ end
 
 if not ArrestGUID then error("❌ Arrest GUID not found.") end
 
--- ========== POLICE GUID FIRE ==========
+-- ========== POLICE GUID FIRE (from your original) ==========
 if PoliceGUID then
     MainRemote:FireServer(PoliceGUID, "Police")
 end
@@ -95,7 +94,7 @@ do
     warn("✅ Finished full grid scan. Proceeding with main script...")
 end
 
-task.wait(6)
+task.wait(6) -- your original wait before main loops
 
 -- ========== VEHICLE LOOP ==========
 local function vehicleLoop()
@@ -120,7 +119,7 @@ local function vehicleLoop()
     end
 end
 
--- ========== TELEPORT & ARREST LOGIC ==========
+-- ========== TELEPORT & ARREST LOGIC VARIABLES ==========
 local TELEPORT_DURATION = 5
 local REACH_TIMEOUT = 20
 
@@ -133,6 +132,8 @@ local lastReachCheck = 0
 local hasReachedTarget = false
 local handcuffsEquipped = false
 local arresting = false
+
+-- ========== HELPERS ==========
 
 local function getValidCriminalTarget()
     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -268,7 +269,7 @@ local function startArresting(targetPlayer)
     end)
 end
 
--- ========== SERVER HOP ==========
+-- ========== SERVER HOP FUNCTION ==========
 local function serverHop()
     print("🌐 No criminals found, searching for new server...")
 
@@ -279,12 +280,14 @@ local function serverHop()
 
     if not success or not result or not result.data then
         warn("❌ Failed to get server list for hopping.")
-        return
+        task.wait(5) -- Wait before retrying
+        return serverHop() -- Retry
     end
 
     local currentJobId = game.JobId
     local candidates = {}
 
+    -- Filter out current server and full servers
     for _, server in ipairs(result.data) do
         if server.id ~= currentJobId and server.playing < server.maxPlayers then
             table.insert(candidates, server.id)
@@ -292,18 +295,50 @@ local function serverHop()
     end
 
     if #candidates == 0 then
-        warn("⚠️ No available servers to hop to.")
-        return
+        warn("⚠️ No available servers to hop to. Retrying in 10 seconds...")
+        task.wait(10)
+        return serverHop() -- Retry
     end
 
+    -- Select a random server
     local chosenServer = candidates[math.random(1, #candidates)]
-    print("🚀 Teleporting to new server:", chosenServer)
+    print("🚀 Attempting to teleport to server:", chosenServer)
 
-    queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/veryverygoodautoarrest.lua"))()]])
-    TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
+    -- Set up teleport failure detection
+    local teleportFailed = false
+    local teleportCheck = task.delay(10, function()
+        teleportFailed = true
+        warn("⚠️ Teleport timed out (server may be full). Trying another...")
+    end)
+
+    -- Attempt teleport
+    local success, err = pcall(function()
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
+    end)
+
+    -- If teleport fails immediately (e.g., server full)
+    if not success then
+        warn("❌ Teleport failed:", err)
+        task.cancel(teleportCheck)
+        task.wait(1)
+        table.remove(candidates, table.find(candidates, chosenServer))
+        return serverHop() -- Try another server
+    end
+
+    -- If teleport times out (10s passed without success)
+    if teleportFailed then
+        task.wait(1)
+        table.remove(candidates, table.find(candidates, chosenServer))
+        return serverHop() -- Try another server
+    end
+
+    -- If teleport succeeds, cancel the timeout check
+    task.cancel(teleportCheck)
 end
 
--- ========== MAIN LOOPS ==========
+-- ========== START LOOPS ==========
+
+-- Vehicle damage & eject loop
 task.spawn(function()
     while true do
         pcall(vehicleLoop)
@@ -311,26 +346,18 @@ task.spawn(function()
     end
 end)
 
+-- Criminal teleport & arrest loop
 task.spawn(function()
     while true do
         currentTarget = teleportToCriminal()
         if not currentTarget then
             serverHop()
-            task.wait(10)
+            task.wait(10) -- wait a bit for teleport to trigger and prevent multiple hops
             return
         end
 
         task.wait(TELEPORT_DURATION)
         local jointTeleportConn = setupJointTeleport(currentTarget)
-
-        -- ✅ New failsafe: reload if HasEscaped still true after 5 seconds
-        delay(10, function()
-            if currentTarget and currentTarget:GetAttribute("HasEscaped") == true then
-                print("⚠️ Target still has 'HasEscaped' after 5s, re-initiating.")
-                arresting = false
-                if jointTeleportConn then jointTeleportConn:Disconnect() end
-            end
-        end)
 
         while true do
             task.wait(0.1)
@@ -353,6 +380,14 @@ task.spawn(function()
                 break
             end
 
+            -- New failsafe: Check if target still has HasEscaped after 6 seconds in range
+            if myRoot and targetRoot and hasReachedTarget and currentTarget:GetAttribute("HasEscaped") == true and (tick() - lastReachCheck) > 6 then
+                print("⚠️ Target still not arrested after 6 seconds, restarting full teleport process.")
+                arresting = false
+                if jointTeleportConn then jointTeleportConn:Disconnect() end
+                break
+            end
+
             if myRoot and targetRoot then
                 local dist = (myRoot.Position - (targetRoot.Position + Vector3.new(0, 3, 0))).Magnitude
 
@@ -363,6 +398,7 @@ task.spawn(function()
                 if handcuffsEquipped and not arresting and dist <= 3 then
                     startArresting(currentTarget)
                     hasReachedTarget = true
+                    lastReachCheck = tick() -- Reset timer when arrest starts
                 end
 
                 if dist > 500 or (not hasReachedTarget and tick() - lastReachCheck > REACH_TIMEOUT) then
