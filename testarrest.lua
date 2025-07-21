@@ -316,7 +316,7 @@ local function serverHop()
     end)
 
     local success, err = pcall(function()
-        queue_on_teleport([[loadstring(game:HttpGet("YOUR_SCRIPT_URL_HERE"))()]])
+        queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testarrest.lua"))()]])
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
     end)
 
