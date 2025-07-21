@@ -100,20 +100,57 @@ task.wait(6) -- your original wait before main loops
 local function vehicleLoop()
     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not myRoot or not Workspace:FindFirstChild("Vehicles") then return end
-
+    
+    -- Find all valid criminal targets
+    local criminals = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and tostring(player.Team) == "Criminal" and player:GetAttribute("HasEscaped") == true then
+            local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                table.insert(criminals, root)
+            end
+        end
+    end
+    
+    if #criminals == 0 then return end
+    
+    -- Find all vehicles close to any criminal (within 15 studs)
+    local vehiclesToDamage = {}
     for _, vehicle in pairs(Workspace.Vehicles:GetChildren()) do
         if vehicle:IsA("Model") then
             local base = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
             if base then
-                if DamageGUID then
-                    MainRemote:FireServer(DamageGUID, vehicle, "Sniper")
-                end
-                if EjectGUID and vehicle:GetAttribute("VehicleHasDriver") == true then
-                    if (myRoot.Position - base.Position).Magnitude <= 10 then
-                        MainRemote:FireServer(EjectGUID, vehicle)
-                        print("🚗 Ejecting:", vehicle.Name)
+                for _, criminalRoot in ipairs(criminals) do
+                    local dist = (criminalRoot.Position - base.Position).Magnitude
+                    if dist <= 15 then -- Only target vehicles within 15 studs of a criminal
+                        table.insert(vehiclesToDamage, {
+                            vehicle = vehicle,
+                            distance = dist,
+                            base = base
+                        })
+                        break -- Only need to find one criminal close to this vehicle
                     end
                 end
+            end
+        end
+    end
+    
+    -- Sort vehicles by distance to criminal (closest first)
+    table.sort(vehiclesToDamage, function(a, b) return a.distance < b.distance end)
+    
+    -- Only damage the closest vehicle to any criminal
+    if #vehiclesToDamage > 0 then
+        local closestVehicle = vehiclesToDamage[1]
+        
+        if DamageGUID then
+            MainRemote:FireServer(DamageGUID, closestVehicle.vehicle, "Sniper")
+        end
+        
+        -- Eject logic remains the same (only if player is close to vehicle)
+        if EjectGUID and closestVehicle.vehicle:GetAttribute("VehicleHasDriver") == true then
+            if (myRoot.Position - closestVehicle.base.Position).Magnitude <= 10 then
+                MainRemote:FireServer(EjectGUID, closestVehicle.vehicle)
+                print("🚗 Ejecting:", closestVehicle.vehicle.Name)
             end
         end
     end
