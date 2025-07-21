@@ -1,4 +1,4 @@
-task.wait(3)
+task.wait(5)
 
 
 --== CONFIG (Paste your loadstring below) ==--
