@@ -16,6 +16,7 @@ if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
+-- Wait for RobberyConsts to be available
 local function waitForRobberyConsts()
     local RobberyConsts
     repeat
@@ -30,6 +31,7 @@ local function waitForRobberyConsts()
     return RobberyConsts
 end
 
+-- Wait for Jewelry robbery value to exist
 local function waitForJewelryValue(ENUM_ROBBERY, ROBBERY_STATE_FOLDER_NAME)
     local jewelryValue
     repeat
@@ -57,22 +59,39 @@ local function isJewelryOpen()
     return status == ENUM_STATUS.OPENED or status == ENUM_STATUS.STARTED
 end
 
+-- Settings
+local MAX_TELEPORT_RETRIES = 10
+local TELEPORT_RETRY_DELAY = 5 -- seconds
+local MAX_HOP_ATTEMPTS = 2
+
+-- Fetch server list safely with retries
 local function getServerList()
     local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)
     local success, data = pcall(function()
         return HttpService:JSONDecode(game:HttpGet(url))
     end)
-    if success and data and data.data then
-        return data.data
-    else
+    if not success or type(data) ~= "table" or type(data.data) ~= "table" then
         return nil
     end
+    return data.data
 end
 
 local function teleportToNewServer()
-    local serverList = getServerList()
+    local attempts = 0
+    local serverList
+
+    repeat
+        attempts = attempts + 1
+        serverList = getServerList()
+
+        if not serverList then
+            warn("⚠️ Failed to get server list. Retry attempt "..attempts.." after "..TELEPORT_RETRY_DELAY.." seconds.")
+            task.wait(TELEPORT_RETRY_DELAY)
+        end
+    until serverList or attempts >= MAX_TELEPORT_RETRIES
+
     if not serverList then
-        warn("⚠️ Failed to get server list. Will retry after 5 seconds.")
+        warn("❌ Could not get server list after "..MAX_TELEPORT_RETRIES.." attempts.")
         return false
     end
 
@@ -80,13 +99,15 @@ local function teleportToNewServer()
     local candidates = {}
 
     for _, server in ipairs(serverList) do
-        if server.id ~= currentJobId and server.playing < server.maxPlayers then
-            table.insert(candidates, server.id)
+        if type(server) == "table" and server.id and server.playing and server.maxPlayers then
+            if server.id ~= currentJobId and server.playing < server.maxPlayers then
+                table.insert(candidates, server.id)
+            end
         end
     end
 
     if #candidates == 0 then
-        warn("⚠️ No available servers found. Will retry after 5 seconds.")
+        warn("⚠️ No available servers found. Will retry after "..TELEPORT_RETRY_DELAY.." seconds.")
         return false
     end
 
@@ -100,17 +121,25 @@ local function teleportToNewServer()
     return true
 end
 
--- Main loop
+-- Main loop with max hops
+local hopAttempts = 0
+
 while true do
     if isJewelryOpen() then
         print("💎 Jewelry Store is OPEN! Staying in this server.")
         break
     else
+        if hopAttempts >= MAX_HOP_ATTEMPTS then
+            warn("❌ Max hop attempts ("..MAX_HOP_ATTEMPTS..") reached. Stopping script.")
+            break
+        end
+
         local teleported = teleportToNewServer()
         if teleported then
-            break -- teleporting, so stop this script here
+            hopAttempts = hopAttempts + 1
+            break -- teleporting, script ends here
         else
-            task.wait(5) -- wait 5 seconds before retrying
+            task.wait(TELEPORT_RETRY_DELAY)
         end
     end
 end
