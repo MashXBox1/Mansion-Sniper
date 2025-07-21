@@ -1,1 +1,78 @@
+--// Services
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+--// Player Setup
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+local Humanoid = Character:WaitForChild("Humanoid")
+
+--// Configuration
+local SPEED = 60 -- studs per second
+local WAYPOINTS = {
+	Vector3.new(116.93, 18.70, 1338.57),
+	Vector3.new(108.13, 18.70, 1341.27),
+	Vector3.new(97.24, 36.70, 1285.31),
+	Vector3.new(106.64, 36.70, 1283.51),
+	Vector3.new(107.76, 36.70, 1291.75),
+	Vector3.new(107.20, 40.33, 1297.70),
+	Vector3.new(111.83, 39.95, 1324.30),
+	Vector3.new(114.77, 36.70, 1341.43),
+	Vector3.new(105.95, 36.70, 1343.02),
+	Vector3.new(97.15, 54.80, 1284.91),
+	Vector3.new(141.04, 54.80, 1276.76),
+	Vector3.new(142.83, 54.80, 1288.20),
+	Vector3.new(112.97, 54.80, 1293.34),
+	Vector3.new(114.75, 54.80, 1307.67),
+	Vector3.new(144.07, 54.80, 1302.78),
+	Vector3.new(147.63, 54.80, 1317.69),
+	Vector3.new(117.42, 54.80, 1322.99),
+	Vector3.new(120.34, 54.80, 1339.51),
+	Vector3.new(162.80, 61.11, 1333.00),
+	Vector3.new(157.98, 69.44, 1304.61),
+	Vector3.new(153.11, 78.70, 1274.56),
+	Vector3.new(121.80, 78.70, 1280.72),
+	Vector3.new(126.57, 78.70, 1337.40),
+	Vector3.new(163.12, 85.11, 1332.58),
+	Vector3.new(153.13, 102.70, 1274.13),
+	Vector3.new(136.03, 102.70, 1278.12),
+	Vector3.new(141.21, 102.70, 1307.15),
+	Vector3.new(132.97, 102.70, 1308.37),
+	Vector3.new(137.82, 102.70, 1337.80),
+	Vector3.new(123.97, 102.70, 1340.16),
+	Vector3.new(113.42, 118.70, 1281.74),
+	Vector3.new(96.75, 118.75, 1285.53),
+}
+
+--// Disable physics
+Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+
+--// Flight Function
+local function flyTo(destination)
+	local reached = false
+	while not reached do
+		local currentPos = RootPart.Position
+		local direction = (destination - currentPos)
+		local distance = direction.Magnitude
+
+		if distance < 1 then
+			reached = true
+			break
+		end
+
+		local moveVector = direction.Unit * SPEED * RunService.Heartbeat:Wait()
+		RootPart.CFrame = CFrame.new(currentPos + moveVector, currentPos + moveVector + direction.Unit)
+	end
+end
+
+--// Execute flight path
+for _, point in ipairs(WAYPOINTS) do
+	flyTo(point)
+end
+
+--// Restore normal state
+Humanoid:ChangeState(Enum.HumanoidStateType.Running)
+
+
 
