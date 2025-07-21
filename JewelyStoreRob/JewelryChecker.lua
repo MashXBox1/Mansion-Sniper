@@ -16,14 +16,17 @@ if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
--- Wait for RobberyConsts to be available
+-- Wait for RobberyConsts module to load
 local function waitForRobberyConsts()
     local RobberyConsts
     repeat
-        pcall(function()
-            local robberyModule = ReplicatedStorage:FindFirstChild("Robbery")
-            if robberyModule and robberyModule:FindFirstChild("RobberyConsts") then
-                RobberyConsts = require(robberyModule:FindFirstChild("RobberyConsts"))
+        local success, result = pcall(function()
+            local robberyFolder = ReplicatedStorage:FindFirstChild("Robbery")
+            if robberyFolder then
+                local consts = robberyFolder:FindFirstChild("RobberyConsts")
+                if consts then
+                    RobberyConsts = require(consts)
+                end
             end
         end)
         task.wait(0.5)
@@ -31,7 +34,7 @@ local function waitForRobberyConsts()
     return RobberyConsts
 end
 
--- Wait for Jewelry robbery value to exist
+-- Wait for Jewelry robbery state value
 local function waitForJewelryValue(ENUM_ROBBERY, ROBBERY_STATE_FOLDER_NAME)
     local jewelryValue
     repeat
@@ -59,12 +62,7 @@ local function isJewelryOpen()
     return status == ENUM_STATUS.OPENED or status == ENUM_STATUS.STARTED
 end
 
--- Settings
-local MAX_TELEPORT_RETRIES = 10
-local TELEPORT_RETRY_DELAY = 5 -- seconds
-local MAX_HOP_ATTEMPTS = 2
-
--- Fetch server list safely with retries
+-- Helper: Fetch server list safely
 local function getServerList()
     local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)
     local success, data = pcall(function()
@@ -76,22 +74,11 @@ local function getServerList()
     return data.data
 end
 
+-- Teleport to a random new server from the list
 local function teleportToNewServer()
-    local attempts = 0
-    local serverList
-
-    repeat
-        attempts = attempts + 1
-        serverList = getServerList()
-
-        if not serverList then
-            warn("⚠️ Failed to get server list. Retry attempt "..attempts.." after "..TELEPORT_RETRY_DELAY.." seconds.")
-            task.wait(TELEPORT_RETRY_DELAY)
-        end
-    until serverList or attempts >= MAX_TELEPORT_RETRIES
-
+    local serverList = getServerList()
     if not serverList then
-        warn("❌ Could not get server list after "..MAX_TELEPORT_RETRIES.." attempts.")
+        warn("❌ Failed to get server list. Will retry in 5 seconds.")
         return false
     end
 
@@ -107,39 +94,30 @@ local function teleportToNewServer()
     end
 
     if #candidates == 0 then
-        warn("⚠️ No available servers found. Will retry after "..TELEPORT_RETRY_DELAY.." seconds.")
+        warn("⚠️ No available servers found. Will retry in 5 seconds.")
         return false
     end
 
     local newServer = candidates[math.random(1, #candidates)]
-
-    -- Queue your loadstring for next server
     queue_on_teleport(yourLoadstring)
-
-    print("🔁 Jewelry is closed. Teleporting to server:", newServer)
+    print("🔁 Jewelry Store is closed. Teleporting to new server in 5 seconds...")
+    task.wait(5)
     TeleportService:TeleportToPlaceInstance(game.PlaceId, newServer, LocalPlayer)
     return true
 end
 
--- Main loop with max hops
-local hopAttempts = 0
-
+-- Main loop: Keep checking and teleporting if closed
 while true do
     if isJewelryOpen() then
         print("💎 Jewelry Store is OPEN! Staying in this server.")
         break
     else
-        if hopAttempts >= MAX_HOP_ATTEMPTS then
-            warn("❌ Max hop attempts ("..MAX_HOP_ATTEMPTS..") reached. Stopping script.")
-            break
-        end
-
+        print("🔒 Jewelry Store is CLOSED. Will teleport in 5 seconds if not open by then.")
         local teleported = teleportToNewServer()
         if teleported then
-            hopAttempts = hopAttempts + 1
-            break -- teleporting, script ends here
+            break -- teleporting; script stops here
         else
-            task.wait(TELEPORT_RETRY_DELAY)
+            task.wait(5) -- wait and retry if teleport failed
         end
     end
 end
