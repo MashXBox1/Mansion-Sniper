@@ -11,6 +11,35 @@ local TeleportService = game:GetService("TeleportService")
 
 local LocalPlayer = Players.LocalPlayer
 
+-- ========== PLAYER LOADING SYSTEM ==========
+local function ensureCharacterLoaded(player)
+    if not player.Character then
+        local charAdded
+        local loaded = false
+        charAdded = player.CharacterAdded:Connect(function(char)
+            charAdded:Disconnect()
+            if char:WaitForChild("HumanoidRootPart", 5) then
+                loaded = true
+            end
+        end)
+        task.wait(0.5) -- Brief wait for character to load
+        return loaded
+    end
+    return player.Character:FindFirstChild("HumanoidRootPart") ~= nil
+end
+
+local function getLoadedCriminals()
+    local criminals = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and tostring(player.Team) == "Criminal" and player:GetAttribute("HasEscaped") == true then
+            if ensureCharacterLoaded(player) then
+                table.insert(criminals, player)
+            end
+        end
+    end
+    return criminals
+end
+
 -- ========== FIND MAIN REMOTE ==========
 local MainRemote = nil
 for _, obj in pairs(ReplicatedStorage:GetChildren()) do
@@ -66,18 +95,7 @@ end
 LocalPlayer.CharacterAdded:Connect(setupCharacter)
 setupCharacter()
 
--- ========== PLAYER SCANNING SYSTEM ==========
-local function scanForPlayers()
-    -- Check if any criminal exists in the game
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and tostring(player.Team) == "Criminal" and player:GetAttribute("HasEscaped") == true then
-            return true -- At least one valid criminal exists
-        end
-    end
-    return false
-end
-
--- Wait a moment for game to load
+-- Wait for game to load
 task.wait(6)
 
 -- ========== VEHICLE DAMAGE SYSTEM ==========
@@ -120,16 +138,17 @@ local function getValidCriminalTarget()
     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not myRoot then return nil end
 
+    local criminals = getLoadedCriminals()
+    if #criminals == 0 then return nil end
+
     local nearestPlayer, shortestDistance = nil, math.huge
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and tostring(player.Team) == "Criminal" and player:GetAttribute("HasEscaped") == true then
-            local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-            if root then
-                local dist = (myRoot.Position - root.Position).Magnitude
-                if dist < shortestDistance then
-                    shortestDistance = dist
-                    nearestPlayer = player
-                end
+    for _, player in ipairs(criminals) do
+        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            local dist = (myRoot.Position - root.Position).Magnitude
+            if dist < shortestDistance then
+                shortestDistance = dist
+                nearestPlayer = player
             end
         end
     end
@@ -197,7 +216,8 @@ local function teleportToCriminal()
     local targetRoot = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not targetRoot then return nil end
 
-    local cframe = targetRoot.CFrame * CFrame.new(0, 1.5, -2.5)
+    local offset = Vector3.new(math.random(-1, 1), 1.5, math.random(-3, -2))
+    local cframe = targetRoot.CFrame * CFrame.new(offset)
     safeTeleport(cframe)
 
     lastReachCheck = tick()
@@ -296,7 +316,7 @@ local function serverHop()
     end)
 
     local success, err = pcall(function()
-        queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testarrest.lua"))()]])
+        queue_on_teleport([[loadstring(game:HttpGet("YOUR_SCRIPT_URL_HERE"))()]])
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
     end)
 
@@ -320,18 +340,11 @@ end
 -- ========== MAIN LOOP ==========
 task.spawn(function()
     while true do
-        -- Quick scan to check if any criminals exist before proceeding
-        if not scanForPlayers() then
-            serverHop()
-            task.wait(10)
-            return
-        end
-
         currentTarget = teleportToCriminal()
         if not currentTarget then
             serverHop()
             task.wait(10)
-            return
+            continue
         end
 
         task.wait(TELEPORT_DURATION)
