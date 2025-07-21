@@ -100,8 +100,8 @@ local function teleportToNewServer()
 
     local newServer = candidates[math.random(1, #candidates)]
     queue_on_teleport(yourLoadstring)
-    print("🔁 Jewelry Store is closed. Teleporting to new server in 5 seconds...")
-    task.wait(5)
+    print("🔁 Jewelry Store is closed. Teleporting to new server in 7 seconds...")
+    task.wait(7)
     TeleportService:TeleportToPlaceInstance(game.PlaceId, newServer, LocalPlayer)
     return true
 end
@@ -117,7 +117,7 @@ while true do
         if teleported then
             break -- teleporting; script stops here
         else
-            task.wait(5) -- wait and retry if teleport failed
+            task.wait(7) -- wait and retry if teleport failed
         end
     end
 end
