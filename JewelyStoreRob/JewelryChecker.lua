@@ -64,8 +64,8 @@ end
 
 -- Teleport to a random server using Roblox matchmaking (no API calls)
 local function teleportToRandomServer()
-    print("🔁 Jewelry Store is closed. Teleporting to a new server in 5 seconds...")
-    task.wait(5)
+    print("🔁 Jewelry Store is closed. Teleporting to a new server...")
+    
     TeleportService:Teleport(game.PlaceId, LocalPlayer)
 end
 
