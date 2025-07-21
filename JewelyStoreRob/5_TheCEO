@@ -1,1 +1,70 @@
 
+--// Services
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+--// Player Setup
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+local Humanoid = Character:WaitForChild("Humanoid")
+
+--// Configuration
+local SPEED = 60 -- studs per second
+local WAYPOINTS = {
+	Vector3.new(121.15, 18.70, 1337.94),
+	Vector3.new(109.18, 18.70, 1341.35),
+	Vector3.new(97.49, 36.70, 1284.94),
+	Vector3.new(107.20, 36.70, 1282.23),
+	Vector3.new(117.50, 36.70, 1341.79),
+	Vector3.new(107.05, 36.70, 1342.66),
+	Vector3.new(97.11, 54.70, 1283.73),
+	Vector3.new(129.01, 54.80, 1280.00),
+	Vector3.new(136.48, 54.70, 1338.13),
+	Vector3.new(163.56, 61.11, 1333.26),
+	Vector3.new(153.77, 78.70, 1274.71),
+	Vector3.new(137.61, 78.70, 1277.32),
+	Vector3.new(138.99, 78.70, 1287.69),
+	Vector3.new(100.49, 78.70, 1295.80),
+	Vector3.new(103.21, 78.70, 1306.43),
+	Vector3.new(120.29, 78.73, 1303.95),
+	Vector3.new(128.10, 78.70, 1338.35),
+	Vector3.new(162.00, 85.11, 1333.11),
+	Vector3.new(152.40, 102.70, 1273.91),
+	Vector3.new(135.31, 102.70, 1278.02),
+	Vector3.new(143.21, 102.70, 1319.62),
+	Vector3.new(135.27, 102.70, 1321.08),
+	Vector3.new(138.37, 102.70, 1337.92),
+	Vector3.new(123.04, 102.70, 1340.73),
+	Vector3.new(113.49, 118.70, 1282.52),
+	Vector3.new(96.98, 118.75, 1285.79),
+}
+
+--// Disable physics
+Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+
+--// Flight Function
+local function flyTo(destination)
+	local reached = false
+	while not reached do
+		local currentPos = RootPart.Position
+		local direction = (destination - currentPos)
+		local distance = direction.Magnitude
+
+		if distance < 1 then
+			reached = true
+			break
+		end
+
+		local moveVector = direction.Unit * SPEED * RunService.Heartbeat:Wait()
+		RootPart.CFrame = CFrame.new(currentPos + moveVector, currentPos + moveVector + direction.Unit)
+	end
+end
+
+--// Execute flight path
+for _, point in ipairs(WAYPOINTS) do
+	flyTo(point)
+end
+
+--// Restore normal state
+Humanoid:ChangeState(Enum.HumanoidStateType.Running)
