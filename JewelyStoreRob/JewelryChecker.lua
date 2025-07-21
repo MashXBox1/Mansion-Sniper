@@ -1,6 +1,9 @@
+task.wait(3)
+
+
 --== CONFIG (Paste your loadstring below) ==--
 local yourLoadstring = [[
-    loadstring(game:HttpGet("https://yourdomain.com/yourfile.lua"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/JewelryChecker.lua"))()
 ]]
 
 --== SERVICES ==--
