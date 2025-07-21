@@ -66,35 +66,18 @@ end
 LocalPlayer.CharacterAdded:Connect(setupCharacter)
 setupCharacter()
 
--- ========== GRID SCAN ==========
-local GRID_SIZE = 300
-local SCAN_HEIGHT = 200
-local SCAN_WAIT = 0.00001
-local AREA_MIN = Vector3.new(-5000, 0, -5000)
-local AREA_MAX = Vector3.new(5000, 0, 5000)
-local MAX_SCANS = 1
-
-local positions = {}
-for x = AREA_MIN.X, AREA_MAX.X, GRID_SIZE do
-    for z = AREA_MIN.Z, AREA_MAX.Z, GRID_SIZE do
-        table.insert(positions, Vector3.new(x, SCAN_HEIGHT, z))
-    end
-end
-
-do
-    local scanCount = 0
-    while scanCount < MAX_SCANS do
-        scanCount += 1
-        for _, pos in ipairs(positions) do
-            if not rootPart then setupCharacter() end
-            rootPart.CFrame = CFrame.new(pos)
-            camera.CFrame = CFrame.new(pos + Vector3.new(0,5,0), pos)
-            task.wait(SCAN_WAIT)
+-- ========== PLAYER SCANNING SYSTEM ==========
+local function scanForPlayers()
+    -- Check if any criminal exists in the game
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and tostring(player.Team) == "Criminal" and player:GetAttribute("HasEscaped") == true then
+            return true -- At least one valid criminal exists
         end
     end
-    warn("✅ Finished full grid scan. Proceeding with main script...")
+    return false
 end
 
+-- Wait a moment for game to load
 task.wait(6)
 
 -- ========== VEHICLE DAMAGE SYSTEM ==========
@@ -337,6 +320,13 @@ end
 -- ========== MAIN LOOP ==========
 task.spawn(function()
     while true do
+        -- Quick scan to check if any criminals exist before proceeding
+        if not scanForPlayers() then
+            serverHop()
+            task.wait(10)
+            return
+        end
+
         currentTarget = teleportToCriminal()
         if not currentTarget then
             serverHop()
