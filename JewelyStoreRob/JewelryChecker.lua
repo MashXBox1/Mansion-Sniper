@@ -15,7 +15,7 @@ local LocalPlayer = Players.LocalPlayer
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
-
+task.wait(20)
 --== STEP 2: Robbery constants ==--
 local RobberyConsts = require(ReplicatedStorage:WaitForChild("Robbery"):WaitForChild("RobberyConsts"))
 local ENUM_STATUS = RobberyConsts.ENUM_STATUS
