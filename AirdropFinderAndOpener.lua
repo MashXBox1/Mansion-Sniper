@@ -6,7 +6,7 @@ end
 
 isLoaded()
 
-task.wait(3)
+task.wait(5)
 -- Services
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
