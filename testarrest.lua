@@ -10,39 +10,152 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
+local Lighting = game:GetService("Lighting")
 
 local LocalPlayer = Players.LocalPlayer
 
+-- ========== CONFIGURATION ==========
+local CONFIG = {
+    TELEPORT_DURATION = 5,
+    REACH_TIMEOUT = 20,
+    MODEL_TELEPORT_DISTANCE = 50, -- Distance to switch from model to HRP teleport
+    MAX_TARGET_AGE = 30, -- Seconds to keep targeting same player
+    SERVER_HOP_DELAY = 10, -- Seconds to wait before server hopping
+    LOW_HEALTH_THRESHOLD = 50,
+    SAFE_TELEPORT_OFFSET = Vector3.new(math.random(-1, 1), 1.5, math.random(-3, -2)),
+    DAMAGE_RANGE = 15,
+    ARREST_RANGE = 3
+}
+
 -- ========== PLAYER LOADING SYSTEM ==========
 local function ensureCharacterLoaded(player)
-    if not player.Character then
-        local charAdded
-        local loaded = false
-        charAdded = player.CharacterAdded:Connect(function(char)
-            charAdded:Disconnect()
-            if char:WaitForChild("HumanoidRootPart", 5) then
-                loaded = true
-            end
-        end)
-        task.wait(0.5)
-        return loaded
+    -- Check if already loaded
+    if player.Character and player.Character.PrimaryPart then
+        return true
     end
-    return player.Character:FindFirstChild("HumanoidRootPart") ~= nil
+    
+    -- Setup connection and timeout
+    local loaded = false
+    local timeout = tick() + 15
+    local charConnection
+    
+    -- Connection for character addition
+    charConnection = player.CharacterAdded:Connect(function(char)
+        if char:WaitForChild("HumanoidRootPart", 5) then
+            loaded = true
+            charConnection:Disconnect()
+        end
+    end)
+    
+    -- Force load if no character
+    if not player.Character then
+        pcall(function() player:LoadCharacter() end)
+    end
+    
+    -- Wait for load or timeout
+    while tick() < timeout and not loaded do
+        if player.Character and player.Character.PrimaryPart then
+            loaded = true
+        end
+        task.wait(0.1)
+    end
+    
+    if charConnection then charConnection:Disconnect() end
+    return loaded
 end
 
 local function getLoadedCriminals()
     local criminals = {}
+    local checkedPlayers = {}
+    
+    -- First pass check
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and tostring(player.Team) == "Criminal" and player:GetAttribute("HasEscaped") == true then
+        if player ~= LocalPlayer and player.Team and tostring(player.Team) == "Criminal" 
+           and player:GetAttribute("HasEscaped") == true then
+            if ensureCharacterLoaded(player) then
+                table.insert(criminals, player)
+            end
+            checkedPlayers[player] = true
+        end
+    end
+    
+    -- Second pass for players that joined during first pass
+    for _, player in ipairs(Players:GetPlayers()) do
+        if not checkedPlayers[player] and player ~= LocalPlayer and player.Team 
+           and tostring(player.Team) == "Criminal" and player:GetAttribute("HasEscaped") == true then
             if ensureCharacterLoaded(player) then
                 table.insert(criminals, player)
             end
         end
     end
+    
+    -- Final validation
+    task.wait(0.5)
+    for i = #criminals, 1, -1 do
+        local player = criminals[i]
+        if not Players:FindFirstChild(player.Name) or not player.Team 
+           or tostring(player.Team) ~= "Criminal" or player:GetAttribute("HasEscaped") ~= true 
+           or not player.Character or not player.Character.PrimaryPart then
+            table.remove(criminals, i)
+        end
+    end
+    
     return criminals
 end
 
--- ========== FIND MAIN REMOTE ==========
+-- ========== TARGET VALIDATION ==========
+local function isValidTarget(player)
+    if not player or not Players:FindFirstChild(player.Name) then return false end
+    if not player.Team or tostring(player.Team) ~= "Criminal" then return false end
+    if player:GetAttribute("HasEscaped") ~= true then return false end
+    if not player.Character then return false end
+    
+    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then return false end
+    
+    return true
+end
+
+local function getBestTarget()
+    local myChar = LocalPlayer.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return nil end
+
+    local criminals = getLoadedCriminals()
+    if #criminals == 0 then return nil end
+
+    local bestTarget, bestScore = nil, -math.huge
+    
+    for _, player in ipairs(criminals) do
+        if isValidTarget(player) then
+            local char = player.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            
+            if root then
+                -- Calculate distance
+                local distance = (myRoot.Position - root.Position).Magnitude
+                
+                -- Score factors
+                local distanceScore = 1 / math.max(1, distance)
+                local healthScore = 1 - (char.Humanoid.Health / char.Humanoid.MaxHealth)
+                local visible = true -- Can be enhanced with raycasts
+                local visibleScore = visible and 1 or 0.1
+                
+                -- Combined score
+                local totalScore = (distanceScore * 0.4) + (healthScore * 0.3) + (visibleScore * 0.3)
+                
+                if totalScore > bestScore then
+                    bestScore = totalScore
+                    bestTarget = player
+                end
+            end
+        end
+    end
+    
+    return bestTarget
+end
+
+-- ========== REMOTE DETECTION ==========
 local MainRemote = nil
 for _, obj in pairs(ReplicatedStorage:GetChildren()) do
     if obj:IsA("RemoteEvent") and obj.Name:find("-") then
@@ -55,7 +168,7 @@ if not MainRemote then
     error("❌ Could not find RemoteEvent with '-' in name.")
 end
 
--- ========== FIND GUIDS ==========
+-- ========== GUID DETECTION ==========
 local PoliceGUID, EjectGUID, DamageGUID, ArrestGUID
 
 for _, t in pairs(getgc(true)) do
@@ -81,12 +194,11 @@ end
 
 if not ArrestGUID then error("❌ Arrest GUID not found.") end
 
--- ========== POLICE TEAM SETUP ==========
+-- ========== INITIAL SETUP ==========
 if PoliceGUID then
     MainRemote:FireServer(PoliceGUID, "Police")
 end
 
--- ========== CHARACTER SETUP ==========
 local character, rootPart, camera
 
 local function setupCharacter()
@@ -104,12 +216,13 @@ local function damageVehiclesOwnedBy(targetPlayer)
     pcall(function()
         local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if not myRoot or not Workspace:FindFirstChild("Vehicles") then return end
+        
         local targetFolderName = "_VehicleState_" .. targetPlayer.Name
 
         for _, vehicle in pairs(Workspace.Vehicles:GetChildren()) do
             if vehicle:IsA("Model") and vehicle:FindFirstChild(targetFolderName) then
                 local base = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
-                if base and (myRoot.Position - base.Position).Magnitude <= 15 then
+                if base and (myRoot.Position - base.Position).Magnitude <= CONFIG.DAMAGE_RANGE then
                     if DamageGUID then
                         MainRemote:FireServer(DamageGUID, vehicle, "Sniper")
                     end
@@ -123,9 +236,7 @@ local function damageVehiclesOwnedBy(targetPlayer)
     end)
 end
 
--- ========== CRIMINAL TARGETING SYSTEM ==========
-local TELEPORT_DURATION = 5
-local REACH_TIMEOUT = 20
+-- ========== TELEPORT SYSTEM ==========
 local teleporting = false
 local positionLock = nil
 local positionLockConn = nil
@@ -135,27 +246,7 @@ local lastReachCheck = 0
 local hasReachedTarget = false
 local handcuffsEquipped = false
 local arresting = false
-
-local function getValidCriminalTarget()
-    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return nil end
-
-    local criminals = getLoadedCriminals()
-    if #criminals == 0 then return nil end
-
-    local nearestPlayer, shortestDistance = nil, math.huge
-    for _, player in ipairs(criminals) do
-        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-        if root then
-            local dist = (myRoot.Position - root.Position).Magnitude
-            if dist < shortestDistance then
-                shortestDistance = dist
-                nearestPlayer = player
-            end
-        end
-    end
-    return nearestPlayer
-end
+local targetStartTime = 0
 
 local function maintainPosition(duration)
     local startTime = tick()
@@ -175,62 +266,114 @@ local function maintainPosition(duration)
     return conn
 end
 
-local function safeTeleport(cframe)
-    if teleporting then return end
+local function safeTeleportToModel(targetModel)
+    if teleporting or not targetModel then return end
     teleporting = true
 
     local character = LocalPlayer.Character
     local root = character and character:FindFirstChild("HumanoidRootPart")
-    if not root then teleporting = false return end
+    if not root then 
+        teleporting = false 
+        return false
+    end
 
+    -- Cleanup previous connections
     if positionLockConn then positionLockConn:Disconnect() end
     if velocityConn then velocityConn:Disconnect() end
 
+    -- Stop current movement
     root.Velocity = Vector3.zero
     root.AssemblyLinearVelocity = Vector3.zero
 
-    TweenService:Create(root, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { CFrame = cframe }):Play()
+    -- Calculate teleport position (near the model)
+    local modelCFrame = targetModel:GetModelCFrame()
+    local teleportCFrame = modelCFrame * CFrame.new(CONFIG.SAFE_TELEPORT_OFFSET)
 
-    positionLock = cframe
-    positionLockConn = maintainPosition(TELEPORT_DURATION)
+    -- Smooth teleport with tween
+    TweenService:Create(root, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {CFrame = teleportCFrame}):Play()
 
+    -- Lock position during teleport
+    positionLock = teleportCFrame
+    positionLockConn = maintainPosition(CONFIG.TELEPORT_DURATION)
+
+    -- Maintain zero velocity
     velocityConn = RunService.Heartbeat:Connect(function()
-        root.Velocity = Vector3.zero
-        root.AssemblyLinearVelocity = Vector3.zero
+        if root then
+            root.Velocity = Vector3.zero
+            root.AssemblyLinearVelocity = Vector3.zero
+        end
     end)
 
+    -- Break joints to prevent physics interference
     delay(0.2, function()
         if character then character:BreakJoints() end
     end)
 
-    delay(TELEPORT_DURATION, function()
+    -- Cleanup after teleport duration
+    delay(CONFIG.TELEPORT_DURATION, function()
         if positionLockConn then positionLockConn:Disconnect() end
         if velocityConn then velocityConn:Disconnect() end
         positionLock = nil
         teleporting = false
     end)
+
+    return true
 end
 
-local function teleportToCriminal()
-    local targetPlayer = getValidCriminalTarget()
-    if not targetPlayer then return nil end
+local function safeTeleportToHRP(targetHRP)
+    if teleporting or not targetHRP then return end
+    teleporting = true
 
-    local targetRoot = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not targetRoot then return nil end
+    local character = LocalPlayer.Character
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    if not root then 
+        teleporting = false 
+        return false
+    end
 
-    local offset = Vector3.new(math.random(-1, 1), 1.5, math.random(-3, -2))
-    local cframe = targetRoot.CFrame * CFrame.new(offset)
-    safeTeleport(cframe)
+    -- Cleanup previous connections
+    if positionLockConn then positionLockConn:Disconnect() end
+    if velocityConn then velocityConn:Disconnect() end
 
-    lastReachCheck = tick()
-    hasReachedTarget = false
-    handcuffsEquipped = false
-    arresting = false
+    -- Stop current movement
+    root.Velocity = Vector3.zero
+    root.AssemblyLinearVelocity = Vector3.zero
 
-    return targetPlayer
+    -- Calculate teleport position (close to HRP for arrest)
+    local teleportCFrame = targetHRP.CFrame * CFrame.new(CONFIG.SAFE_TELEPORT_OFFSET)
+
+    -- Smooth teleport with tween
+    TweenService:Create(root, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {CFrame = teleportCFrame}):Play()
+
+    -- Lock position during teleport
+    positionLock = teleportCFrame
+    positionLockConn = maintainPosition(CONFIG.TELEPORT_DURATION)
+
+    -- Maintain zero velocity
+    velocityConn = RunService.Heartbeat:Connect(function()
+        if root then
+            root.Velocity = Vector3.zero
+            root.AssemblyLinearVelocity = Vector3.zero
+        end
+    end)
+
+    -- Break joints to prevent physics interference
+    delay(0.2, function()
+        if character then character:BreakJoints() end
+    end)
+
+    -- Cleanup after teleport duration
+    delay(CONFIG.TELEPORT_DURATION, function()
+        if positionLockConn then positionLockConn:Disconnect() end
+        if velocityConn then velocityConn:Disconnect() end
+        positionLock = nil
+        teleporting = false
+    end)
+
+    return true
 end
 
--- ========== HANDCUFF SYSTEM ==========
+-- ========== ARREST SYSTEM ==========
 local function equipHandcuffs()
     pcall(function()
         local folder = LocalPlayer:FindFirstChild("Folder")
@@ -278,7 +421,7 @@ local function startArresting(targetPlayer)
     end)
 end
 
--- ========== SERVER HOP FUNCTION ==========
+-- ========== SERVER HOPPING ==========
 local function serverHop()
     print("🌐 No criminals found, searching for new server...")
 
@@ -289,7 +432,7 @@ local function serverHop()
 
     if not success or not result or not result.data then
         warn("❌ Failed to get server list for hopping.")
-        task.wait(5)
+        task.wait(CONFIG.SERVER_HOP_DELAY)
         return serverHop()
     end
 
@@ -303,8 +446,8 @@ local function serverHop()
     end
 
     if #candidates == 0 then
-        warn("⚠️ No available servers to hop to. Retrying in 10 seconds...")
-        task.wait(10)
+        warn("⚠️ No available servers to hop to. Retrying in "..CONFIG.SERVER_HOP_DELAY.." seconds...")
+        task.wait(CONFIG.SERVER_HOP_DELAY)
         return serverHop()
     end
 
@@ -342,65 +485,85 @@ end
 -- ========== MAIN LOOP ==========
 task.spawn(function()
     while true do
-        currentTarget = teleportToCriminal()
+        -- Find best target
+        currentTarget = getBestTarget()
+        
+        -- Server hop if no targets
         if not currentTarget then
             serverHop()
-            task.wait(10)
+            task.wait(CONFIG.SERVER_HOP_DELAY)
             continue
         end
-
-        task.wait(TELEPORT_DURATION)
+        
+        targetStartTime = tick()
+        
+        -- First teleport to the player's model (safe distance)
+        if currentTarget.Character then
+            safeTeleportToModel(currentTarget.Character)
+        end
+        
+        -- Wait for teleport to complete
+        task.wait(CONFIG.TELEPORT_DURATION)
+        
+        -- Setup joint teleport connection for smooth following
         local jointTeleportConn = setupJointTeleport(currentTarget)
-
         local vehicleDamageLoop = RunService.Heartbeat:Connect(function()
             damageVehiclesOwnedBy(currentTarget)
         end)
-
+        
+        -- Main target handling loop
         while true do
             task.wait(0.1)
-
-            if not currentTarget or not currentTarget.Character
-                or tostring(currentTarget.Team) ~= "Criminal"
-                or currentTarget:GetAttribute("HasEscaped") ~= true then
+            
+            -- Check if target is still valid
+            if not isValidTarget(currentTarget) or (tick() - targetStartTime) > CONFIG.MAX_TARGET_AGE then
                 break
             end
-
+            
+            -- Get references to important parts
             local myChar = LocalPlayer.Character
             local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-            local targetRoot = currentTarget.Character:FindFirstChild("HumanoidRootPart")
+            local targetChar = currentTarget.Character
+            local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
             local humanoid = myChar and myChar:FindFirstChildOfClass("Humanoid")
-
-            if humanoid and humanoid.Health < 50 then
+            
+            -- Check health
+            if humanoid and humanoid.Health < CONFIG.LOW_HEALTH_THRESHOLD then
                 print("⚠️ Low health detected, restarting process.")
                 arresting = false
                 break
             end
-
-            if myRoot and targetRoot and hasReachedTarget and currentTarget:GetAttribute("HasEscaped") == true and (tick() - lastReachCheck) > 6 then
-                print("⚠️ Target still not arrested after 6 seconds, restarting process.")
-                arresting = false
-                break
-            end
-
+            
+            -- Check if we've reached target
             if myRoot and targetRoot then
-                local dist = (myRoot.Position - (targetRoot.Position + Vector3.new(0, 3, 0))).Magnitude
-
-                if not handcuffsEquipped and dist <= 5 then
+                local dist = (myRoot.Position - targetRoot.Position).Magnitude
+                
+                -- If still far away, teleport closer to HRP
+                if dist > CONFIG.MODEL_TELEPORT_DISTANCE and not teleporting then
+                    safeTeleportToHRP(targetRoot)
+                    task.wait(CONFIG.TELEPORT_DURATION)
+                end
+                
+                -- Equip handcuffs when close enough
+                if not handcuffsEquipped and dist <= CONFIG.ARREST_RANGE * 2 then
                     equipHandcuffs()
                 end
-
-                if handcuffsEquipped and not arresting and dist <= 3 then
+                
+                -- Start arresting when in range
+                if handcuffsEquipped and not arresting and dist <= CONFIG.ARREST_RANGE then
                     startArresting(currentTarget)
                     hasReachedTarget = true
                     lastReachCheck = tick()
                 end
-
-                if dist > 500 or (not hasReachedTarget and tick() - lastReachCheck > REACH_TIMEOUT) then
+                
+                -- Check if target is too far or timeout reached
+                if dist > 500 or (not hasReachedTarget and tick() - lastReachCheck > CONFIG.REACH_TIMEOUT) then
                     break
                 end
             end
         end
-
+        
+        -- Cleanup
         arresting = false
         handcuffsEquipped = false
         if jointTeleportConn then jointTeleportConn:Disconnect() end
