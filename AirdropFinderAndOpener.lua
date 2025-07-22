@@ -4,6 +4,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local CollectionService = game:GetService("CollectionService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
 
 -- Player
 local LocalPlayer = Players.LocalPlayer
@@ -59,6 +62,66 @@ local function getPrimaryPosition(model)
 	end
 end
 
+-- Safe teleport function and helpers
+local teleporting = false
+local positionLock = nil
+local positionLockConn = nil
+local velocityConn = nil
+
+local function maintainPosition(duration)
+	local startTime = tick()
+	local conn
+	conn = RunService.Heartbeat:Connect(function()
+		if tick() - startTime > duration then
+			conn:Disconnect()
+			return
+		end
+		local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+		if root and positionLock then
+			root.CFrame = positionLock
+			root.Velocity = Vector3.zero
+			root.AssemblyLinearVelocity = Vector3.zero
+		end
+	end)
+	return conn
+end
+
+local function safeTeleport(cframe)
+	if teleporting then return end
+	teleporting = true
+
+	local character = LocalPlayer.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then teleporting = false return end
+
+	if positionLockConn then positionLockConn:Disconnect() end
+	if velocityConn then velocityConn:Disconnect() end
+
+	root.Velocity = Vector3.zero
+	root.AssemblyLinearVelocity = Vector3.zero
+
+	TweenService:Create(root, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { CFrame = cframe }):Play()
+
+	positionLock = cframe
+	positionLockConn = maintainPosition(5)
+
+	velocityConn = RunService.Heartbeat:Connect(function()
+		root.Velocity = Vector3.zero
+		root.AssemblyLinearVelocity = Vector3.zero
+	end)
+
+	delay(0.2, function()
+		if character then character:BreakJoints() end
+	end)
+
+	delay(5, function()
+		if positionLockConn then positionLockConn:Disconnect() end
+		if velocityConn then velocityConn:Disconnect() end
+		positionLock = nil
+		teleporting = false
+	end)
+end
+
 -- Hold E to collect drop with retry
 local function simulateHoldEAsync(briefcase)
 	if holdEActive then return end
@@ -109,9 +172,46 @@ local function simulateHoldEAsync(briefcase)
 	end)
 end
 
--- Main airdrop finder
+-- Server hop function
+local function serverHop()
+	print("🌐 No airdrops found after scanning, hopping servers...")
+
+	local success, result = pcall(function()
+		local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)
+		return HttpService:JSONDecode(game:HttpGet(url))
+	end)
+
+	if not success or not result or not result.data then
+		warn("❌ Failed to get server list for hopping.")
+		return
+	end
+
+	local currentJobId = game.JobId
+	local candidates = {}
+
+	for _, server in ipairs(result.data) do
+		if server.id ~= currentJobId and server.playing < server.maxPlayers then
+			table.insert(candidates, server.id)
+		end
+	end
+
+	if #candidates == 0 then
+		warn("⚠️ No available servers to hop to.")
+		return
+	end
+
+	local chosenServer = candidates[math.random(1, #candidates)]
+	print("🚀 Teleporting to new server:", chosenServer)
+
+	-- Queue the loadstring on teleport (replace URL with your script)
+	queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/veryverygoodautoarrest.lua"))()]])
+	TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
+end
+
+-- Main airdrop finder with server hop on failure
 task.spawn(function()
 	local scanCount = 0
+	local safeTeleportCalled = false
 
 	while scanCount < MAX_SCANS and not dropFound do
 		if not rootPart then setupCharacter() end
@@ -130,12 +230,17 @@ task.spawn(function()
 				dropFound = true
 
 				if heartbeatConn then heartbeatConn:Disconnect() end
+				safeTeleportCalled = false
+
 				heartbeatConn = RunService.Heartbeat:Connect(function()
 					if rootPart and drop and drop:GetAttribute("BriefcaseLanded") then
 						local pos = getPrimaryPosition(drop)
 						if pos then
 							local cf = CFrame.new(pos + Vector3.new(0, 3, 0))
-							rootPart.CFrame = cf
+							if not safeTeleportCalled then
+								safeTeleport(cf)
+								safeTeleportCalled = true
+							end
 							camera.CFrame = cf + Vector3.new(0, 2, 0)
 						end
 					end
@@ -172,5 +277,7 @@ task.spawn(function()
 		task.wait(0.1)
 	end
 
-	warn("❌ No airdrop found after", MAX_SCANS, "full scans.")
+	if not dropFound then
+		serverHop()
+	end
 end)
