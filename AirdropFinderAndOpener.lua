@@ -47,7 +47,7 @@ else
     warn("❌ Police GUID not found.")
 end
 
-
+task.wait(1)
 
 -- Player
 local LocalPlayer = Players.LocalPlayer
