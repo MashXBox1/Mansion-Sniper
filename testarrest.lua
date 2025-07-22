@@ -96,31 +96,33 @@ setupCharacter()
 task.wait(6)
 
 -- ========== VEHICLE DAMAGE SYSTEM ==========
-local function damageNearbyVehicles()
+local function damageNearbyVehicles(targetPlayer)
+    if not targetPlayer then return end
     pcall(function()
         local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if not myRoot or not Workspace:FindFirstChild("Vehicles") then return end
-        
+
+        local targetVehicleName = "_VehicleState_"..targetPlayer.Name
+        local targetVehicle = nil
+
+        -- First find the specific vehicle for our target
         for _, vehicle in pairs(Workspace.Vehicles:GetChildren()) do
-            if vehicle:IsA("Model") then
-                local base = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
-                if base then
-                    -- Check if the vehicle has a folder matching the target's name
-                    local targetPlayer = currentTarget
-                    if targetPlayer then
-                        local vehicleFolderName = "_VehicleState_" .. targetPlayer.Name
-                        if vehicle:FindFirstChild(vehicleFolderName) then
-                            if (myRoot.Position - base.Position).Magnitude <= 15 then
-                                if DamageGUID then
-                                    MainRemote:FireServer(DamageGUID, vehicle, "Sniper")
-                                end
-                                if EjectGUID and vehicle:GetAttribute("VehicleHasDriver") == true then
-                                    MainRemote:FireServer(EjectGUID, vehicle)
-                                    print("🚗 Ejecting:", vehicle.Name)
-                                end
-                            end
-                        end
-                    end
+            if vehicle:IsA("Model") and vehicle:FindFirstChild(targetVehicleName) then
+                targetVehicle = vehicle
+                break
+            end
+        end
+
+        -- If we found the target's vehicle, damage it
+        if targetVehicle then
+            local base = targetVehicle.PrimaryPart or targetVehicle:FindFirstChildWhichIsA("BasePart")
+            if base and (myRoot.Position - base.Position).Magnitude <= 15 then
+                if DamageGUID then
+                    MainRemote:FireServer(DamageGUID, targetVehicle, "RocketLauncher")
+                end
+                if EjectGUID and targetVehicle:GetAttribute("VehicleHasDriver") == true then
+                    MainRemote:FireServer(EjectGUID, targetVehicle)
+                    print("🚗 Ejecting target's vehicle:", targetVehicle.Name)
                 end
             end
         end
