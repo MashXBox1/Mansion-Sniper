@@ -1,9 +1,19 @@
+
 -- Wait until the game is fully loaded
 local function isLoaded()
     repeat task.wait() until game:IsLoaded()
 end
 
 isLoaded()
+-- Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local CollectionService = game:GetService("CollectionService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
 
 -- Find Police GUID from getgc and fire the remote with argument "prisoner"
 local MainRemote = nil
@@ -36,15 +46,6 @@ else
 end
 
 
--- Services
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-local CollectionService = game:GetService("CollectionService")
-local TweenService = game:GetService("TweenService")
-local HttpService = game:GetService("HttpService")
-local TeleportService = game:GetService("TeleportService")
 
 -- Player
 local LocalPlayer = Players.LocalPlayer
