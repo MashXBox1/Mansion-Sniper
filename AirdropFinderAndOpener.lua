@@ -315,7 +315,7 @@ task.spawn(function()
 						task.wait(2)
 					end)
 				end
-
+				task.wait(2)
 				simulateHoldEAsync(drop)
 
 				repeat task.wait(1) until not Workspace:FindFirstChild("Drop", true)
