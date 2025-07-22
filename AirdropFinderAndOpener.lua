@@ -127,7 +127,7 @@ local function maintainPosition(duration)
     return conn
 end
 
-local function safeTeleport(cframe)
+local function safeTeleport(cframe, shouldKill)
     if teleporting then return end
     teleporting = true
 
@@ -151,9 +151,11 @@ local function safeTeleport(cframe)
         root.AssemblyLinearVelocity = Vector3.zero
     end)
 
-    delay(0.2, function()
-        if character then character:BreakJoints() end
-    end)
+    if shouldKill then
+        delay(0.2, function()
+            if character then character:BreakJoints() end
+        end)
+    end
 
     delay(5, function()
         if positionLockConn then positionLockConn:Disconnect() end
@@ -296,9 +298,9 @@ task.spawn(function()
                 if heartbeatConn then heartbeatConn:Disconnect() end
                 safeTeleportCalled = false
 
-                -- First teleport 5 studs away from the drop
+                -- First teleport 5 studs away from the drop (with kill)
                 local awayPosition = CFrame.new(dropPos + Vector3.new(0, 3, 5))
-                safeTeleport(awayPosition)
+                safeTeleport(awayPosition, true)
                 
                 -- Wait until player is on Criminal team (only once)
                 if not hasBecomeCriminal then
@@ -313,9 +315,9 @@ task.spawn(function()
                     task.wait(1)
                 end
                 
-                -- Now teleport to the drop position
+                -- Now teleport to the drop position (without kill)
                 local dropPosition = CFrame.new(dropPos + Vector3.new(0, 3, 0))
-                safeTeleport(dropPosition)
+                safeTeleport(dropPosition, false)
                 safeTeleportCalled = true
 
                 heartbeatConn = RunService.Heartbeat:Connect(function()
