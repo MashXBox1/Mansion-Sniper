@@ -1,4 +1,3 @@
-
 -- Wait until the game is fully loaded
 local function isLoaded()
     repeat task.wait() until game:IsLoaded()
@@ -213,40 +212,63 @@ local function simulateHoldEAsync(briefcase)
 	end)
 end
 
--- Server hop function
+-- Server hop function with retry & player count filter
 local function serverHop()
 	print("🌐 No airdrops found after scanning, hopping servers...")
 
-	local success, result = pcall(function()
-		local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)
-		return HttpService:JSONDecode(game:HttpGet(url))
-	end)
-
-	if not success or not result or not result.data then
-		warn("❌ Failed to get server list for hopping.")
-		return
-	end
-
 	local currentJobId = game.JobId
-	local candidates = {}
 
-	for _, server in ipairs(result.data) do
-		if server.id ~= currentJobId and server.playing < server.maxPlayers then
-			table.insert(candidates, server.id)
+	local function tryHop()
+		local success, result = pcall(function()
+			local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)
+			return HttpService:JSONDecode(game:HttpGet(url))
+		end)
+
+		if not success or not result or not result.data then
+			warn("❌ Failed to get server list for hopping.")
+			return false
 		end
+
+		local candidates = {}
+
+		for _, server in ipairs(result.data) do
+			if server.id ~= currentJobId and server.playing < 28 and server.playing < server.maxPlayers then
+				table.insert(candidates, server.id)
+			end
+		end
+
+		if #candidates == 0 then
+			warn("⚠️ No available servers under 28 players to hop to.")
+			return false
+		end
+
+		local chosenServer = candidates[math.random(1, #candidates)]
+		print("🚀 Teleporting to new server:", chosenServer)
+
+		-- Queue the loadstring on teleport (replace URL with your script URL)
+		queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/AirdropFinderAndOpener.lua"))()]])
+
+		TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
+		return true
 	end
 
-	if #candidates == 0 then
-		warn("⚠️ No available servers to hop to.")
-		return
-	end
+	local teleported = tryHop()
+	if not teleported then return end
 
-	local chosenServer = candidates[math.random(1, #candidates)]
-	print("🚀 Teleporting to new server:", chosenServer)
+	-- Wait 10 seconds then check if JobId changed, if not, retry
+	task.spawn(function()
+		local start = tick()
+		repeat
+			task.wait(1)
+			if game.JobId ~= currentJobId then
+				print("✅ Teleport successful.")
+				return
+			end
+		until tick() - start > 10
 
-	-- Queue the loadstring on teleport (replace URL with your script)
-	queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/AirdropFinderAndOpener.lua"))()]])
-	TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
+		warn("⚠️ Teleport didn't occur within 10 seconds, retrying server hop...")
+		serverHop()
+	end)
 end
 
 -- Main airdrop finder with server hop on failure
