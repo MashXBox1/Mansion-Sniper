@@ -280,6 +280,8 @@ end
 task.spawn(function()
     local scanCount = 0
     local safeTeleportCalled = false
+    local MAX_CRIMINAL_WAIT = 15 -- Maximum seconds to wait for Criminal status
+    local CRIMINAL_RETRY_DELAY = 5 -- Seconds to wait before retrying
 
     while scanCount < MAX_SCANS and not dropFound do
         if not rootPart then setupCharacter() end
@@ -304,23 +306,39 @@ task.spawn(function()
                 local awayPosition = CFrame.new(dropPos + Vector3.new(0, 3, 5))
                 safeTeleport(awayPosition, true)
                 
-                -- Wait until player is on Criminal team (only once)
+                -- Wait until player is on Criminal team with timeout
                 if not hasBecomeCriminal then
                     print("⏳ Waiting to become Criminal...")
-                    repeat
-                        task.wait(0.1)
-                    until LocalPlayer.Team and LocalPlayer.Team.Name == "Criminal"
-                    hasBecomeCriminal = true
-                    print("✅ Now on Criminal team")
+                    local startTime = tick()
+                    local becameCriminal = false
                     
-                    -- Wait an additional second
-                    task.wait(1)
+                    repeat
+                        if LocalPlayer.Team and LocalPlayer.Team.Name == "Criminal" then
+                            becameCriminal = true
+                            break
+                        end
+                        task.wait(0.1)
+                    until tick() - startTime > MAX_CRIMINAL_WAIT
+                    
+                    if becameCriminal then
+                        hasBecomeCriminal = true
+                        print("✅ Now on Criminal team")
+                        
+                        -- Wait an additional second
+                        task.wait(1)
+                        
+                        -- Now teleport to the drop position (without kill)
+                        local dropPosition = CFrame.new(dropPos + Vector3.new(0, 3, 0))
+                        safeTeleport(dropPosition, false)
+                        safeTeleportCalled = true
+                    else
+                        print("⚠️ Failed to become Criminal, retrying...")
+                        dropFound = false
+                        hasBecomeCriminal = false
+                        task.wait(CRIMINAL_RETRY_DELAY)
+                        continue -- Skip the rest of this iteration
+                    end
                 end
-                
-                -- Now teleport to the drop position (without kill)
-                local dropPosition = CFrame.new(dropPos + Vector3.new(0, 3, 0))
-                safeTeleport(dropPosition, false)
-                safeTeleportCalled = true
 
                 heartbeatConn = RunService.Heartbeat:Connect(function()
                     if rootPart and drop and drop:GetAttribute("BriefcaseLanded") then
