@@ -295,15 +295,32 @@ task.spawn(function()
 				if heartbeatConn then heartbeatConn:Disconnect() end
 				safeTeleportCalled = false
 
+				-- Calculate safe teleport position 5 studs away from drop
+				local directionAway = (rootPart.Position - dropPos)
+				if directionAway.Magnitude == 0 then
+					directionAway = Vector3.new(0, 0, -1) -- fallback direction
+				end
+				directionAway = directionAway.Unit
+				local safePos = dropPos + directionAway * 5 + Vector3.new(0, 3, 0) -- 3 studs up for clearance
+
+				-- Teleport 5 studs away first
+				safeTeleport(safePos)
+
+				-- Wait until local player is on "Criminal" team
+				while LocalPlayer.Team == nil or LocalPlayer.Team.Name ~= "Criminal" do
+					task.wait(0.5)
+				end
+
+				-- Teleport 5 studs closer to drop
+				local closePos = dropPos + Vector3.new(0, 3, 0) -- slightly above drop
+				safeTeleport(closePos)
+
+				-- Start heartbeat camera follow and NPC killer
 				heartbeatConn = RunService.Heartbeat:Connect(function()
 					if rootPart and drop and drop:GetAttribute("BriefcaseLanded") then
 						local pos = getPrimaryPosition(drop)
 						if pos then
 							local cf = CFrame.new(pos + Vector3.new(0, 3, 0))
-							if not safeTeleportCalled then
-								safeTeleport(cf)
-								safeTeleportCalled = true
-							end
 							camera.CFrame = cf + Vector3.new(0, 2, 0)
 						end
 					end
@@ -315,7 +332,8 @@ task.spawn(function()
 						task.wait(2)
 					end)
 				end
-				task.wait(2)
+
+				task.wait(2) -- small delay before starting collection
 				simulateHoldEAsync(drop)
 
 				repeat task.wait(1) until not Workspace:FindFirstChild("Drop", true)
