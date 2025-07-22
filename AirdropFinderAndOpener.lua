@@ -326,7 +326,7 @@ task.spawn(function()
 					npcKillLoop = RunService.Heartbeat:Connect(function()
 						task.spawn(killAllNPCs)
 						task.wait(2)
-					end
+					end)
 				end
 				task.wait(2)
 				simulateHoldEAsync(drop)
