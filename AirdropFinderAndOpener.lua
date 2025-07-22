@@ -1,3 +1,41 @@
+-- Wait until the game is fully loaded
+local function isLoaded()
+    repeat task.wait() until game:IsLoaded()
+end
+
+isLoaded()
+
+-- Find Police GUID from getgc and fire the remote with argument "prisoner"
+local MainRemote = nil
+for _, obj in pairs(ReplicatedStorage:GetChildren()) do
+    if obj:IsA("RemoteEvent") and obj.Name:find("-") then
+        MainRemote = obj
+        print("✅ Found RemoteEvent:", obj:GetFullName())
+        break
+    end
+end
+if not MainRemote then
+    error("❌ Could not find RemoteEvent with '-' in name.")
+end
+
+local PoliceGUID = nil
+for _, t in pairs(getgc(true)) do
+    if typeof(t) == "table" and not getmetatable(t) then
+        if t["mto4108g"] and t["mto4108g"]:sub(1,1) == "!" then
+            PoliceGUID = t["mto4108g"]
+            print("✅ Police GUID found:", PoliceGUID)
+            break
+        end
+    end
+end
+
+if PoliceGUID then
+    MainRemote:FireServer(PoliceGUID, "prisoner")
+else
+    warn("❌ Police GUID not found.")
+end
+
+
 -- Services
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
