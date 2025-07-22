@@ -24,7 +24,7 @@ local function ensureCharacterLoaded(player)
                 loaded = true
             end
         end)
-        task.wait(0.5) -- Brief wait for character to load
+        task.wait(0.5)
         return loaded
     end
     return player.Character:FindFirstChild("HumanoidRootPart") ~= nil
@@ -101,22 +101,31 @@ setupCharacter()
 task.wait(6)
 
 -- ========== VEHICLE DAMAGE SYSTEM ==========
-local function damageNearbyVehicles()
+local function damageNearbyVehicles(targetPlayer)
+    if not targetPlayer then return end
     pcall(function()
         local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if not myRoot or not Workspace:FindFirstChild("Vehicles") then return end
 
+        local targetVehicleName = "_VehicleState_"..targetPlayer.Name
+        local targetVehicle = nil
+
         for _, vehicle in pairs(Workspace.Vehicles:GetChildren()) do
-            if vehicle:IsA("Model") then
-                local base = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
-                if base and (myRoot.Position - base.Position).Magnitude <= 15 then
-                    if DamageGUID then
-                        MainRemote:FireServer(DamageGUID, vehicle, "Sniper")
-                    end
-                    if EjectGUID and vehicle:GetAttribute("VehicleHasDriver") == true then
-                        MainRemote:FireServer(EjectGUID, vehicle)
-                        print("🚗 Ejecting:", vehicle.Name)
-                    end
+            if vehicle:IsA("Model") and vehicle:FindFirstChild(targetVehicleName) then
+                targetVehicle = vehicle
+                break
+            end
+        end
+
+        if targetVehicle then
+            local base = targetVehicle.PrimaryPart or targetVehicle:FindFirstChildWhichIsA("BasePart")
+            if base and (myRoot.Position - base.Position).Magnitude <= 15 then
+                if DamageGUID then
+                    MainRemote:FireServer(DamageGUID, targetVehicle, "RocketLauncher")
+                end
+                if EjectGUID and targetVehicle:GetAttribute("VehicleHasDriver") == true then
+                    MainRemote:FireServer(EjectGUID, targetVehicle)
+                    print("🚗 Ejecting target's vehicle:", targetVehicle.Name)
                 end
             end
         end
@@ -124,7 +133,7 @@ local function damageNearbyVehicles()
 end
 
 -- ========== CRIMINAL TARGETING SYSTEM ==========
-local TELEPORT_DURATION = 5
+local FLY_SPEED = 60 -- studs per second
 local REACH_TIMEOUT = 20
 local teleporting = false
 local positionLock = nil
@@ -135,6 +144,8 @@ local lastReachCheck = 0
 local hasReachedTarget = false
 local handcuffsEquipped = false
 local arresting = false
+local flying = false
+local flyConn = nil
 
 local function getValidCriminalTarget()
     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -192,7 +203,7 @@ local function safeTeleport(cframe)
     TweenService:Create(root, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { CFrame = cframe }):Play()
 
     positionLock = cframe
-    positionLockConn = maintainPosition(TELEPORT_DURATION)
+    positionLockConn = maintainPosition(1)
 
     velocityConn = RunService.Heartbeat:Connect(function()
         root.Velocity = Vector3.zero
@@ -203,7 +214,7 @@ local function safeTeleport(cframe)
         if character then character:BreakJoints() end
     end)
 
-    delay(TELEPORT_DURATION, function()
+    delay(1, function()
         if positionLockConn then positionLockConn:Disconnect() end
         if velocityConn then velocityConn:Disconnect() end
         positionLock = nil
@@ -211,16 +222,77 @@ local function safeTeleport(cframe)
     end)
 end
 
-local function teleportToCriminal()
+local function flyToTarget(targetRoot)
+    if flying or not targetRoot then return end
+    flying = true
+    
+    local character = LocalPlayer.Character
+    if not character then flying = false return end
+    
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then flying = false return end
+    
+    local myRoot = character:FindFirstChild("HumanoidRootPart")
+    if not myRoot then flying = false return end
+    
+    -- Calculate direction and distance
+    local startPos = myRoot.Position
+    local targetPos = targetRoot.Position + Vector3.new(0, 1.5, 0)
+    local direction = (targetPos - startPos).Unit
+    local distance = (targetPos - startPos).Magnitude
+    local travelTime = distance / FLY_SPEED
+    
+    -- Start flying
+    local startTime = tick()
+    
+    if flyConn then flyConn:Disconnect() end
+    flyConn = RunService.Heartbeat:Connect(function()
+        if not targetRoot or not targetRoot.Parent then
+            if flyConn then flyConn:Disconnect() end
+            flying = false
+            return
+        end
+        
+        local elapsed = tick() - startTime
+        local progress = math.min(elapsed / travelTime, 1)
+        
+        -- Update target position in case target is moving
+        targetPos = targetRoot.Position + Vector3.new(0, 1.5, 0)
+        
+        if progress < 1 then
+            -- Calculate new position along path
+            local newPos = startPos + (targetPos - startPos) * progress
+            myRoot.CFrame = CFrame.new(newPos, targetPos)
+            myRoot.Velocity = direction * FLY_SPEED
+        else
+            -- Arrived at target
+            myRoot.CFrame = CFrame.new(targetPos)
+            myRoot.Velocity = Vector3.zero
+            if flyConn then flyConn:Disconnect() end
+            flying = false
+            hasReachedTarget = true
+            lastReachCheck = tick()
+        end
+    end)
+end
+
+local function approachCriminal()
     local targetPlayer = getValidCriminalTarget()
     if not targetPlayer then return nil end
 
     local targetRoot = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not targetRoot then return nil end
 
+    -- Initial teleport with breakjoints
     local offset = Vector3.new(math.random(-1, 1), 1.5, math.random(-3, -2))
     local cframe = targetRoot.CFrame * CFrame.new(offset)
     safeTeleport(cframe)
+
+    -- Start flying after initial teleport
+    task.spawn(function()
+        task.wait(0.5) -- Small delay after teleport
+        flyToTarget(targetRoot)
+    end)
 
     lastReachCheck = tick()
     hasReachedTarget = false
@@ -247,24 +319,6 @@ local function equipHandcuffs()
         end
     end)
     return false
-end
-
-local function setupJointTeleport(targetPlayer)
-    local character = LocalPlayer.Character
-    if not character then return nil end
-
-    local parts = character:GetChildren()
-    local conn = RunService.Heartbeat:Connect(function()
-        local targetRoot = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if not targetRoot then return end
-        for _, part in pairs(parts) do
-            if part:IsA("BasePart") then
-                local offset = part.Position - character.PrimaryPart.Position
-                part.CFrame = targetRoot.CFrame * CFrame.new(offset)
-            end
-        end
-    end)
-    return conn
 end
 
 local function startArresting(targetPlayer)
@@ -342,20 +396,17 @@ end
 -- ========== MAIN LOOP ==========
 task.spawn(function()
     while true do
-        currentTarget = teleportToCriminal()
+        currentTarget = approachCriminal()
         if not currentTarget then
             serverHop()
             task.wait(10)
             continue
         end
 
-        task.wait(TELEPORT_DURATION)
-        local jointTeleportConn = setupJointTeleport(currentTarget)
-
-        -- Start vehicle damage loop after teleporting
+        -- Start vehicle damage loop with current target
         local vehicleDamageLoop
         vehicleDamageLoop = RunService.Heartbeat:Connect(function()
-            damageNearbyVehicles()
+            damageNearbyVehicles(currentTarget)
         end)
 
         while true do
@@ -409,7 +460,8 @@ task.spawn(function()
         -- Clean up
         arresting = false
         handcuffsEquipped = false
-        if jointTeleportConn then jointTeleportConn:Disconnect() end
+        if flyConn then flyConn:Disconnect() end
         if vehicleDamageLoop then vehicleDamageLoop:Disconnect() end
+        flying = false
     end
 end)
