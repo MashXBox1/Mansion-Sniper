@@ -80,9 +80,9 @@ for _, t in pairs(getgc(true)) do
 end
 
 if not ArrestGUID then error("❌ Arrest GUID not found. Hash might've changed.") end
-if not PoliceGUID then error("❌ Arrest GUID not found. Hash might've changed.") end
-if not EjectGUID then error("❌ Arrest GUID not found. Hash might've changed.") end
-if not DamageGUID then error("❌ Arrest GUID not found. Hash might've changed.") end
+if not PoliceGUID then error("❌ PoliceGUID not found. Hash might've changed.") end
+if not EjectGUID then error("❌ EjectGUID not found. Hash might've changed.") end
+if not DamageGUID then error("❌ DamageGUID not found. Hash might've changed.") end
 
 -- ========== POLICE TEAM SETUP ==========
 if PoliceGUID then
