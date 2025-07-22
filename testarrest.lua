@@ -1,6 +1,7 @@
 repeat task.wait() until game:IsLoaded()
 print("✅ Game is fully loaded!")
 task.wait(3)
+
 -- Services
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -9,6 +10,7 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
+
 local LocalPlayer = Players.LocalPlayer
 
 -- ========== PLAYER LOADING SYSTEM ==========
@@ -55,6 +57,7 @@ end
 
 -- ========== FIND GUIDS ==========
 local PoliceGUID, EjectGUID, DamageGUID, ArrestGUID
+
 for _, t in pairs(getgc(true)) do
     if typeof(t) == "table" and not getmetatable(t) then
         if t["mto4108g"] and t["mto4108g"]:sub(1,1) == "!" then
@@ -75,6 +78,7 @@ for _, t in pairs(getgc(true)) do
         end
     end
 end
+
 if not ArrestGUID then error("❌ Arrest GUID not found.") end
 
 -- ========== POLICE TEAM SETUP ==========
@@ -84,6 +88,7 @@ end
 
 -- ========== CHARACTER SETUP ==========
 local character, rootPart, camera
+
 local function setupCharacter()
     character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     rootPart = character:WaitForChild("HumanoidRootPart")
@@ -96,33 +101,22 @@ setupCharacter()
 task.wait(6)
 
 -- ========== VEHICLE DAMAGE SYSTEM ==========
-local function damageNearbyVehicles(targetPlayer)
-    if not targetPlayer then return end
+local function damageNearbyVehicles()
     pcall(function()
         local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if not myRoot or not Workspace:FindFirstChild("Vehicles") then return end
 
-        local targetVehicleName = "_VehicleState_"..targetPlayer.Name
-        local targetVehicle = nil
-
-        -- First find the specific vehicle for our target
         for _, vehicle in pairs(Workspace.Vehicles:GetChildren()) do
-            if vehicle:IsA("Model") and vehicle:FindFirstChild(targetVehicleName) then
-                targetVehicle = vehicle
-                break
-            end
-        end
-
-        -- If we found the target's vehicle, damage it
-        if targetVehicle then
-            local base = targetVehicle.PrimaryPart or targetVehicle:FindFirstChildWhichIsA("BasePart")
-            if base and (myRoot.Position - base.Position).Magnitude <= 15 then
-                if DamageGUID then
-                    MainRemote:FireServer(DamageGUID, targetVehicle, "RocketLauncher")
-                end
-                if EjectGUID and targetVehicle:GetAttribute("VehicleHasDriver") == true then
-                    MainRemote:FireServer(EjectGUID, targetVehicle)
-                    print("🚗 Ejecting target's vehicle:", targetVehicle.Name)
+            if vehicle:IsA("Model") then
+                local base = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
+                if base and (myRoot.Position - base.Position).Magnitude <= 15 then
+                    if DamageGUID then
+                        MainRemote:FireServer(DamageGUID, vehicle, "Sniper")
+                    end
+                    if EjectGUID and vehicle:GetAttribute("VehicleHasDriver") == true then
+                        MainRemote:FireServer(EjectGUID, vehicle)
+                        print("🚗 Ejecting:", vehicle.Name)
+                    end
                 end
             end
         end
@@ -145,8 +139,10 @@ local arresting = false
 local function getValidCriminalTarget()
     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not myRoot then return nil end
+
     local criminals = getLoadedCriminals()
     if #criminals == 0 then return nil end
+
     local nearestPlayer, shortestDistance = nil, math.huge
     for _, player in ipairs(criminals) do
         local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -182,23 +178,31 @@ end
 local function safeTeleport(cframe)
     if teleporting then return end
     teleporting = true
+
     local character = LocalPlayer.Character
     local root = character and character:FindFirstChild("HumanoidRootPart")
     if not root then teleporting = false return end
+
     if positionLockConn then positionLockConn:Disconnect() end
     if velocityConn then velocityConn:Disconnect() end
+
     root.Velocity = Vector3.zero
     root.AssemblyLinearVelocity = Vector3.zero
+
     TweenService:Create(root, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { CFrame = cframe }):Play()
+
     positionLock = cframe
     positionLockConn = maintainPosition(TELEPORT_DURATION)
+
     velocityConn = RunService.Heartbeat:Connect(function()
         root.Velocity = Vector3.zero
         root.AssemblyLinearVelocity = Vector3.zero
     end)
+
     delay(0.2, function()
         if character then character:BreakJoints() end
     end)
+
     delay(TELEPORT_DURATION, function()
         if positionLockConn then positionLockConn:Disconnect() end
         if velocityConn then velocityConn:Disconnect() end
@@ -210,15 +214,19 @@ end
 local function teleportToCriminal()
     local targetPlayer = getValidCriminalTarget()
     if not targetPlayer then return nil end
+
     local targetRoot = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not targetRoot then return nil end
+
     local offset = Vector3.new(math.random(-1, 1), 1.5, math.random(-3, -2))
     local cframe = targetRoot.CFrame * CFrame.new(offset)
     safeTeleport(cframe)
+
     lastReachCheck = tick()
     hasReachedTarget = false
     handcuffsEquipped = false
     arresting = false
+
     return targetPlayer
 end
 
@@ -244,6 +252,7 @@ end
 local function setupJointTeleport(targetPlayer)
     local character = LocalPlayer.Character
     if not character then return nil end
+
     local parts = character:GetChildren()
     local conn = RunService.Heartbeat:Connect(function()
         local targetRoot = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -272,38 +281,47 @@ end
 -- ========== SERVER HOP FUNCTION ==========
 local function serverHop()
     print("🌐 No criminals found, searching for new server...")
+
     local success, result = pcall(function()
         local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)
         return HttpService:JSONDecode(game:HttpGet(url))
     end)
+
     if not success or not result or not result.data then
         warn("❌ Failed to get server list for hopping.")
         task.wait(5)
         return serverHop()
     end
+
     local currentJobId = game.JobId
     local candidates = {}
+
     for _, server in ipairs(result.data) do
         if server.id ~= currentJobId and server.playing < server.maxPlayers then
             table.insert(candidates, server.id)
         end
     end
+
     if #candidates == 0 then
         warn("⚠️ No available servers to hop to. Retrying in 10 seconds...")
         task.wait(10)
         return serverHop()
     end
+
     local chosenServer = candidates[math.random(1, #candidates)]
     print("🚀 Attempting to teleport to server:", chosenServer)
+
     local teleportFailed = false
     local teleportCheck = task.delay(10, function()
         teleportFailed = true
         warn("⚠️ Teleport timed out (server may be full). Trying another...")
     end)
+
     local success, err = pcall(function()
-        queue_on_teleport([[loadstring(game:HttpGet(" https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testarrest.lua "))()]])
+        queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testarrest.lua"))()]])
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
     end)
+
     if not success then
         warn("❌ Teleport failed:", err)
         task.cancel(teleportCheck)
@@ -311,11 +329,13 @@ local function serverHop()
         table.remove(candidates, table.find(candidates, chosenServer))
         return serverHop()
     end
+
     if teleportFailed then
         task.wait(1)
         table.remove(candidates, table.find(candidates, chosenServer))
         return serverHop()
     end
+
     task.cancel(teleportCheck)
 end
 
@@ -328,52 +348,64 @@ task.spawn(function()
             task.wait(10)
             continue
         end
+
         task.wait(TELEPORT_DURATION)
         local jointTeleportConn = setupJointTeleport(currentTarget)
+
         -- Start vehicle damage loop after teleporting
         local vehicleDamageLoop
         vehicleDamageLoop = RunService.Heartbeat:Connect(function()
             damageNearbyVehicles()
         end)
+
         while true do
             task.wait(0.1)
+
             if not currentTarget or not currentTarget.Character
                 or tostring(currentTarget.Team) ~= "Criminal"
                 or currentTarget:GetAttribute("HasEscaped") ~= true then
                 break
             end
+
             local myChar = LocalPlayer.Character
             local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
             local targetRoot = currentTarget.Character:FindFirstChild("HumanoidRootPart")
             local humanoid = myChar and myChar:FindFirstChildOfClass("Humanoid")
+
             if humanoid and humanoid.Health < 50 then
                 print("⚠️ Low health detected, restarting process.")
                 arresting = false
                 break
             end
+
             -- 6-second failsafe check
             if myRoot and targetRoot and hasReachedTarget and currentTarget:GetAttribute("HasEscaped") == true and (tick() - lastReachCheck) > 6 then
                 print("⚠️ Target still not arrested after 6 seconds, restarting process.")
                 arresting = false
                 break
             end
+
             if myRoot and targetRoot then
                 local dist = (myRoot.Position - (targetRoot.Position + Vector3.new(0, 3, 0))).Magnitude
+
                 -- Handcuff Logic (5 stud range)
                 if not handcuffsEquipped and dist <= 5 then
                     equipHandcuffs()
                 end
+
                 -- Arrest Logic (3 stud range)
                 if handcuffsEquipped and not arresting and dist <= 3 then
                     startArresting(currentTarget)
                     hasReachedTarget = true
                     lastReachCheck = tick()
                 end
+
                 if dist > 500 or (not hasReachedTarget and tick() - lastReachCheck > REACH_TIMEOUT) then
                     break
                 end
             end
         end
+
         -- Clean up
         arresting = false
         handcuffsEquipped = false
