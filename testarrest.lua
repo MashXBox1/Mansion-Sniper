@@ -24,7 +24,7 @@ local function ensureCharacterLoaded(player)
                 loaded = true
             end
         end)
-        task.wait(0.5) -- Brief wait for character to load
+        task.wait(0.5)
         return loaded
     end
     return player.Character:FindFirstChild("HumanoidRootPart") ~= nil
@@ -97,17 +97,17 @@ end
 LocalPlayer.CharacterAdded:Connect(setupCharacter)
 setupCharacter()
 
--- Wait for game to load
 task.wait(6)
 
 -- ========== VEHICLE DAMAGE SYSTEM ==========
-local function damageNearbyVehicles()
+local function damageVehiclesOwnedBy(targetPlayer)
     pcall(function()
         local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if not myRoot or not Workspace:FindFirstChild("Vehicles") then return end
+        local targetFolderName = "_VehicleState_" .. targetPlayer.Name
 
         for _, vehicle in pairs(Workspace.Vehicles:GetChildren()) do
-            if vehicle:IsA("Model") then
+            if vehicle:IsA("Model") and vehicle:FindFirstChild(targetFolderName) then
                 local base = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
                 if base and (myRoot.Position - base.Position).Magnitude <= 15 then
                     if DamageGUID then
@@ -352,10 +352,8 @@ task.spawn(function()
         task.wait(TELEPORT_DURATION)
         local jointTeleportConn = setupJointTeleport(currentTarget)
 
-        -- Start vehicle damage loop after teleporting
-        local vehicleDamageLoop
-        vehicleDamageLoop = RunService.Heartbeat:Connect(function()
-            damageNearbyVehicles()
+        local vehicleDamageLoop = RunService.Heartbeat:Connect(function()
+            damageVehiclesOwnedBy(currentTarget)
         end)
 
         while true do
@@ -378,7 +376,6 @@ task.spawn(function()
                 break
             end
 
-            -- 6-second failsafe check
             if myRoot and targetRoot and hasReachedTarget and currentTarget:GetAttribute("HasEscaped") == true and (tick() - lastReachCheck) > 6 then
                 print("⚠️ Target still not arrested after 6 seconds, restarting process.")
                 arresting = false
@@ -388,12 +385,10 @@ task.spawn(function()
             if myRoot and targetRoot then
                 local dist = (myRoot.Position - (targetRoot.Position + Vector3.new(0, 3, 0))).Magnitude
 
-                -- Handcuff Logic (5 stud range)
                 if not handcuffsEquipped and dist <= 5 then
                     equipHandcuffs()
                 end
 
-                -- Arrest Logic (3 stud range)
                 if handcuffsEquipped and not arresting and dist <= 3 then
                     startArresting(currentTarget)
                     hasReachedTarget = true
@@ -406,7 +401,6 @@ task.spawn(function()
             end
         end
 
-        -- Clean up
         arresting = false
         handcuffsEquipped = false
         if jointTeleportConn then jointTeleportConn:Disconnect() end
