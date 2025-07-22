@@ -192,7 +192,7 @@ local function simulateHoldEAsync(briefcase)
             if not (pressRemote and collectRemote) then break end
             pressRemote:FireServer(true) -- Signals "E pressed"
             local start = os.clock()
-            while os.clock() - start < 15 do
+            while os.clock() - start < 25 do
                 pressRemote:FireServer(false)
                 task.wait()
             end
