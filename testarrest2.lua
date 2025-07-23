@@ -6,6 +6,7 @@ task.wait(3)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
@@ -123,6 +124,9 @@ end
 local TELEPORT_DURATION = 5
 local REACH_TIMEOUT = 20
 local teleporting = false
+local positionLock = nil
+local positionLockConn = nil
+local velocityConn = nil
 local currentTarget = nil
 local lastReachCheck = 0
 local hasReachedTarget = false
@@ -132,6 +136,13 @@ local arresting = false
 local function getValidCriminalTarget()
     local criminals = getLoadedCriminals()
     if #criminals == 0 then return nil end
+
+    -- Debug: Print all possible criminals
+    print("🔍 Possible criminals to arrest:")
+    for _, criminal in ipairs(criminals) do
+        print("   - " .. criminal.Name)
+    end
+
     local nearestPlayer, shortestDistance = nil, math.huge
     for _, player in ipairs(criminals) do
         local root = player.Character
@@ -180,7 +191,7 @@ local function teleportToCriminal()
     local root = targetPlayer.Character
     if not root then return nil end
 
-    -- Use the target player's model's CFrame for teleportation
+    -- Use the target player's model for teleportation
     safeTeleport(root)
     lastReachCheck = tick()
     hasReachedTarget = false
