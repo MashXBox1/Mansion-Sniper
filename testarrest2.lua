@@ -190,7 +190,7 @@ end
 LocalPlayer.CharacterAdded:Connect(setupCharacter)
 setupCharacter()
 
-
+task.wait(6)
 
 -- ========== VEHICLE DAMAGE SYSTEM ==========
 local function damageVehiclesOwnedBy(targetPlayer)
