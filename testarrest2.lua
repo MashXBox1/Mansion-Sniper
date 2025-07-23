@@ -1,6 +1,6 @@
 repeat task.wait() until game:IsLoaded()
 print("✅ Game is fully loaded!")
-task.wait(3)
+task.wait(6)
 -- Wait until the game is fully loaded
 
 
