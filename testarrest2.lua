@@ -64,7 +64,7 @@ local function checkBounties(tbl)
         local bountyNum = tonumber(bounty)
         if bountyNum and bountyNum >= 500 then
             highBountyPlayers[playerName] = bountyNum
-            print(("🚨 %s has a bounty of %s!"):format(playerName, bounty))
+           
         else
             highBountyPlayers[playerName] = nil
         end
