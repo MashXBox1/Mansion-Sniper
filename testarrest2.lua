@@ -32,7 +32,7 @@ for i = 1, 2 do
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             teleportToPlayerModel(player)
-            task.wait(0.3)
+            task.wait(0.1)
         end
     end
 end
