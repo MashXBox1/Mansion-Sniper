@@ -106,7 +106,7 @@ local function ensureCharacterLoaded(player)
                 loaded = true
             end
         end)
-        task.wait(0.5)
+        task.wait(0.9)
         return loaded
     end
     return player.Character:FindFirstChild("HumanoidRootPart") ~= nil
