@@ -180,17 +180,7 @@ for i = 1, 2 do
 end
 task.wait(6)
 -- ========== CHARACTER SETUP ==========
-local character, rootPart, camera
 
-local function setupCharacter()
-    character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    rootPart = character:WaitForChild("HumanoidRootPart")
-    camera = Workspace.CurrentCamera
-end
-LocalPlayer.CharacterAdded:Connect(setupCharacter)
-setupCharacter()
-
-task.wait(6)
 
 -- ========== VEHICLE DAMAGE SYSTEM ==========
 local function damageVehiclesOwnedBy(targetPlayer)
