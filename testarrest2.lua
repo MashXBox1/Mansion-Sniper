@@ -197,18 +197,37 @@ local function damageVehiclesOwnedBy(targetPlayer)
         local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if not myRoot or not Workspace:FindFirstChild("Vehicles") then return end
         local targetFolderName = "_VehicleState_" .. targetPlayer.Name
-
+        local damagedVehicle = false
         for _, vehicle in pairs(Workspace.Vehicles:GetChildren()) do
             if vehicle:IsA("Model") and vehicle:FindFirstChild(targetFolderName) then
                 local base = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
                 if base and (myRoot.Position - base.Position).Magnitude <= 15 then
-                    if DamageGUID then
-                        MainRemote:FireServer(DamageGUID, vehicle, "Sniper")
-                    end
+                    MainRemote:FireServer(DamageGUID, vehicle, "Sniper")
                     if EjectGUID and vehicle:GetAttribute("VehicleHasDriver") == true then
                         MainRemote:FireServer(EjectGUID, vehicle)
-                        print("🚗 Ejecting:", vehicle.Name)
                     end
+                    damagedVehicle = true
+                end
+            end
+        end
+        if not damagedVehicle then
+            local closestVehicle, shortestDistance = nil, math.huge
+            for _, vehicle in pairs(Workspace.Vehicles:GetChildren()) do
+                if vehicle:IsA("Model") then
+                    local base = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
+                    if base then
+                        local dist = (myRoot.Position - base.Position).Magnitude
+                        if dist < 10 and dist < shortestDistance then
+                            shortestDistance = dist
+                            closestVehicle = vehicle
+                        end
+                    end
+                end
+            end
+            if closestVehicle then
+                MainRemote:FireServer(DamageGUID, closestVehicle, "Sniper")
+                if EjectGUID and closestVehicle:GetAttribute("VehicleHasDriver") == true then
+                    MainRemote:FireServer(EjectGUID, closestVehicle)
                 end
             end
         end
