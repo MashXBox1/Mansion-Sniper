@@ -178,6 +178,7 @@ for i = 1, 2 do
         end
     end
 end
+task.wait(6)
 -- ========== CHARACTER SETUP ==========
 local character, rootPart, camera
 
@@ -189,7 +190,7 @@ end
 LocalPlayer.CharacterAdded:Connect(setupCharacter)
 setupCharacter()
 
-task.wait(6)
+
 
 -- ========== VEHICLE DAMAGE SYSTEM ==========
 local function damageVehiclesOwnedBy(targetPlayer)
