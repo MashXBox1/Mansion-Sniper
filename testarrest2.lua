@@ -424,8 +424,8 @@ local function serverHop()
 
     if not success or not result or not result.data then
         warn("❌ Failed to get server list for hopping.")
-        task.wait(5)
-        return serverHop()
+        task.wait(12)
+        serverHop()
     end
 
     local currentJobId = game.JobId
