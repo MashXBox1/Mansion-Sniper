@@ -1,16 +1,106 @@
-repeat task.wait() until game:IsLoaded()
-print("✅ Game is fully loaded!")
-task.wait(3)
+-- CONFIG
+local targetString = "bsfz260o"
+local MINIMUM_BOUNTY = 1500 -- Only target players with at least this bounty
+local BOUNTY_UPDATE_INTERVAL = 5 -- How often to check for bounty updates (seconds)
 
--- Services
+-- SERVICES
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
+
+-- GLOBALS
 local LocalPlayer = Players.LocalPlayer
+local MainRemote = nil
+local PoliceGUID, EjectGUID, DamageGUID, ArrestGUID, PistolGUID
+local currentTarget = nil
+local teleporting = false
+local handcuffsEquipped = false
+local arresting = false
+local arrestAttempts = 0
+local bountyData = {} -- Stores bounty amounts for each player
+local bountyUpdateConn = nil
+
+-- UTIL FUNCTION TO RECURSIVELY SEARCH ARGUMENTS
+local function containsTarget(value)
+    if typeof(value) == "string" and string.find(value, targetString) then
+        return true
+    elseif typeof(value) == "table" then
+        for _, v in pairs(value) do
+            if containsTarget(v) then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- BOUNTY TRACKING SYSTEM
+local function updateBountyData(tbl)
+    if typeof(tbl) ~= "table" then return end
+    
+    -- Clear old data first
+    bountyData = {}
+    
+    -- Update with new bounty data
+    for playerName, bounty in pairs(tbl) do
+        if typeof(bounty) == "number" then
+            bountyData[playerName] = bounty
+            print(("💰 Updated bounty for %s: $%s"):format(playerName, tostring(bounty)))
+        end
+    end
+end
+
+-- LISTEN TO ALL REMOTEEVENTS IN REPLICATEDSTORAGE FOR BOUNTY UPDATES
+local function setupBountyListener()
+    for _, v in pairs(ReplicatedStorage:GetDescendants()) do
+        if v:IsA("RemoteEvent") then
+            v.OnClientEvent:Connect(function(...)
+                local args = {...}
+                -- Check if second arg is bounty dictionary
+                if args[2] and typeof(args[2]) == "table" then
+                    updateBountyData(args[2])
+                end
+            end)
+        end
+    end
+    
+    -- Watch for future added remotes too
+    ReplicatedStorage.DescendantAdded:Connect(function(v)
+        if v:IsA("RemoteEvent") then
+            v.OnClientEvent:Connect(function(...)
+                local args = {...}
+                if args[2] and typeof(args[2]) == "table" then
+                    updateBountyData(args[2])
+                end
+            end)
+        end
+    end)
+end
+
+-- Start listening for bounty updates
+setupBountyListener()
+
+-- Periodically force update bounty data
+local function startBountyUpdateLoop()
+    while true do
+        task.wait(BOUNTY_UPDATE_INTERVAL)
+        -- Force check all players in case we missed updates
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player:FindFirstChild("leaderstats") then
+                local bountyStat = player.leaderstats:FindFirstChild("Bounty") or player.leaderstats:FindFirstChild("Cash")
+                if bountyStat then
+                    bountyData[player.Name] = bountyStat.Value
+                end
+            end
+        end
+    end
+end
+
+task.spawn(startBountyUpdateLoop)
 
 -- ========== PLAYER LOADING SYSTEM ==========
 local function ensureCharacterLoaded(player)
@@ -33,7 +123,9 @@ local function getLoadedCriminals()
     local criminals = {}
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and tostring(player.Team) == "Criminal" and player:GetAttribute("HasEscaped") == true then
-            if ensureCharacterLoaded(player) then
+            -- Only include players with sufficient bounty
+            local playerBounty = bountyData[player.Name] or 0
+            if playerBounty >= MINIMUM_BOUNTY and ensureCharacterLoaded(player) then
                 table.insert(criminals, player)
             end
         end
@@ -42,7 +134,6 @@ local function getLoadedCriminals()
 end
 
 -- ========== FIND MAIN REMOTE ==========
-local MainRemote = nil
 for _, obj in pairs(ReplicatedStorage:GetChildren()) do
     if obj:IsA("RemoteEvent") and obj.Name:find("-") then
         MainRemote = obj
@@ -55,7 +146,6 @@ if not MainRemote then
 end
 
 -- ========== FIND GUIDS ==========
-local PoliceGUID, EjectGUID, DamageGUID, ArrestGUID, PistolGUID
 for _, t in pairs(getgc(true)) do
     if typeof(t) == "table" and not getmetatable(t) then
         if t["mto4108g"] and t["mto4108g"]:sub(1,1) == "!" then
@@ -87,7 +177,7 @@ if not EjectGUID then error("❌ EjectGUID not found. Hash might've changed.") e
 if not DamageGUID then error("❌ DamageGUID not found. Hash might've changed.") end
 if not PistolGUID then error("❌ Pistol GUID not found. Hash might've changed.") end
 
--- ========== POLICE TEAM SETUP ==========
+-- ========== POLICE TEAM SETUP ===========
 if PoliceGUID then
     MainRemote:FireServer(PoliceGUID, "Police")
 end
@@ -159,22 +249,23 @@ end
 -- ========== CRIMINAL TARGETING SYSTEM ==========
 local TELEPORT_DURATION = 5
 local REACH_TIMEOUT = 20
-local teleporting = false
-local currentTarget = nil
 local lastReachCheck = 0
 local hasReachedTarget = false
-local handcuffsEquipped = false
-local arresting = false
-local arrestAttempts = 0
 
 local function getValidCriminalTarget()
     local criminals = getLoadedCriminals()
     if #criminals == 0 then return nil end
+    
+    -- Sort criminals by bounty (highest first)
+    table.sort(criminals, function(a, b)
+        return (bountyData[a.Name] or 0) > (bountyData[b.Name] or 0)
+    end)
+    
+    -- Try to find the nearest high-bounty criminal
     local nearestPlayer, shortestDistance = nil, math.huge
     for _, player in ipairs(criminals) do
         local root = player.Character
         if root then
-            -- Use PrimaryPart or fallback to Pivot or HumanoidRootPart for position
             local posPart = root.PrimaryPart or root:FindFirstChild("HumanoidRootPart") or root:GetPivot()
             if posPart then
                 local position = (typeof(posPart) == "CFrame") and posPart.Position or posPart.Position
@@ -185,6 +276,10 @@ local function getValidCriminalTarget()
                 end
             end
         end
+    end
+    
+    if nearestPlayer then
+        print(("🎯 Targeting %s (Bounty: $%s)"):format(nearestPlayer.Name, bountyData[nearestPlayer.Name] or "Unknown"))
     end
     return nearestPlayer
 end
@@ -216,13 +311,12 @@ local function teleportToCriminal()
     if not targetPlayer then return nil end
     local root = targetPlayer.Character
     if not root then return nil end
-    -- Use PrimaryPart or fallback to Pivot or HumanoidRootPart for teleport destination
+    
     local posPart = root.PrimaryPart or root:FindFirstChild("HumanoidRootPart")
     local baseCFrame
     if posPart then
         baseCFrame = posPart.CFrame
     else
-        -- Fallback to model pivot CFrame if no PrimaryPart/HumanoidRootPart
         local success, pivot = pcall(function()
             return root:GetPivot()
         end)
@@ -232,6 +326,7 @@ local function teleportToCriminal()
             return nil
         end
     end
+    
     local offset = Vector3.new(math.random(-1, 1), 1.5, math.random(-3, -2))
     local cframe = baseCFrame * CFrame.new(offset)
     safeTeleport(root)
@@ -273,7 +368,7 @@ local function startArresting(targetPlayer)
     end)
 end
 
--- ========== OVERRIDE WITH PISTOL ATTACK ==========
+-- ========== PISTOL ATTACK ==========
 local function shootTargetWithPistol(targetPlayer)
     if not PistolGUID then
         warn("❌ Pistol GUID not found, cannot shoot target.")
@@ -294,7 +389,7 @@ end
 
 -- ========== SERVER HOP FUNCTION ==========
 local function serverHop()
-    print("🌐 No criminals found, searching for new server...")
+    print("🌐 No criminals found with sufficient bounty, searching for new server...")
     local success, result = pcall(function()
         local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)
         return HttpService:JSONDecode(game:HttpGet(url))
@@ -351,6 +446,7 @@ task.spawn(function()
             task.wait(10)
             continue
         end
+        
         task.wait(TELEPORT_DURATION)
         local jointTeleportConn = RunService.Heartbeat:Connect(function()
             if currentTarget and currentTarget.Character then
@@ -366,11 +462,13 @@ task.spawn(function()
                 end
             end
         end)
+        
         local vehicleDamageLoop = RunService.Heartbeat:Connect(function()
             if currentTarget then
                 damageVehiclesOwnedBy(currentTarget)
             end
         end)
+        
         while true do
             task.wait(0.1)
             if not currentTarget or not currentTarget.Character
@@ -378,15 +476,26 @@ task.spawn(function()
                 or currentTarget:GetAttribute("HasEscaped") ~= true then
                 break
             end
+            
+            -- Check if bounty is still sufficient
+            local currentBounty = bountyData[currentTarget.Name] or 0
+            if currentBounty < MINIMUM_BOUNTY then
+                print(("⚠️ Target %s's bounty dropped below %d (now %d), switching targets"):format(
+                    currentTarget.Name, MINIMUM_BOUNTY, currentBounty))
+                break
+            end
+            
             local myChar = LocalPlayer.Character
             local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
             local targetRoot = currentTarget.Character:FindFirstChild("HumanoidRootPart")
             local humanoid = myChar and myChar:FindFirstChildOfClass("Humanoid")
+            
             if humanoid and humanoid.Health < 50 then
                 print("⚠️ Low health detected, restarting process.")
                 arresting = false
                 break
             end
+            
             if myRoot and targetRoot and hasReachedTarget and currentTarget:GetAttribute("HasEscaped") == true and (tick() - lastReachCheck) > 6 then
                 print("⚠️ Target still not arrested after 6 seconds, incrementing arrest attempt.")
                 arrestAttempts += 1
@@ -400,6 +509,7 @@ task.spawn(function()
                     break
                 end
             end
+            
             if myRoot and targetRoot then
                 local dist = (myRoot.Position - (targetRoot.Position + Vector3.new(0, 3, 0))).Magnitude
                 if not handcuffsEquipped and dist <= 5 then
@@ -415,9 +525,12 @@ task.spawn(function()
                 end
             end
         end
+        
         arresting = false
         handcuffsEquipped = false
         if jointTeleportConn then jointTeleportConn:Disconnect() end
         if vehicleDamageLoop then vehicleDamageLoop:Disconnect() end
     end
 end)
+
+print("✅ Script fully loaded and running!")
