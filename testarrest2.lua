@@ -12,13 +12,33 @@ local TeleportService = game:GetService("TeleportService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local LocalPlayer = Players.LocalPlayer
 
--- ========== PLAYER LOADING SYSTEM ==========
+-- ========= BOUNTY TRACKING =========
+local bountyData = {}
+
+local function hookBountyRemotes()
+    for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
+        if v:IsA("RemoteEvent") then
+            v.OnClientEvent:Connect(function(...)
+                local args = { ... }
+                if typeof(args[2]) == "table" then
+                    for playerName, bounty in pairs(args[2]) do
+                        bountyData[playerName] = tonumber(bounty) or 0
+                    end
+                end
+            end)
+        end
+    end
+end
+
+hookBountyRemotes()
+
+-- ========= CHARACTER + CRIMINAL LOADING =========
 local function ensureCharacterLoaded(player)
     if not player.Character then
-        local charAdded
         local loaded = false
-        charAdded = player.CharacterAdded:Connect(function(char)
-            charAdded:Disconnect()
+        local conn
+        conn = player.CharacterAdded:Connect(function(char)
+            conn:Disconnect()
             if char:WaitForChild("HumanoidRootPart", 5) then
                 loaded = true
             end
@@ -33,7 +53,8 @@ local function getLoadedCriminals()
     local criminals = {}
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and tostring(player.Team) == "Criminal" and player:GetAttribute("HasEscaped") == true then
-            if ensureCharacterLoaded(player) then
+            local bounty = bountyData[player.Name] or 0
+            if bounty >= 500 and ensureCharacterLoaded(player) then
                 table.insert(criminals, player)
             end
         end
@@ -60,37 +81,29 @@ for _, t in pairs(getgc(true)) do
     if typeof(t) == "table" and not getmetatable(t) then
         if t["mto4108g"] and t["mto4108g"]:sub(1,1) == "!" then
             PoliceGUID = t["mto4108g"]
-            print("✅ Police GUID found:", PoliceGUID)
         end
         if t["bi6lm6ja"] and t["bi6lm6ja"]:sub(1, 1) == "!" then
             EjectGUID = t["bi6lm6ja"]
-            print("✅ Eject GUID:", EjectGUID)
         end
         if t["vum9h1ez"] and t["vum9h1ez"]:sub(1, 1) == "!" then
             DamageGUID = t["vum9h1ez"]
-            print("✅ Damage GUID:", DamageGUID)
         end
         if t["xuv9rqpj"] and t["xuv9rqpj"]:sub(1, 1) == "!" then
             ArrestGUID = t["xuv9rqpj"]
-            print("✅ Arrest GUID:", ArrestGUID)
         end
         if t["l5cuht8e"] and t["l5cuht8e"]:sub(1, 1) == "!" then
             PistolGUID = t["l5cuht8e"]
-            print("✅ Pistol GUID (l5cuht8e):", PistolGUID)
         end
     end
 end
 
-if not ArrestGUID then error("❌ Arrest GUID not found. Hash might've changed.") end
-if not PoliceGUID then error("❌ PoliceGUID not found. Hash might've changed.") end
-if not EjectGUID then error("❌ EjectGUID not found. Hash might've changed.") end
-if not DamageGUID then error("❌ DamageGUID not found. Hash might've changed.") end
-if not PistolGUID then error("❌ Pistol GUID not found. Hash might've changed.") end
+if not ArrestGUID then error("❌ Arrest GUID not found.") end
+if not PoliceGUID then error("❌ PoliceGUID not found.") end
+if not EjectGUID then error("❌ EjectGUID not found.") end
+if not DamageGUID then error("❌ DamageGUID not found.") end
+if not PistolGUID then error("❌ Pistol GUID not found.") end
 
--- ========== POLICE TEAM SETUP ==========
-if PoliceGUID then
-    MainRemote:FireServer(PoliceGUID, "Police")
-end
+MainRemote:FireServer(PoliceGUID, "Police")
 
 -- ========== CHARACTER SETUP ==========
 local character, rootPart, camera
@@ -108,35 +121,28 @@ local function damageVehiclesOwnedBy(targetPlayer)
     pcall(function()
         local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if not myRoot or not Workspace:FindFirstChild("Vehicles") then return end
-
-        -- Try damaging vehicles owned by the target player
         local targetFolderName = "_VehicleState_" .. targetPlayer.Name
         local damagedVehicle = false
         for _, vehicle in pairs(Workspace.Vehicles:GetChildren()) do
             if vehicle:IsA("Model") and vehicle:FindFirstChild(targetFolderName) then
                 local base = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
                 if base and (myRoot.Position - base.Position).Magnitude <= 15 then
-                    if DamageGUID then
-                        MainRemote:FireServer(DamageGUID, vehicle, "Sniper")
-                    end
+                    MainRemote:FireServer(DamageGUID, vehicle, "Sniper")
                     if EjectGUID and vehicle:GetAttribute("VehicleHasDriver") == true then
                         MainRemote:FireServer(EjectGUID, vehicle)
-                        print("🚗 Ejecting:", vehicle.Name)
                     end
                     damagedVehicle = true
                 end
             end
         end
-
-        -- Fallback: Damage the closest vehicle within 10 studs if no owned vehicle is found
         if not damagedVehicle then
             local closestVehicle, shortestDistance = nil, math.huge
             for _, vehicle in pairs(Workspace.Vehicles:GetChildren()) do
                 if vehicle:IsA("Model") then
                     local base = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
-                    if base and (myRoot.Position - base.Position).Magnitude <= 10 then
+                    if base then
                         local dist = (myRoot.Position - base.Position).Magnitude
-                        if dist < shortestDistance then
+                        if dist < 10 and dist < shortestDistance then
                             shortestDistance = dist
                             closestVehicle = vehicle
                         end
@@ -144,19 +150,16 @@ local function damageVehiclesOwnedBy(targetPlayer)
                 end
             end
             if closestVehicle then
-                if DamageGUID then
-                    MainRemote:FireServer(DamageGUID, closestVehicle, "Sniper")
-                end
+                MainRemote:FireServer(DamageGUID, closestVehicle, "Sniper")
                 if EjectGUID and closestVehicle:GetAttribute("VehicleHasDriver") == true then
                     MainRemote:FireServer(EjectGUID, closestVehicle)
-                    print("🚗 Ejecting fallback vehicle:", closestVehicle.Name)
                 end
             end
         end
     end)
 end
 
--- ========== CRIMINAL TARGETING SYSTEM ==========
+-- ========== TARGETING SYSTEM ==========
 local TELEPORT_DURATION = 5
 local REACH_TIMEOUT = 20
 local teleporting = false
@@ -167,6 +170,22 @@ local handcuffsEquipped = false
 local arresting = false
 local arrestAttempts = 0
 
+local function safeTeleport(targetModel)
+    if teleporting then return end
+    teleporting = true
+    local character = LocalPlayer.Character
+    if not character then teleporting = false return end
+    delay(0.2, function()
+        if character then character:BreakJoints() end
+    end)
+    delay(0.3, function()
+        character:SetPrimaryPartCFrame(targetModel:GetPivot())
+    end)
+    delay(TELEPORT_DURATION, function()
+        teleporting = false
+    end)
+end
+
 local function getValidCriminalTarget()
     local criminals = getLoadedCriminals()
     if #criminals == 0 then return nil end
@@ -174,7 +193,6 @@ local function getValidCriminalTarget()
     for _, player in ipairs(criminals) do
         local root = player.Character
         if root then
-            -- Use PrimaryPart or fallback to Pivot or HumanoidRootPart for position
             local posPart = root.PrimaryPart or root:FindFirstChild("HumanoidRootPart") or root:GetPivot()
             if posPart then
                 local position = (typeof(posPart) == "CFrame") and posPart.Position or posPart.Position
@@ -189,40 +207,16 @@ local function getValidCriminalTarget()
     return nearestPlayer
 end
 
-local function safeTeleport(targetModel)
-    if teleporting then return end
-    teleporting = true
-    local character = LocalPlayer.Character
-    if not character then teleporting = false return end
-
-    -- Break Joints after a short delay
-    delay(0.2, function()
-        if character then character:BreakJoints() end
-    end)
-
-    -- Teleport to the target player's model
-    delay(0.3, function()
-        character:SetPrimaryPartCFrame(targetModel:GetPivot())
-    end)
-
-    -- Clean up after TELEPORT_DURATION
-    delay(TELEPORT_DURATION, function()
-        teleporting = false
-    end)
-end
-
 local function teleportToCriminal()
     local targetPlayer = getValidCriminalTarget()
     if not targetPlayer then return nil end
     local root = targetPlayer.Character
     if not root then return nil end
-    -- Use PrimaryPart or fallback to Pivot or HumanoidRootPart for teleport destination
     local posPart = root.PrimaryPart or root:FindFirstChild("HumanoidRootPart")
     local baseCFrame
     if posPart then
         baseCFrame = posPart.CFrame
     else
-        -- Fallback to model pivot CFrame if no PrimaryPart/HumanoidRootPart
         local success, pivot = pcall(function()
             return root:GetPivot()
         end)
@@ -243,7 +237,6 @@ local function teleportToCriminal()
     return targetPlayer
 end
 
--- ========== HANDCUFF SYSTEM ==========
 local function equipHandcuffs()
     pcall(function()
         local folder = LocalPlayer:FindFirstChild("Folder")
@@ -251,12 +244,8 @@ local function equipHandcuffs()
         local remote = handcuffs and handcuffs:FindFirstChild("InventoryEquipRemote")
         if remote and remote:IsA("RemoteEvent") then
             remote:FireServer(true)
-            print("🔒 Handcuffs Equipped!")
             handcuffsEquipped = true
             return true
-        else
-            warn("❌ Could not find handcuffs equipment.")
-            return false
         end
     end)
     return false
@@ -273,13 +262,8 @@ local function startArresting(targetPlayer)
     end)
 end
 
--- ========== OVERRIDE WITH PISTOL ATTACK ==========
 local function shootTargetWithPistol(targetPlayer)
-    if not PistolGUID then
-        warn("❌ Pistol GUID not found, cannot shoot target.")
-        return
-    end
-    print("🔫 Using pistol to attack target:", targetPlayer.Name)
+    if not PistolGUID then return end
     while targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") do
         local humanoid = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
         if humanoid and humanoid.Health > 0 then
@@ -289,18 +273,14 @@ local function shootTargetWithPistol(targetPlayer)
             break
         end
     end
-    print("🎯 Target neutralized with pistol.")
 end
 
--- ========== SERVER HOP FUNCTION ==========
 local function serverHop()
-    print("🌐 No criminals found, searching for new server...")
     local success, result = pcall(function()
         local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)
         return HttpService:JSONDecode(game:HttpGet(url))
     end)
     if not success or not result or not result.data then
-        warn("❌ Failed to get server list for hopping.")
         task.wait(5)
         return serverHop()
     end
@@ -312,34 +292,12 @@ local function serverHop()
         end
     end
     if #candidates == 0 then
-        warn("⚠️ No available servers to hop to. Retrying in 10 seconds...")
         task.wait(10)
         return serverHop()
     end
     local chosenServer = candidates[math.random(1, #candidates)]
-    print("🚀 Attempting to teleport to server:", chosenServer)
-    local teleportFailed = false
-    local teleportCheck = task.delay(10, function()
-        teleportFailed = true
-        warn("⚠️ Teleport timed out (server may be full). Trying another...")
-    end)
-    local success, err = pcall(function()
-        queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testarrest2.lua"))()]])
-        TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
-    end)
-    if not success then
-        warn("❌ Teleport failed:", err)
-        task.cancel(teleportCheck)
-        task.wait(1)
-        table.remove(candidates, table.find(candidates, chosenServer))
-        return serverHop()
-    end
-    if teleportFailed then
-        task.wait(1)
-        table.remove(candidates, table.find(candidates, chosenServer))
-        return serverHop()
-    end
-    task.cancel(teleportCheck)
+    queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testarrest2.lua"))()]])
+    TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
 end
 
 -- ========== MAIN LOOP ==========
@@ -356,8 +314,7 @@ task.spawn(function()
             if currentTarget and currentTarget.Character then
                 local targetRoot = currentTarget.Character:GetPivot()
                 if targetRoot then
-                    local parts = LocalPlayer.Character:GetChildren()
-                    for _, part in pairs(parts) do
+                    for _, part in pairs(LocalPlayer.Character:GetChildren()) do
                         if part:IsA("BasePart") then
                             local offset = part.Position - LocalPlayer.Character:GetPivot().Position
                             part.CFrame = targetRoot * CFrame.new(offset)
@@ -373,9 +330,7 @@ task.spawn(function()
         end)
         while true do
             task.wait(0.1)
-            if not currentTarget or not currentTarget.Character
-                or tostring(currentTarget.Team) ~= "Criminal"
-                or currentTarget:GetAttribute("HasEscaped") ~= true then
+            if not currentTarget or not currentTarget.Character or tostring(currentTarget.Team) ~= "Criminal" or currentTarget:GetAttribute("HasEscaped") ~= true then
                 break
             end
             local myChar = LocalPlayer.Character
@@ -383,19 +338,15 @@ task.spawn(function()
             local targetRoot = currentTarget.Character:FindFirstChild("HumanoidRootPart")
             local humanoid = myChar and myChar:FindFirstChildOfClass("Humanoid")
             if humanoid and humanoid.Health < 50 then
-                print("⚠️ Low health detected, restarting process.")
                 arresting = false
                 break
             end
-            if myRoot and targetRoot and hasReachedTarget and currentTarget:GetAttribute("HasEscaped") == true and (tick() - lastReachCheck) > 6 then
-                print("⚠️ Target still not arrested after 6 seconds, incrementing arrest attempt.")
+            if myRoot and targetRoot and hasReachedTarget and (tick() - lastReachCheck) > 6 then
                 arrestAttempts += 1
                 if arrestAttempts >= 3 then
-                    print("⚠️ Max arrest attempts reached. Switching to pistol attack.")
                     shootTargetWithPistol(currentTarget)
                     arrestAttempts = 0
                 else
-                    print("⚠️ Restarting process.")
                     arresting = false
                     break
                 end
@@ -414,7 +365,7 @@ task.spawn(function()
                     break
                 end
             end
-        enda
+        end
         arresting = false
         handcuffsEquipped = false
         if jointTeleportConn then jointTeleportConn:Disconnect() end
