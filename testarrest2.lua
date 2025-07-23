@@ -129,7 +129,7 @@ local MainRemote = nil
 for _, obj in pairs(ReplicatedStorage:GetChildren()) do
     if obj:IsA("RemoteEvent") and obj.Name:find("-") then
         MainRemote = obj
-        print("✅ Found RemoteEvent:", obj:GetFullName())
+        
         break
     end
 end
@@ -144,19 +144,19 @@ for _, t in pairs(getgc(true)) do
     if typeof(t) == "table" and not getmetatable(t) then
         if t["mto4108g"] and t["mto4108g"]:sub(1,1) == "!" then
             PoliceGUID = t["mto4108g"]
-            print("✅ Police GUID found:", PoliceGUID)
+            
         end
         if t["bi6lm6ja"] and t["bi6lm6ja"]:sub(1, 1) == "!" then
             EjectGUID = t["bi6lm6ja"]
-            print("✅ Eject GUID:", EjectGUID)
+            
         end
         if t["vum9h1ez"] and t["vum9h1ez"]:sub(1, 1) == "!" then
             DamageGUID = t["vum9h1ez"]
-            print("✅ Damage GUID:", DamageGUID)
+            
         end
         if t["xuv9rqpj"] and t["xuv9rqpj"]:sub(1, 1) == "!" then
             ArrestGUID = t["xuv9rqpj"]
-            print("✅ Arrest GUID:", ArrestGUID)
+            
         end
     end
 end
@@ -373,7 +373,7 @@ local function equipHandcuffs()
         local remote = handcuffs and handcuffs:FindFirstChild("InventoryEquipRemote")
         if remote and remote:IsA("RemoteEvent") then
             remote:FireServer(true)
-            print("🔒 Handcuffs Equipped!")
+            
             handcuffsEquipped = true
             return true
         else
@@ -415,7 +415,7 @@ end
 
 -- ========== SERVER HOP FUNCTION ==========
 local function serverHop()
-    print("🌐 No criminals found, searching for new server...")
+    
 
     local success, result = pcall(function()
         local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)
@@ -444,7 +444,7 @@ local function serverHop()
     end
 
     local chosenServer = candidates[math.random(1, #candidates)]
-    print("🚀 Attempting to teleport to server:", chosenServer)
+    
 
     local teleportFailed = false
     local teleportCheck = task.delay(10, function()
@@ -507,13 +507,13 @@ task.spawn(function()
             local humanoid = myChar and myChar:FindFirstChildOfClass("Humanoid")
 
             if humanoid and humanoid.Health < 50 then
-                print("⚠️ Low health detected, restarting process.")
+                
                 arresting = false
                 break
             end
 
             if myRoot and targetRoot and hasReachedTarget and currentTarget:GetAttribute("HasEscaped") == true and (tick() - lastReachCheck) > 6 then
-                print("⚠️ Target still not arrested after 6 seconds, restarting process.")
+                
                 arresting = false
                 break
             end
