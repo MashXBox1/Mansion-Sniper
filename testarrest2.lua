@@ -6,10 +6,10 @@ task.wait(3)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 local LocalPlayer = Players.LocalPlayer
 
 -- ========== PLAYER LOADING SYSTEM ==========
@@ -55,7 +55,7 @@ if not MainRemote then
 end
 
 -- ========== FIND GUIDS ==========
-local PoliceGUID, EjectGUID, DamageGUID, ArrestGUID
+local PoliceGUID, EjectGUID, DamageGUID, ArrestGUID, PistolGUID
 for _, t in pairs(getgc(true)) do
     if typeof(t) == "table" and not getmetatable(t) then
         if t["mto4108g"] and t["mto4108g"]:sub(1,1) == "!" then
@@ -74,12 +74,18 @@ for _, t in pairs(getgc(true)) do
             ArrestGUID = t["xuv9rqpj"]
             print("✅ Arrest GUID:", ArrestGUID)
         end
+        if t["l5cuht8e"] and t["l5cuht8e"]:sub(1, 1) == "!" then
+            PistolGUID = t["l5cuht8e"]
+            print("✅ Pistol GUID (l5cuht8e):", PistolGUID)
+        end
     end
 end
+
 if not ArrestGUID then error("❌ Arrest GUID not found. Hash might've changed.") end
 if not PoliceGUID then error("❌ PoliceGUID not found. Hash might've changed.") end
 if not EjectGUID then error("❌ EjectGUID not found. Hash might've changed.") end
 if not DamageGUID then error("❌ DamageGUID not found. Hash might've changed.") end
+if not PistolGUID then error("❌ Pistol GUID not found. Hash might've changed.") end
 
 -- ========== POLICE TEAM SETUP ==========
 if PoliceGUID then
@@ -102,7 +108,10 @@ local function damageVehiclesOwnedBy(targetPlayer)
     pcall(function()
         local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if not myRoot or not Workspace:FindFirstChild("Vehicles") then return end
+
+        -- Try damaging vehicles owned by the target player
         local targetFolderName = "_VehicleState_" .. targetPlayer.Name
+        local damagedVehicle = false
         for _, vehicle in pairs(Workspace.Vehicles:GetChildren()) do
             if vehicle:IsA("Model") and vehicle:FindFirstChild(targetFolderName) then
                 local base = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
@@ -114,6 +123,33 @@ local function damageVehiclesOwnedBy(targetPlayer)
                         MainRemote:FireServer(EjectGUID, vehicle)
                         print("🚗 Ejecting:", vehicle.Name)
                     end
+                    damagedVehicle = true
+                end
+            end
+        end
+
+        -- Fallback: Damage the closest vehicle within 10 studs if no owned vehicle is found
+        if not damagedVehicle then
+            local closestVehicle, shortestDistance = nil, math.huge
+            for _, vehicle in pairs(Workspace.Vehicles:GetChildren()) do
+                if vehicle:IsA("Model") then
+                    local base = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
+                    if base and (myRoot.Position - base.Position).Magnitude <= 10 then
+                        local dist = (myRoot.Position - base.Position).Magnitude
+                        if dist < shortestDistance then
+                            shortestDistance = dist
+                            closestVehicle = vehicle
+                        end
+                    end
+                end
+            end
+            if closestVehicle then
+                if DamageGUID then
+                    MainRemote:FireServer(DamageGUID, closestVehicle, "Sniper")
+                end
+                if EjectGUID and closestVehicle:GetAttribute("VehicleHasDriver") == true then
+                    MainRemote:FireServer(EjectGUID, closestVehicle)
+                    print("🚗 Ejecting fallback vehicle:", closestVehicle.Name)
                 end
             end
         end
@@ -124,35 +160,25 @@ end
 local TELEPORT_DURATION = 5
 local REACH_TIMEOUT = 20
 local teleporting = false
-local positionLock = nil
-local positionLockConn = nil
-local velocityConn = nil
 local currentTarget = nil
 local lastReachCheck = 0
 local hasReachedTarget = false
 local handcuffsEquipped = false
 local arresting = false
+local arrestAttempts = 0
 
 local function getValidCriminalTarget()
     local criminals = getLoadedCriminals()
     if #criminals == 0 then return nil end
-
-    -- Debug: Print all possible criminals
-    print("🔍 Possible criminals to arrest:")
-    for _, criminal in ipairs(criminals) do
-        print("   - " .. criminal.Name)
-    end
-
     local nearestPlayer, shortestDistance = nil, math.huge
     for _, player in ipairs(criminals) do
         local root = player.Character
         if root then
-            -- Use the model's CFrame directly
-            local success, pos = pcall(function()
-                return root:GetPivot()
-            end)
-            if success then
-                local dist = (LocalPlayer.Character:GetPivot().Position - pos.Position).Magnitude
+            -- Use PrimaryPart or fallback to Pivot or HumanoidRootPart for position
+            local posPart = root.PrimaryPart or root:FindFirstChild("HumanoidRootPart") or root:GetPivot()
+            if posPart then
+                local position = (typeof(posPart) == "CFrame") and posPart.Position or posPart.Position
+                local dist = (LocalPlayer.Character:GetPivot().Position - position).Magnitude
                 if dist < shortestDistance then
                     shortestDistance = dist
                     nearestPlayer = player
@@ -190,13 +216,30 @@ local function teleportToCriminal()
     if not targetPlayer then return nil end
     local root = targetPlayer.Character
     if not root then return nil end
-
-    -- Use the target player's model for teleportation
+    -- Use PrimaryPart or fallback to Pivot or HumanoidRootPart for teleport destination
+    local posPart = root.PrimaryPart or root:FindFirstChild("HumanoidRootPart")
+    local baseCFrame
+    if posPart then
+        baseCFrame = posPart.CFrame
+    else
+        -- Fallback to model pivot CFrame if no PrimaryPart/HumanoidRootPart
+        local success, pivot = pcall(function()
+            return root:GetPivot()
+        end)
+        if success then
+            baseCFrame = pivot
+        else
+            return nil
+        end
+    end
+    local offset = Vector3.new(math.random(-1, 1), 1.5, math.random(-3, -2))
+    local cframe = baseCFrame * CFrame.new(offset)
     safeTeleport(root)
     lastReachCheck = tick()
     hasReachedTarget = false
     handcuffsEquipped = false
     arresting = false
+    arrestAttempts = 0
     return targetPlayer
 end
 
@@ -219,23 +262,6 @@ local function equipHandcuffs()
     return false
 end
 
-local function setupJointTeleport(targetPlayer)
-    local character = LocalPlayer.Character
-    if not character then return nil end
-    local parts = character:GetChildren()
-    local conn = RunService.Heartbeat:Connect(function()
-        local targetRoot = targetPlayer.Character and targetPlayer.Character:GetPivot()
-        if not targetRoot then return end
-        for _, part in pairs(parts) do
-            if part:IsA("BasePart") then
-                local offset = part.Position - character:GetPivot().Position
-                part.CFrame = targetRoot * CFrame.new(offset)
-            end
-        end
-    end)
-    return conn
-end
-
 local function startArresting(targetPlayer)
     if arresting then return end
     arresting = true
@@ -245,6 +271,25 @@ local function startArresting(targetPlayer)
             task.wait(0.1)
         end
     end)
+end
+
+-- ========== OVERRIDE WITH PISTOL ATTACK ==========
+local function shootTargetWithPistol(targetPlayer)
+    if not PistolGUID then
+        warn("❌ Pistol GUID not found, cannot shoot target.")
+        return
+    end
+    print("🔫 Using pistol to attack target:", targetPlayer.Name)
+    while targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") do
+        local humanoid = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid and humanoid.Health > 0 then
+            MainRemote:FireServer(PistolGUID, targetPlayer.Name)
+            task.wait(0.1)
+        else
+            break
+        end
+    end
+    print("🎯 Target neutralized with pistol.")
 end
 
 -- ========== SERVER HOP FUNCTION ==========
@@ -307,9 +352,24 @@ task.spawn(function()
             continue
         end
         task.wait(TELEPORT_DURATION)
-        local jointTeleportConn = setupJointTeleport(currentTarget)
+        local jointTeleportConn = RunService.Heartbeat:Connect(function()
+            if currentTarget and currentTarget.Character then
+                local targetRoot = currentTarget.Character:GetPivot()
+                if targetRoot then
+                    local parts = LocalPlayer.Character:GetChildren()
+                    for _, part in pairs(parts) do
+                        if part:IsA("BasePart") then
+                            local offset = part.Position - LocalPlayer.Character:GetPivot().Position
+                            part.CFrame = targetRoot * CFrame.new(offset)
+                        end
+                    end
+                end
+            end
+        end)
         local vehicleDamageLoop = RunService.Heartbeat:Connect(function()
-            damageVehiclesOwnedBy(currentTarget)
+            if currentTarget then
+                damageVehiclesOwnedBy(currentTarget)
+            end
         end)
         while true do
             task.wait(0.1)
@@ -328,9 +388,17 @@ task.spawn(function()
                 break
             end
             if myRoot and targetRoot and hasReachedTarget and currentTarget:GetAttribute("HasEscaped") == true and (tick() - lastReachCheck) > 6 then
-                print("⚠️ Target still not arrested after 6 seconds, restarting process.")
-                arresting = false
-                break
+                print("⚠️ Target still not arrested after 6 seconds, incrementing arrest attempt.")
+                arrestAttempts += 1
+                if arrestAttempts >= 3 then
+                    print("⚠️ Max arrest attempts reached. Switching to pistol attack.")
+                    shootTargetWithPistol(currentTarget)
+                    arrestAttempts = 0
+                else
+                    print("⚠️ Restarting process.")
+                    arresting = false
+                    break
+                end
             end
             if myRoot and targetRoot then
                 local dist = (myRoot.Position - (targetRoot.Position + Vector3.new(0, 3, 0))).Magnitude
