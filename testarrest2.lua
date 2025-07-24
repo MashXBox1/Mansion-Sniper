@@ -523,6 +523,7 @@ local function serverHop()
         sendChatMessage("Better than p x s t a and B l i t z fr")
         sendChatMessage("Get noobed kid")
         sendChatMessage("Just arrested everyone. Try to stop me LOL")
+        task.wait(3)
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
     end)
 
