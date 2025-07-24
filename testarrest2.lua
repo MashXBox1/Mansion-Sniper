@@ -1,55 +1,50 @@
--- Wait until the game is fully loaded
 repeat task.wait() until game:IsLoaded()
 print("✅ Game is fully loaded!")
-
--- ========== SERVER CHECK - FIRST THING TO RUN ==========
-local lastServerJobId = nil
-local TeleportService = game:GetService("TeleportService")
-
--- Check if this is the same server as last time
-if game.JobId == lastServerJobId then
-    print("⚠️ Already on same server, hopping to new server...")
-    task.wait(5) -- 5 second delay before hopping
-    
-    -- Queue the script to run after teleport
-    queue_on_teleport([[
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testarrest2.lua"))()
-    ]])
-    
-    -- Let Roblox automatically select a server
-    local success, err = pcall(function()
-        TeleportService:Teleport(game.PlaceId)
-    end)
-    
-    if not success then
-        warn("❌ Teleport failed:", err)
-    end
-    return -- Stop execution as we're hopping servers
-else
-    lastServerJobId = game.JobId
-    print("🔄 New server detected, running script...")
-end
-
--- ========== MAIN SCRIPT ==========
 task.wait(6)
+-- Wait until the game is fully loaded
+
 
 -- Services
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+
+-- Function to teleport to player model center
+local function teleportToPlayerModel(targetPlayer)
+    if not targetPlayer or targetPlayer == LocalPlayer then return end
+
+    local character = targetPlayer.Character
+    if character and character:IsDescendantOf(workspace) then
+        local modelCFrame, _ = character:GetBoundingBox()
+        local position = modelCFrame.Position + Vector3.new(0, 5, 0) -- Slightly above
+
+        local myChar = LocalPlayer.Character
+        local hrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.CFrame = CFrame.new(position)
+        end
+    end
+end
+
+-- Loop through all players once
+-- Optional wait before starting
+
+
+
+-- Services
+local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
-local Camera = game:GetService("Workspace").CurrentCamera
+local TeleportService = game:GetService("TeleportService")
 
--- Global variables
+local LocalPlayer = Players.LocalPlayer
+
+-- ========== BOUNTY CHECKING SYSTEM ==========
 local targetString = "bsfz260o"
 local highBountyPlayers = {}
-local MainRemote = nil
-local PoliceGUID, EjectGUID, DamageGUID, ArrestGUID
 
--- ========== UTILITY FUNCTIONS ==========
 local function containsTarget(value)
     if typeof(value) == "string" and string.find(value, targetString) then
         return true
@@ -69,13 +64,13 @@ local function checkBounties(tbl)
         local bountyNum = tonumber(bounty)
         if bountyNum and bountyNum >= 500 then
             highBountyPlayers[playerName] = bountyNum
+           
         else
             highBountyPlayers[playerName] = nil
         end
     end
 end
 
--- ========== REMOTE EVENT SETUP ==========
 local function onEvent(remote)
     remote.OnClientEvent:Connect(function(...)
         local args = {...}
@@ -130,9 +125,11 @@ local function getLoadedCriminals()
 end
 
 -- ========== FIND MAIN REMOTE ==========
+local MainRemote = nil
 for _, obj in pairs(ReplicatedStorage:GetChildren()) do
     if obj:IsA("RemoteEvent") and obj.Name:find("-") then
         MainRemote = obj
+        
         break
     end
 end
@@ -141,19 +138,25 @@ if not MainRemote then
 end
 
 -- ========== FIND GUIDS ==========
+local PoliceGUID, EjectGUID, DamageGUID, ArrestGUID
+
 for _, t in pairs(getgc(true)) do
     if typeof(t) == "table" and not getmetatable(t) then
         if t["mto4108g"] and t["mto4108g"]:sub(1,1) == "!" then
             PoliceGUID = t["mto4108g"]
+            
         end
         if t["bi6lm6ja"] and t["bi6lm6ja"]:sub(1, 1) == "!" then
             EjectGUID = t["bi6lm6ja"]
+            
         end
         if t["vum9h1ez"] and t["vum9h1ez"]:sub(1, 1) == "!" then
             DamageGUID = t["vum9h1ez"]
+            
         end
         if t["xuv9rqpj"] and t["xuv9rqpj"]:sub(1, 1) == "!" then
             ArrestGUID = t["xuv9rqpj"]
+            
         end
     end
 end
@@ -163,25 +166,11 @@ if not PoliceGUID then error("❌ PoliceGUID not found. Hash might've changed.")
 if not EjectGUID then error("❌ EjectGUID not found. Hash might've changed.") end
 if not DamageGUID then error("❌ DamageGUID not found. Hash might've changed.") end
 
--- ========== MODIFIED: CAMERA SPECTATE FUNCTION ==========
-local function teleportToPlayerModel(targetPlayer)
-    if not targetPlayer or targetPlayer == LocalPlayer then return end
-
-    local character = targetPlayer.Character
-    if character and character:IsDescendantOf(workspace) then
-        local modelCFrame, _ = character:GetBoundingBox()
-        local camPos = modelCFrame.Position + Vector3.new(0, 5, 10)
-        Camera.CameraType = Enum.CameraType.Scriptable
-        Camera.CFrame = CFrame.new(camPos, modelCFrame.Position)
-        return true
-    else
-        warn("⚠️ Model not found for player: " .. targetPlayer.Name)
-        return false
-    end
+-- ========== POLICE TEAM SETUP ==========
+if PoliceGUID then
+    MainRemote:FireServer(PoliceGUID, "Police")
 end
-
--- Initial spectate pass
-for i = 1, 3 do
+for i = 1, 2 do
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             teleportToPlayerModel(player)
@@ -189,11 +178,9 @@ for i = 1, 3 do
         end
     end
 end
+task.wait(6)
+-- ========== CHARACTER SETUP ==========
 
--- ========== POLICE TEAM SETUP ==========
-if PoliceGUID then
-    MainRemote:FireServer(PoliceGUID, "Police")
-end
 
 -- ========== VEHICLE DAMAGE SYSTEM ==========
 local function damageVehiclesOwnedBy(targetPlayer)
@@ -262,6 +249,7 @@ local function getValidCriminalTarget()
     for _, player in ipairs(criminals) do
         local root = player.Character
         if root then
+            -- Use PrimaryPart or fallback to Pivot or HumanoidRootPart for position
             local posPart = root.PrimaryPart or root:FindFirstChild("HumanoidRootPart") or root:GetPivot()
             if posPart then
                 local position = (typeof(posPart) == "CFrame") and posPart.Position or posPart.Position
@@ -337,11 +325,13 @@ local function teleportToCriminal()
     local root = targetPlayer.Character
     if not root then return nil end
 
+    -- Use PrimaryPart or fallback to Pivot or HumanoidRootPart for teleport destination
     local posPart = root.PrimaryPart or root:FindFirstChild("HumanoidRootPart")
     local baseCFrame
     if posPart then
         baseCFrame = posPart.CFrame
     else
+        -- Fallback to model pivot CFrame if no PrimaryPart/HumanoidRootPart
         local success, pivot = pcall(function()
             return root:GetPivot()
         end)
@@ -373,6 +363,7 @@ local function equipHandcuffs()
         local remote = handcuffs and handcuffs:FindFirstChild("InventoryEquipRemote")
         if remote and remote:IsA("RemoteEvent") then
             remote:FireServer(true)
+            
             handcuffsEquipped = true
             return true
         else
@@ -412,26 +403,65 @@ local function startArresting(targetPlayer)
     end)
 end
 
--- ========== SIMPLIFIED SERVER HOP FUNCTION ==========
+-- ========== SERVER HOP FUNCTION ==========
 local function serverHop()
-    warn("🔄 No targets found or same server detected, attempting to server hop...")
-    task.wait(5) -- 5 second delay before hopping
     
-    -- Queue the script to run after teleport
-    queue_on_teleport([[
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testarrest2.lua"))()
-    ]])
-    
-    -- Let Roblox automatically select a server
-    local success, err = pcall(function()
-        TeleportService:Teleport(game.PlaceId)
+
+    local success, result = pcall(function()
+        local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)
+        return HttpService:JSONDecode(game:HttpGet(url))
     end)
-    
-    if not success then
-        warn("❌ Teleport failed:", err)
-        task.wait(5)
+
+    if not success or not result or not result.data then
+        warn("❌ Failed to get server list for hopping.")
+        task.wait(12)
+        serverHop()
+    end
+
+    local currentJobId = game.JobId
+    local candidates = {}
+
+    for _, server in ipairs(result.data) do
+        if server.id ~= currentJobId and server.playing < server.maxPlayers then
+            table.insert(candidates, server.id)
+        end
+    end
+
+    if #candidates == 0 then
+        warn("⚠️ No available servers to hop to. Retrying in 10 seconds...")
+        task.wait(10)
         return serverHop()
     end
+
+    local chosenServer = candidates[math.random(1, #candidates)]
+    
+
+    local teleportFailed = false
+    local teleportCheck = task.delay(10, function()
+        teleportFailed = true
+        warn("⚠️ Teleport timed out (server may be full). Trying another...")
+    end)
+
+    local success, err = pcall(function()
+        queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testarrest2.lua"))()]])
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
+    end)
+
+    if not success then
+        warn("❌ Teleport failed:", err)
+        task.cancel(teleportCheck)
+        task.wait(1)
+        table.remove(candidates, table.find(candidates, chosenServer))
+        return serverHop()
+    end
+
+    if teleportFailed then
+        task.wait(1)
+        table.remove(candidates, table.find(candidates, chosenServer))
+        return serverHop()
+    end
+
+    task.cancel(teleportCheck)
 end
 
 -- ========== MAIN LOOP ==========
@@ -440,7 +470,7 @@ task.spawn(function()
         currentTarget = teleportToCriminal()
         if not currentTarget then
             serverHop()
-            task.wait(5)
+            task.wait(10)
             continue
         end
 
@@ -467,11 +497,13 @@ task.spawn(function()
             local humanoid = myChar and myChar:FindFirstChildOfClass("Humanoid")
 
             if humanoid and humanoid.Health < 50 then
+                
                 arresting = false
                 break
             end
 
             if myRoot and targetRoot and hasReachedTarget and currentTarget:GetAttribute("HasEscaped") == true and (tick() - lastReachCheck) > 6 then
+                
                 arresting = false
                 break
             end
