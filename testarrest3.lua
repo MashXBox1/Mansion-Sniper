@@ -20,30 +20,18 @@ local function teleportToPlayerModel(_)
             local x = math.random(-2092, 3128)
             local z = math.random(-5780, 2442)
             newPosition = Vector3.new(x, 300, z)
-        until not lastPosition or (newPosition - lastPosition).Magnitude >= 300
+        until not lastPosition or (newPosition - lastPosition).Magnitude >= 500
         lastPosition = newPosition
         return newPosition
     end
 
-    local LocalPlayer = game:GetService("Players").LocalPlayer
-    local myChar = LocalPlayer.Character
-    local hrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        local humanoid = myChar:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.PlatformStand = true
-        end
-
-        local randomPos = getNewRandomPosition()
-        hrp.CFrame = CFrame.new(randomPos)
-
-        task.delay(0.5, function()
-            if humanoid then
-                humanoid.PlatformStand = true
-            end
-        end)
+    local camera = workspace.CurrentCamera
+    if camera then
+        local newPos = getNewRandomPosition()
+        camera.CFrame = CFrame.new(newPos, newPos + Vector3.new(0, 0, -1)) -- look forward
     end
 end
+
 
 
 -- Loop through all players once
