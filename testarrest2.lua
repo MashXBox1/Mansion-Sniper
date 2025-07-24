@@ -5,6 +5,60 @@ print("✅ Game is fully loaded!")
 task.wait(6)
 -- Wait until the game is fully loaded
 
+-- RBLX CHAT SYSTEM FOR SPAM --
+local TextChatService = game:GetService("TextChatService")
+local Players = game:GetService("Players")
+
+-- Wait for the local player
+local player = Players.LocalPlayer
+while not player do
+    task.wait()
+    player = Players.LocalPlayer
+end
+
+-- Function to send a chat message
+local function sendChatMessage(message)
+    -- Check if TextChatService is available
+    if not TextChatService then
+        warn("TextChatService is not available")
+        return false
+    end
+    
+    -- Modern way to get the general chat channel
+    local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+    if not channel then
+        warn("RBXGeneral chat channel not found")
+        return false
+    end
+    
+    -- Send the message
+    local success, errorMsg = pcall(function()
+        channel:SendAsync(message)
+    end)
+    
+    if not success then
+        warn("Failed to send message:", errorMsg)
+        return false
+    end
+    
+    return true
+end
+
+
+
+
+-- Alternative method if the above doesn't work
+local function alternativeSendMessage(message)
+    local chatInput = TextChatService:FindFirstChild("TextChatInput")
+    if chatInput then
+        chatInput.Text = message
+        chatInput:CaptureFocus()
+        task.wait()
+        chatInput:ReleaseFocus()
+        return true
+    end
+    return false
+end
 
 -- Services
 local Players = game:GetService("Players")
@@ -465,6 +519,10 @@ local function serverHop()
 
     local success, err = pcall(function()
         queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testarrest2.lua"))()]])
+        sendChatMessage("Bro just got arrested by Skid Farm 😂")
+        sendChatMessage("Better than p x s t a and B l i t z fr")
+        sendChatMessage("Get noobed kid")
+        sendChatMessage("Just arrested everyone. Try to stop me LOL")
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
     end)
 
