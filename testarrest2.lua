@@ -545,7 +545,7 @@ local function serverHop()
         task.wait(0.5)
         sendChatMessage("Imagine being arrested by a SKID 💀. You bad 😂")
         task.wait(0.5)
-        sendChatMessage("Wanna whine? Message me on the gaming chat app: Mashxbox")
+        sendChatMessage("Wanna complain? Message me on the chat app. User's mashxbox")
         task.wait(0.5)
         sendChatMessage("Don't even have a server. Just wanna ruin the game 😁✌️.")
         
