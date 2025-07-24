@@ -13,7 +13,7 @@ local LocalPlayer = Players.LocalPlayer
 -- Function to teleport to player model center
 local lastPosition = nil
 
-local function teleportToPlayerModel()
+local function teleportToPlayerModel(_)
     local function getNewRandomPosition()
         local newPosition
         repeat
@@ -26,12 +26,19 @@ local function teleportToPlayerModel()
     end
 
     local camera = workspace.CurrentCamera
-    if camera then
-        camera.CameraType = Enum.CameraType.Scriptable -- Enable manual control
+    local LocalPlayer = game:GetService("Players").LocalPlayer
+    if camera and LocalPlayer and LocalPlayer.Character then
+        camera.CameraType = Enum.CameraType.Scriptable
 
         local newPos = getNewRandomPosition()
         local lookVector = Vector3.new(0, -0.3, -1) -- Slight downward look
         camera.CFrame = CFrame.new(newPos, newPos + lookVector)
+
+        -- Restore normal camera after 2 seconds
+        task.delay(2, function()
+            camera.CameraType = Enum.CameraType.Custom
+            camera.CameraSubject = LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid") or LocalPlayer.Character
+        end)
     end
 end
 
@@ -191,6 +198,8 @@ for i = 1, 2 do
         end
     end
 end
+
+
 task.wait(6)
 -- ========== CHARACTER SETUP ==========
 
