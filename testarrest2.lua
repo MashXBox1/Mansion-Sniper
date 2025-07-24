@@ -1,3 +1,5 @@
+-- AUTO ARREST SCRIPT --
+
 repeat task.wait() until game:IsLoaded()
 print("✅ Game is fully loaded!")
 task.wait(6)
