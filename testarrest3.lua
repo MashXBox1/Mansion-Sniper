@@ -27,10 +27,14 @@ local function teleportToPlayerModel(_)
 
     local camera = workspace.CurrentCamera
     if camera then
+        camera.CameraType = Enum.CameraType.Scriptable -- Enable manual control
+
         local newPos = getNewRandomPosition()
-        camera.CFrame = CFrame.new(newPos, newPos + Vector3.new(0, 0, -1)) -- look forward
+        local lookVector = Vector3.new(0, -0.3, -1) -- Slight downward look
+        camera.CFrame = CFrame.new(newPos, newPos + lookVector)
     end
 end
+
 
 
 
