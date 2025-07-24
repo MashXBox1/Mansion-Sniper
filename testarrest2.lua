@@ -1,6 +1,36 @@
 -- Wait until the game is fully loaded
 repeat task.wait() until game:IsLoaded()
 print("✅ Game is fully loaded!")
+
+-- ========== SERVER CHECK - FIRST THING TO RUN ==========
+local lastServerJobId = nil
+local TeleportService = game:GetService("TeleportService")
+
+-- Check if this is the same server as last time
+if game.JobId == lastServerJobId then
+    print("⚠️ Already on same server, hopping to new server...")
+    task.wait(5) -- 5 second delay before hopping
+    
+    -- Queue the script to run after teleport
+    queue_on_teleport([[
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testarrest2.lua"))()
+    ]])
+    
+    -- Let Roblox automatically select a server
+    local success, err = pcall(function()
+        TeleportService:Teleport(game.PlaceId)
+    end)
+    
+    if not success then
+        warn("❌ Teleport failed:", err)
+    end
+    return -- Stop execution as we're hopping servers
+else
+    lastServerJobId = game.JobId
+    print("🔄 New server detected, running script...")
+end
+
+-- ========== MAIN SCRIPT ==========
 task.wait(6)
 
 -- Services
@@ -11,11 +41,9 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
-local TeleportService = game:GetService("TeleportService")
 local Camera = game:GetService("Workspace").CurrentCamera
 
 -- Global variables
-local lastServerJobId = nil
 local targetString = "bsfz260o"
 local highBountyPlayers = {}
 local MainRemote = nil
@@ -384,32 +412,25 @@ local function startArresting(targetPlayer)
     end)
 end
 
--- ========== MODIFIED: SERVER HOP FUNCTION ==========
 -- ========== SIMPLIFIED SERVER HOP FUNCTION ==========
 local function serverHop()
-    -- Check if we're on the same server as last time
-    if game.JobId == lastServerJobId then
-        warn("⚠️ Already on same server, hopping immediately")
-        task.wait(5) -- 5 second delay before hopping
-        
-        -- Queue the script to run after teleport
-        queue_on_teleport([[
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testarrest2.lua"))()
-        ]])
-        
-        -- Let Roblox automatically select a server
-        local success, err = pcall(function()
-            TeleportService:Teleport(game.PlaceId)
-        end)
-        
-        if not success then
-            warn("❌ Teleport failed:", err)
-            task.wait(5)
-            return serverHop()
-        end
-    else
-        lastServerJobId = game.JobId
-        warn("🔄 New server detected, running script first")
+    warn("🔄 No targets found or same server detected, attempting to server hop...")
+    task.wait(5) -- 5 second delay before hopping
+    
+    -- Queue the script to run after teleport
+    queue_on_teleport([[
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testarrest2.lua"))()
+    ]])
+    
+    -- Let Roblox automatically select a server
+    local success, err = pcall(function()
+        TeleportService:Teleport(game.PlaceId)
+    end)
+    
+    if not success then
+        warn("❌ Teleport failed:", err)
+        task.wait(5)
+        return serverHop()
     end
 end
 
