@@ -25,22 +25,26 @@ local function teleportToPlayerModel(_)
         return newPosition
     end
 
-    local camera = workspace.CurrentCamera
     local LocalPlayer = game:GetService("Players").LocalPlayer
-    if camera and LocalPlayer and LocalPlayer.Character then
-        camera.CameraType = Enum.CameraType.Scriptable
+    local myChar = LocalPlayer.Character
+    local hrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local humanoid = myChar:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.PlatformStand = true
+        end
 
-        local newPos = getNewRandomPosition()
-        local lookVector = Vector3.new(0, -0.3, -1) -- Slight downward look
-        camera.CFrame = CFrame.new(newPos, newPos + lookVector)
+        local randomPos = getNewRandomPosition()
+        hrp.CFrame = CFrame.new(randomPos)
 
-        -- Restore normal camera after 2 seconds
-        task.delay(2, function()
-            camera.CameraType = Enum.CameraType.Custom
-            camera.CameraSubject = LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid") or LocalPlayer.Character
+        task.delay(0.5, function()
+            if humanoid then
+                humanoid.PlatformStand = true
+            end
         end)
     end
 end
+
 
 
 
