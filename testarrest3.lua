@@ -94,7 +94,13 @@ local function aimbot()
     end
 
     task.wait(0.5)
-    remote:FireServer(false)
+    local newremote = Players.LocalPlayer:FindFirstChild("Folder") and Players.LocalPlayer.Folder:FindFirstChild("Handcuffs")
+    if newremote then
+        newremote = PistolRemote:FindFirstChild("InventoryEquipRemote")
+        if newremote then
+            PistolRemote:FireServer(false)
+        end
+    end
     local PistolRemote = Players.LocalPlayer:FindFirstChild("Folder") and Players.LocalPlayer.Folder:FindFirstChild("Pistol")
     if PistolRemote then
         PistolRemote = PistolRemote:FindFirstChild("InventoryEquipRemote")
