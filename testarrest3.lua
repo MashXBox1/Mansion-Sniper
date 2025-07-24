@@ -290,11 +290,11 @@ if PoliceGUID then
     MainRemote:FireServer(PoliceGUID, "Police")
 end
 task.wait(2)
-for i = 1, 2 do
+for i = 1, 3 do
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and tostring(player.Team) == "Criminal" and player:GetAttribute("HasEscaped") == true then
             teleportToPlayerModel(player)
-            task.wait(0.1)
+            task.wait(0.2)
         end
     end
 end
