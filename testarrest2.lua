@@ -11,36 +11,40 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 -- Function to teleport to player model center
-local function teleportToPlayerModel(targetPlayer)
-    if not targetPlayer or targetPlayer == LocalPlayer then return end
-    local character = targetPlayer.Character
-    if character and character:IsDescendantOf(workspace) then
-        -- Calculate the bounding box of the target player's model
-        local modelCFrame, _ = character:GetBoundingBox()
-        local position = modelCFrame.Position + Vector3.new(0, 5, 0) -- Slightly above
+local lastPosition = nil
 
-        -- Get the local player's character and root part
-        local myChar = LocalPlayer.Character
-        local hrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            -- Freeze the character by enabling PlatformStand
-            local humanoid = myChar:FindFirstChildOfClass("Humanoid")
+local function teleportToPlayerModel(_)
+    local function getNewRandomPosition()
+        local newPosition
+        repeat
+            local x = math.random(-2092, 3128)
+            local z = math.random(-5780, 2442)
+            newPosition = Vector3.new(x, 300, z)
+        until not lastPosition or (newPosition - lastPosition).Magnitude >= 700
+        lastPosition = newPosition
+        return newPosition
+    end
+
+    local LocalPlayer = game:GetService("Players").LocalPlayer
+    local myChar = LocalPlayer.Character
+    local hrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local humanoid = myChar:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.PlatformStand = true
+        end
+
+        local randomPos = getNewRandomPosition()
+        hrp.CFrame = CFrame.new(randomPos)
+
+        task.delay(0.5, function()
             if humanoid then
                 humanoid.PlatformStand = true
             end
-
-            -- Teleport the local player to the calculated position
-            hrp.CFrame = CFrame.new(position)
-
-            -- Unfreeze the character after a short delay
-            task.delay(0.5, function()
-                if humanoid then
-                    humanoid.PlatformStand = false
-                end
-            end)
-        end
+        end)
     end
 end
+
 
 -- Loop through all players once
 -- Optional wait before starting
@@ -187,7 +191,7 @@ if not DamageGUID then error("❌ DamageGUID not found. Hash might've changed.")
 if PoliceGUID then
     MainRemote:FireServer(PoliceGUID, "Police")
 end
-for i = 1, 2 do
+for i = 1, 4 do
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and tostring(player.Team) == "Criminal" and player:GetAttribute("HasEscaped") == true then
             teleportToPlayerModel(player)
