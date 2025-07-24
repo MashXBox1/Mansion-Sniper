@@ -76,7 +76,7 @@ local function getClosestCriminal(originPosition)
 
     for _, player in pairs(Players:GetPlayers()) do
         if player == Players.LocalPlayer then continue end
-        if player.Team and player.Team.Name == "Police" and player.Character then
+        if player.Team and player.Team.Name == "Criminal" and player.Character then
             local root = player.Character:FindFirstChild("HumanoidRootPart")
             if root then
                 local dist = (root.Position - originPosition).Magnitude
