@@ -1,4 +1,24 @@
 -- AUTO ARREST SCRIPT --
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+if player then
+    local leaderstats = player:WaitForChild("leaderstats")
+    local money = leaderstats:WaitForChild("Money")
+
+    -- Function to check and kick if money > 3000
+    local function checkMoney()
+        if money.Value >= 700000 then
+            player:Kick("Failsafe: Money exceeded 700000 (Detected: " .. money.Value .. "). Stopped due to anti-cheat.")
+        end
+    end
+
+    -- Check immediately when the script loads
+    checkMoney()
+
+    -- Check every time Money changes
+    money:GetPropertyChangedSignal("Value"):Connect(checkMoney)
+end
 
 repeat task.wait() until game:IsLoaded()
 print("✅ Game is fully loaded!")
