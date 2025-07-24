@@ -527,6 +527,8 @@ local function serverHop()
         task.wait(0.5)
         sendChatMessage("Just arrested everyone. Try to stop me LOL")
         task.wait(0.5)
+        sendChatMessage("Don't even have a server. Just wanna ruin the game 😁✌️.")
+        
         
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
     end)
