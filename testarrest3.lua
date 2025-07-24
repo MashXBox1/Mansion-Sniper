@@ -289,6 +289,7 @@ if not DamageGUID then error("❌ DamageGUID not found. Hash might've changed.")
 if PoliceGUID then
     MainRemote:FireServer(PoliceGUID, "Police")
 end
+task.wait(2)
 for i = 1, 2 do
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and tostring(player.Team) == "Criminal" and player:GetAttribute("HasEscaped") == true then
