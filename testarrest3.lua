@@ -1,9 +1,55 @@
-
--- AUTO ARREST & AIMBOT COMBINED SCRIPT --
+-- AUTO ARREST SCRIPT --
 
 repeat task.wait() until game:IsLoaded()
 print("✅ Game is fully loaded!")
 task.wait(6)
+-- Wait until the game is fully loaded
+
+
+-- Services
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Function to teleport to player model center
+local lastPosition = nil
+
+local function teleportToPlayerModel(_)
+    -- Generate a new random position at least 500 studs away from lastPosition
+    local function getNewRandomPosition()
+        local newPosition
+        repeat
+            local x = math.random(-5000, 5000)
+            local z = math.random(-5000, 5000)
+            newPosition = Vector3.new(x, 100, z) -- Y is high to avoid terrain clipping
+        until not lastPosition or (newPosition - lastPosition).Magnitude >= 500
+        lastPosition = newPosition
+        return newPosition
+    end
+
+    local myChar = game:GetService("Players").LocalPlayer.Character
+    local hrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local humanoid = myChar:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.PlatformStand = true
+        end
+
+        local randomPos = getNewRandomPosition()
+        hrp.CFrame = CFrame.new(randomPos)
+
+        -- Keep PlatformStand true
+        task.delay(0.5, function()
+            if humanoid then
+                humanoid.PlatformStand = true
+            end
+        end)
+    end
+end
+
+-- Loop through all players once
+-- Optional wait before starting
+
+
 
 -- Services
 local Players = game:GetService("Players")
@@ -13,164 +59,8 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
-local UserInputService = game:GetService("UserInputService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local LocalPlayer = Players.LocalPlayer
--- TELEPORT INITIAL --
-local function teleportToPlayerModel(targetPlayer)
-    if not targetPlayer or targetPlayer == LocalPlayer then return end
-    local character = targetPlayer.Character
-    if character and character:IsDescendantOf(workspace) then
-        -- Calculate the bounding box of the target player's model
-        local modelCFrame, _ = character:GetBoundingBox()
-        local position = modelCFrame.Position + Vector3.new(0, 5, 0) -- Slightly above
-
-        -- Get the local player's character and root part
-        local myChar = LocalPlayer.Character
-        local hrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            -- Freeze the character by enabling PlatformStand
-            local humanoid = myChar:FindFirstChildOfClass("Humanoid")
-            if humanoid then
-                humanoid.PlatformStand = true
-            end
-
-            -- Teleport the local player to the calculated position
-            hrp.CFrame = CFrame.new(position)
-
-            -- Unfreeze the character after a short delay
-            task.delay(0.5, function()
-                if humanoid then
-                    humanoid.PlatformStand = false
-                end
-            end)
-        end
-    end
-end
-
--- ========== FAILSAFE COUNTER ==========
-local failsafeCount = 0
-local MAX_FAILSAFE_ATTEMPTS = 3
-local usingAimbot = false
-
--- ========== AIMBOT FUNCTION ==========
-local function aimbot()
-    -- FULL AIMBOT SCRIPT --
-    print("🔥 Aimbot activated!")
-    
-    -- Find GUIDs
-    local PistolGUID, BuyPistolGUID
-    
-    for _, t in pairs(getgc(true)) do
-        if typeof(t) == "table" and not getmetatable(t) then
-            if t["l5cuht8e"] and t["l5cuht8e"]:sub(1, 1) == "!" then
-                PistolGUID = t["l5cuht8e"]
-                print("✅ Pistol GUID (l5cuht8e):", PistolGUID)
-            end
-            
-            if t["izwo0hcg"] and t["izwo0hcg"]:sub(1, 1) == "!" then
-                BuyPistolGUID = t["izwo0hcg"]
-                print("✅ Buy Pistol GUID (izwo0hcg):", BuyPistolGUID)
-            end
-        end
-    end
-
-    -- Find main remote
-    local foundRemote
-    for _, obj in pairs(ReplicatedStorage:GetChildren()) do
-        if obj:IsA("RemoteEvent") and obj.Name:find("-") then
-            foundRemote = obj
-            break
-        end
-    end
-
-    -- Buy and equip pistol
-    if BuyPistolGUID and foundRemote then
-        foundRemote:FireServer(BuyPistolGUID)
-    end
-    if PistolGUID and foundRemote then
-        foundRemote:FireServer(PistolGUID, "Pistol")
-    end
-
-    task.wait(0.5)
-    local newremote = Players.LocalPlayer:FindFirstChild("Folder") and Players.LocalPlayer.Folder:FindFirstChild("Handcuffs")
-    if newremote then
-        newremote = PistolRemote:FindFirstChild("InventoryEquipRemote")
-        if newremote then
-            PistolRemote:FireServer(false)
-        end
-    end
-    local PistolRemote = Players.LocalPlayer:FindFirstChild("Folder") and Players.LocalPlayer.Folder:FindFirstChild("Pistol")
-    if PistolRemote then
-        PistolRemote = PistolRemote:FindFirstChild("InventoryEquipRemote")
-        if PistolRemote then
-            PistolRemote:FireServer(true)
-        end
-    end
-
-    -- Hook bullet emitter
-    local BulletEmitterModule = require(ReplicatedStorage.Game.ItemSystem.BulletEmitter)
-    local OriginalEmit = BulletEmitterModule.Emit
-    
-    BulletEmitterModule.Emit = function(self, origin, direction, speed)
-        if not currentTarget or not currentTarget.Character then
-            return OriginalEmit(self, origin, direction, speed)
-        end
-        
-        local targetRootPart = currentTarget.Character:FindFirstChild("HumanoidRootPart")
-        if not targetRootPart then
-            return OriginalEmit(self, origin, direction, speed)
-        end
-        
-        local newDirection = (targetRootPart.Position - origin).Unit
-        return OriginalEmit(self, origin, newDirection, speed)
-    end
-
-    -- Hook collision function
-    local OriginalCustomCollidableFunc = BulletEmitterModule._buildCustomCollidableFunc
-    BulletEmitterModule._buildCustomCollidableFunc = function()
-        return function(part)
-            for _, player in pairs(Players:GetPlayers()) do
-                if player.Character and part:IsDescendantOf(player.Character) then
-                    return true
-                end
-            end
-            return false
-        end
-    end
-
-    -- Modify gun controls
-    local GunModule = require(ReplicatedStorage.Game.Item.Gun)
-    local originalInputBegan = GunModule.InputBegan
-    
-    function GunModule.InputBegan(self, input, ...)
-        if input.KeyCode == Enum.KeyCode.Y then
-            originalInputBegan(self, {
-                UserInputType = Enum.UserInputType.MouseButton1,
-                KeyCode = Enum.KeyCode.Y
-            }, ...)
-        else
-            originalInputBegan(self, input, ...)
-        end
-    end
-
-    -- Auto-fire loop
-    spawn(function()
-        while usingAimbot and currentTarget and currentTarget.Character and currentTarget.Character:FindFirstChild("Humanoid") do
-            if currentTarget.Character.Humanoid.Health <= 0 then
-                break
-            end
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Y, false, nil)
-            task.wait()
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Y, false, nil)
-            task.wait(0.5)
-        end
-        usingAimbot = false
-        failsafeCount = 0
-        print("🔫 Aimbot deactivated (target eliminated)")
-    end)
-end
 
 -- ========== BOUNTY CHECKING SYSTEM ==========
 local targetString = "bsfz260o"
@@ -195,6 +85,7 @@ local function checkBounties(tbl)
         local bountyNum = tonumber(bounty)
         if bountyNum and bountyNum >= 500 then
             highBountyPlayers[playerName] = bountyNum
+           
         else
             highBountyPlayers[playerName] = nil
         end
@@ -259,6 +150,7 @@ local MainRemote = nil
 for _, obj in pairs(ReplicatedStorage:GetChildren()) do
     if obj:IsA("RemoteEvent") and obj.Name:find("-") then
         MainRemote = obj
+        
         break
     end
 end
@@ -273,15 +165,19 @@ for _, t in pairs(getgc(true)) do
     if typeof(t) == "table" and not getmetatable(t) then
         if t["mto4108g"] and t["mto4108g"]:sub(1,1) == "!" then
             PoliceGUID = t["mto4108g"]
+            
         end
         if t["bi6lm6ja"] and t["bi6lm6ja"]:sub(1, 1) == "!" then
             EjectGUID = t["bi6lm6ja"]
+            
         end
         if t["vum9h1ez"] and t["vum9h1ez"]:sub(1, 1) == "!" then
             DamageGUID = t["vum9h1ez"]
+            
         end
         if t["xuv9rqpj"] and t["xuv9rqpj"]:sub(1, 1) == "!" then
             ArrestGUID = t["xuv9rqpj"]
+            
         end
     end
 end
@@ -295,16 +191,17 @@ if not DamageGUID then error("❌ DamageGUID not found. Hash might've changed.")
 if PoliceGUID then
     MainRemote:FireServer(PoliceGUID, "Police")
 end
-task.wait(2)
-for i = 1, 3 do
+for i = 1, 2 do
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and tostring(player.Team) == "Criminal" and player:GetAttribute("HasEscaped") == true then
             teleportToPlayerModel(player)
-            task.wait(0.2)
+            task.wait(0.1)
         end
     end
 end
 task.wait(6)
+-- ========== CHARACTER SETUP ==========
+
 
 -- ========== VEHICLE DAMAGE SYSTEM ==========
 local function damageVehiclesOwnedBy(targetPlayer)
@@ -373,6 +270,7 @@ local function getValidCriminalTarget()
     for _, player in ipairs(criminals) do
         local root = player.Character
         if root then
+            -- Use PrimaryPart or fallback to Pivot or HumanoidRootPart for position
             local posPart = root.PrimaryPart or root:FindFirstChild("HumanoidRootPart") or root:GetPivot()
             if posPart then
                 local position = (typeof(posPart) == "CFrame") and posPart.Position or posPart.Position
@@ -448,11 +346,13 @@ local function teleportToCriminal()
     local root = targetPlayer.Character
     if not root then return nil end
 
+    -- Use PrimaryPart or fallback to Pivot or HumanoidRootPart for teleport destination
     local posPart = root.PrimaryPart or root:FindFirstChild("HumanoidRootPart")
     local baseCFrame
     if posPart then
         baseCFrame = posPart.CFrame
     else
+        -- Fallback to model pivot CFrame if no PrimaryPart/HumanoidRootPart
         local success, pivot = pcall(function()
             return root:GetPivot()
         end)
@@ -484,6 +384,7 @@ local function equipHandcuffs()
         local remote = handcuffs and handcuffs:FindFirstChild("InventoryEquipRemote")
         if remote and remote:IsA("RemoteEvent") then
             remote:FireServer(true)
+            
             handcuffsEquipped = true
             return true
         else
@@ -525,6 +426,8 @@ end
 
 -- ========== SERVER HOP FUNCTION ==========
 local function serverHop()
+    
+
     local success, result = pcall(function()
         local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)
         return HttpService:JSONDecode(game:HttpGet(url))
@@ -553,6 +456,7 @@ local function serverHop()
 
     local chosenServer = candidates[math.random(1, #candidates)]
     
+
     local teleportFailed = false
     local teleportCheck = task.delay(10, function()
         teleportFailed = true
@@ -593,6 +497,7 @@ task.spawn(function()
 
         task.wait(TELEPORT_DURATION)
         local jointTeleportConn = setupJointTeleport(currentTarget)
+
         local vehicleDamageLoop = RunService.Heartbeat:Connect(function()
             damageVehiclesOwnedBy(currentTarget)
         end)
@@ -600,51 +505,27 @@ task.spawn(function()
         while true do
             task.wait(0.1)
 
-            -- Check if target is still valid
-            if not currentTarget or not currentTarget.Character or not currentTarget.Character:FindFirstChild("Humanoid") then
-                failsafeCount = failsafeCount + 1
+            if not currentTarget or not currentTarget.Character
+                or tostring(currentTarget.Team) ~= "Criminal"
+                or currentTarget:GetAttribute("HasEscaped") ~= true
+                or not highBountyPlayers[currentTarget.Name] then
                 break
             end
 
-            -- Check if target is dead
-            if currentTarget.Character.Humanoid.Health <= 0 then
-                failsafeCount = 0
-                break
-            end
-
-            -- Check failsafe condition
-            if failsafeCount >= MAX_FAILSAFE_ATTEMPTS and not usingAimbot then
-                print("⚠️ Failed to arrest after "..MAX_FAILSAFE_ATTEMPTS.." attempts. Switching to Aimbot...")
-                usingAimbot = true
-                aimbot()
-            end
-
-            -- If using aimbot, just wait until target is dead
-            if usingAimbot then
-                if currentTarget.Character.Humanoid.Health <= 0 then
-                    usingAimbot = false
-                    failsafeCount = 0
-                    break
-                end
-                task.wait(1)
-                continue
-            end
-
-            -- Normal arrest logic
             local myChar = LocalPlayer.Character
             local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
             local targetRoot = currentTarget.Character:FindFirstChild("HumanoidRootPart")
             local humanoid = myChar and myChar:FindFirstChildOfClass("Humanoid")
 
             if humanoid and humanoid.Health < 50 then
-                arresting = false
                 
+                arresting = false
                 break
             end
 
             if myRoot and targetRoot and hasReachedTarget and currentTarget:GetAttribute("HasEscaped") == true and (tick() - lastReachCheck) > 6 then
+                
                 arresting = false
-                failsafeCount = failsafeCount + 1
                 break
             end
 
@@ -662,7 +543,6 @@ task.spawn(function()
                 end
 
                 if dist > 500 or (not hasReachedTarget and tick() - lastReachCheck > REACH_TIMEOUT) then
-                    failsafeCount = failsafeCount + 1
                     break
                 end
             end
