@@ -19,7 +19,7 @@ local function teleportToPlayerModel(_)
         repeat
             local x = math.random(-2092, 3128)
             local z = math.random(-5780, 2442)
-            newPosition = Vector3.new(x, 300, z)
+            newPosition = Vector3.new(x, 50, z)
         until not lastPosition or (newPosition - lastPosition).Magnitude >= 700
         lastPosition = newPosition
         return newPosition
