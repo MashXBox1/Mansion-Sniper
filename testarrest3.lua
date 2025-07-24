@@ -14,19 +14,19 @@ local LocalPlayer = Players.LocalPlayer
 local lastPosition = nil
 
 local function teleportToPlayerModel(_)
-    -- Generate a new random position at least 500 studs away from lastPosition
     local function getNewRandomPosition()
         local newPosition
         repeat
-            local x = math.random(-5000, 5000)
-            local z = math.random(-5000, 5000)
-            newPosition = Vector3.new(x, 100, z) -- Y is high to avoid terrain clipping
+            local x = math.random(-2092, 3128)
+            local z = math.random(-5780, 2442)
+            newPosition = Vector3.new(x, 300, z)
         until not lastPosition or (newPosition - lastPosition).Magnitude >= 500
         lastPosition = newPosition
         return newPosition
     end
 
-    local myChar = game:GetService("Players").LocalPlayer.Character
+    local LocalPlayer = game:GetService("Players").LocalPlayer
+    local myChar = LocalPlayer.Character
     local hrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if hrp then
         local humanoid = myChar:FindFirstChildOfClass("Humanoid")
@@ -37,7 +37,6 @@ local function teleportToPlayerModel(_)
         local randomPos = getNewRandomPosition()
         hrp.CFrame = CFrame.new(randomPos)
 
-        -- Keep PlatformStand true
         task.delay(0.5, function()
             if humanoid then
                 humanoid.PlatformStand = true
@@ -45,6 +44,7 @@ local function teleportToPlayerModel(_)
         end)
     end
 end
+
 
 -- Loop through all players once
 -- Optional wait before starting
