@@ -385,73 +385,32 @@ local function startArresting(targetPlayer)
 end
 
 -- ========== MODIFIED: SERVER HOP FUNCTION ==========
+-- ========== SIMPLIFIED SERVER HOP FUNCTION ==========
 local function serverHop()
     -- Check if we're on the same server as last time
     if game.JobId == lastServerJobId then
         warn("⚠️ Already on same server, hopping immediately")
         task.wait(5) -- 5 second delay before hopping
+        
+        -- Queue the script to run after teleport
+        queue_on_teleport([[
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testarrest2.lua"))()
+        ]])
+        
+        -- Let Roblox automatically select a server
+        local success, err = pcall(function()
+            TeleportService:Teleport(game.PlaceId)
+        end)
+        
+        if not success then
+            warn("❌ Teleport failed:", err)
+            task.wait(5)
+            return serverHop()
+        end
     else
         lastServerJobId = game.JobId
         warn("🔄 New server detected, running script first")
-        return -- Don't hop if it's a new server
     end
-
-    local success, result = pcall(function()
-        local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)
-        return HttpService:JSONDecode(game:HttpGet(url))
-    end)
-
-    if not success or not result or not result.data then
-        warn("❌ Failed to get server list for hopping.")
-        task.wait(5)
-        return serverHop()
-    end
-
-    local currentJobId = game.JobId
-    local candidates = {}
-
-    for _, server in ipairs(result.data) do
-        if server.id ~= currentJobId and server.playing < server.maxPlayers then
-            table.insert(candidates, server.id)
-        end
-    end
-
-    if #candidates == 0 then
-        warn("⚠️ No available servers to hop to. Retrying in 5 seconds...")
-        task.wait(5)
-        return serverHop()
-    end
-
-    local chosenServer = candidates[math.random(1, #candidates)]
-    
-    warn("🚀 Attempting to teleport to server: " .. chosenServer)
-    
-    local teleportFailed = false
-    local teleportCheck = task.delay(10, function()
-        teleportFailed = true
-        warn("⚠️ Teleport timed out (server may be full). Trying another...")
-    end)
-
-    local success, err = pcall(function()
-        queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testarrest2.lua"))()]])
-        TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
-    end)
-
-    if not success then
-        warn("❌ Teleport failed:", err)
-        task.cancel(teleportCheck)
-        task.wait(5)
-        table.remove(candidates, table.find(candidates, chosenServer))
-        return serverHop()
-    end
-
-    if teleportFailed then
-        task.wait(5)
-        table.remove(candidates, table.find(candidates, chosenServer))
-        return serverHop()
-    end
-
-    task.cancel(teleportCheck)
 end
 
 -- ========== MAIN LOOP ==========
