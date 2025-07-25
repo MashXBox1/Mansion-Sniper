@@ -2,7 +2,9 @@
 local function isLoaded()
     repeat task.wait() until game:IsLoaded()
 end
+
 isLoaded()
+
 task.wait(5)
 
 -- Services
@@ -15,7 +17,7 @@ local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 
--- Find Police GUID from getgc and fire the remote with argument "Police"
+-- Find Police GUID from getgc and fire the remote with argument "prisoner"
 local MainRemote = nil
 for _, obj in pairs(ReplicatedStorage:GetChildren()) do
     if obj:IsA("RemoteEvent") and obj.Name:find("-") then
@@ -31,7 +33,7 @@ end
 local PoliceGUID = nil
 for _, t in pairs(getgc(true)) do
     if typeof(t) == "table" and not getmetatable(t) then
-        if t["mto4108g"] and t["mto4108g"]:sub(1, 1) == "!" then
+        if t["mto4108g"] and t["mto4108g"]:sub(1,1) == "!" then
             PoliceGUID = t["mto4108g"]
             print("✅ Police GUID found:", PoliceGUID)
             break
@@ -47,11 +49,11 @@ end
 
 task.wait(1)
 
--- Constants
 local LocalPlayer = Players.LocalPlayer
 local BriefcaseConsts = require(ReplicatedStorage:WaitForChild("AirDrop"):WaitForChild("BriefcaseConsts"))
 local SCAN_WAIT = 0.3
 local MAX_SCANS = 2
+
 local positions = {
     Vector3.new(818.16, 23.88, 343.56),
     Vector3.new(1221.85, 24.88, 128.42),
@@ -71,7 +73,6 @@ local positions = {
     Vector3.new(1255.77, 41.77, -4005.82)
 }
 
--- Helpers
 local function getPrimaryPosition(model)
     if model:IsA("BasePart") then return model.Position end
     for _, part in ipairs(model:GetDescendants()) do
@@ -82,8 +83,12 @@ end
 local teleporting, positionLock, positionLockConn, velocityConn = false, nil, nil, nil
 local function maintainPosition(duration)
     local startTime = tick()
-    local conn = RunService.Heartbeat:Connect(function()
-        if tick() - startTime > duration then conn:Disconnect() return end
+    local conn
+    conn = RunService.Heartbeat:Connect(function()
+        if tick() - startTime > duration then
+            conn:Disconnect()
+            return
+        end
         local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if root and positionLock then
             root.CFrame = positionLock
@@ -107,6 +112,7 @@ local function safeTeleport(cframe, shouldKill)
 
     root.Velocity = Vector3.zero
     root.AssemblyLinearVelocity = Vector3.zero
+
     TweenService:Create(root, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { CFrame = cframe }):Play()
 
     positionLock = cframe
@@ -131,19 +137,14 @@ local function safeTeleport(cframe, shouldKill)
     end)
 end
 
--- ✅ FIXED: Kill NPCs (all models with Humanoids that are not players)
 local function killAllNPCs()
-    for _, model in ipairs(Workspace:GetDescendants()) do
-        if model:IsA("Model") and model:FindFirstChildOfClass("Humanoid") then
-            local humanoid = model:FindFirstChildOfClass("Humanoid")
-            if humanoid and not Players:GetPlayerFromCharacter(model) and humanoid.Health > 0 then
-                humanoid.Health = 0
-            end
+    for _, npc in ipairs(CollectionService:GetTagged("Humanoid")) do
+        if npc:IsA("Humanoid") and not Players:GetPlayerFromCharacter(npc.Parent) then
+            npc.Health = 0
         end
     end
 end
 
--- Character setup
 local character, rootPart, camera
 local function setupCharacter()
     character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -153,25 +154,28 @@ end
 LocalPlayer.CharacterAdded:Connect(setupCharacter)
 setupCharacter()
 
--- Hold E to collect drop
 local holdEActive = false
 local function simulateHoldEAsync(briefcase)
     if holdEActive then return end
     holdEActive = true
 
     task.spawn(function()
-        while briefcase and briefcase:IsDescendantOf(Workspace) do
+        while true do
+            if not briefcase or not briefcase:IsDescendantOf(Workspace) then break end
+
             local pressRemote = briefcase:FindFirstChild(BriefcaseConsts.PRESS_REMOTE_NAME)
             local collectRemote = briefcase:FindFirstChild(BriefcaseConsts.COLLECT_REMOTE_NAME)
 
-            for _ = 1, 100 do
-                if pressRemote and collectRemote then break end
-                pressRemote = briefcase:FindFirstChild(BriefcaseConsts.PRESS_REMOTE_NAME)
-                collectRemote = briefcase:FindFirstChild(BriefcaseConsts.COLLECT_REMOTE_NAME)
-                task.wait(0.1)
+            if not (pressRemote and collectRemote) then
+                for _ = 1, 100 do
+                    pressRemote = briefcase:FindFirstChild(BriefcaseConsts.PRESS_REMOTE_NAME)
+                    collectRemote = briefcase:FindFirstChild(BriefcaseConsts.COLLECT_REMOTE_NAME)
+                    if pressRemote and collectRemote then break end
+                    task.wait(0.1)
+                end
             end
-            if not pressRemote or not collectRemote then break end
 
+            if not (pressRemote and collectRemote) then break end
             pressRemote:FireServer(true)
             local start = os.clock()
             while os.clock() - start < 25 do
@@ -185,83 +189,89 @@ local function simulateHoldEAsync(briefcase)
             end
 
             task.wait(7)
+            if Workspace:FindFirstChild("Drop", true) then
+                -- Retry
+            else
+                break
+            end
         end
         holdEActive = false
     end)
 end
 
--- Server hop
 local function serverHop()
-    print("🌐 No airdrops found, hopping servers...")
+    print("🌐 No airdrops found after scanning, hopping servers...")
     local currentJobId = game.JobId
-    local success, result = pcall(function()
-        return HttpService:JSONDecode(game:HttpGet(("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)))
-    end)
-    if not success or not result or not result.data then
-        warn("❌ Server list fetch failed.")
-        task.wait(10)
-        return serverHop()
-    end
-
-    local options = {}
-    for _, server in ipairs(result.data) do
-        if server.id ~= currentJobId and server.playing < server.maxPlayers then
-            table.insert(options, server.id)
+    local function tryHop()
+        local success, result = pcall(function()
+            return HttpService:JSONDecode(game:HttpGet(("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)))
+        end)
+        if not success or not result or not result.data then
+            warn("❌ Failed to get server list for hopping.")
+            task.wait(10)
+            serverHop()
+            return false
         end
+        local candidates = {}
+        for _, server in ipairs(result.data) do
+            if server.id ~= currentJobId and server.playing < 28 and server.playing < server.maxPlayers then
+                table.insert(candidates, server.id)
+            end
+        end
+        if #candidates == 0 then return false end
+        local chosenServer = candidates[math.random(1, #candidates)]
+        queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testdropfinder.lua"))()]])
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
+        return true
     end
-    if #options == 0 then return end
-
-    local serverId = options[math.random(1, #options)]
-    queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/AirdropFinderAndOpener.lua"))()]])
-    TeleportService:TeleportToPlaceInstance(game.PlaceId, serverId, LocalPlayer)
+    if not tryHop() then return end
+    task.spawn(function()
+        local start = tick()
+        repeat task.wait(1) until game.JobId ~= currentJobId or tick() - start > 10
+        if game.JobId == currentJobId then
+            warn("⚠️ Teleport timeout. Retrying...")
+            serverHop()
+        end
+    end)
 end
 
--- Main drop logic
+-- MAIN LOOP
 task.spawn(function()
     local scanCount, dropFound = 0, false
-    local npcKillLoop, failsafeLoop
+    local drop, dropPos
     while scanCount < MAX_SCANS and not dropFound do
-        local drop = Workspace:FindFirstChild("Drop", true)
+        drop = Workspace:FindFirstChild("Drop", true)
         if drop then
             if not drop:GetAttribute("BriefcaseLanded") then
                 repeat task.wait(1) until drop:GetAttribute("BriefcaseLanded")
             end
+            dropPos = getPrimaryPosition(drop)
             dropFound = true
-            local dropPos = getPrimaryPosition(drop)
             safeTeleport(CFrame.new(dropPos + Vector3.new(0, 3, 5)), true)
             task.wait(1)
             safeTeleport(CFrame.new(dropPos + Vector3.new(0, 3, 0)), false)
 
-            npcKillLoop = RunService.Heartbeat:Connect(function()
-                killAllNPCs()
-                task.wait(2)
-            end)
-
-            failsafeLoop = RunService.Heartbeat:Connect(function()
+            RunService.Heartbeat:Connect(function()
                 if character and drop and drop:IsDescendantOf(Workspace) then
-                    local humanoid = character:FindFirstChildOfClass("Humanoid")
-                    if humanoid and humanoid.Health < 20 then
-                        warn("⚠️ Health < 20. Re-teleporting...")
+                    local hp = character:FindFirstChildOfClass("Humanoid")
+                    if hp and hp.Health < 20 then
+                        warn("⚠️ Health low! Re-teleporting...")
                         safeTeleport(CFrame.new(dropPos + Vector3.new(0, 3, 0)), false)
                     end
                     if rootPart and (rootPart.Position - dropPos).Magnitude > 7 then
-                        warn("⚠️ Too far from drop. Re-teleporting...")
+                        warn("⚠️ Too far from drop! Re-teleporting...")
                         safeTeleport(CFrame.new(dropPos + Vector3.new(0, 3, 0)), false)
                     end
                 end
                 if not Workspace:FindFirstChild("Drop", true) then
                     warn("🔁 Drop disappeared. Restarting script...")
-                    if npcKillLoop then npcKillLoop:Disconnect() end
-                    if failsafeLoop then failsafeLoop:Disconnect() end
-                    loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/AirdropFinderAndOpener.lua"))()
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testdropfinder.lua"))()
                 end
             end)
 
+            task.wait(1)
             simulateHoldEAsync(drop)
             repeat task.wait(1) until not Workspace:FindFirstChild("Drop", true)
-
-            if npcKillLoop then npcKillLoop:Disconnect() end
-            if failsafeLoop then failsafeLoop:Disconnect() end
             break
         else
             scanCount += 1
@@ -274,6 +284,7 @@ task.spawn(function()
                 task.wait(SCAN_WAIT)
             end
         end
+        task.wait(0.1)
     end
 
     if not dropFound then
