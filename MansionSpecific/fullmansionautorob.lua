@@ -183,7 +183,7 @@ local function serverHop()
             return result.data
         end
         warn("❌ Failed to get server list. Retrying in 12s.")
-        task.wait(12)
+        task.wait(13)
         serverHop()
     end
 
@@ -247,7 +247,7 @@ if isMansionOpen(mansion, RobberyUtils, RobberyConsts) then
     flyToCoordinates(Vector3.new(3196.93, 63.36, -4665.44), 0.5)
 else
     debug("❌ Mansion is CLOSED.")
-    task.wait(3)
+    task.wait(5)
     serverHop()
 end
 task.wait(20)
