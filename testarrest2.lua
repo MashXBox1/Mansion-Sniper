@@ -98,8 +98,8 @@ local function teleportToPlayerModel(_)
         repeat
             local x = math.random(-2092, 3128)
             local z = math.random(-5780, 2442)
-            newPosition = Vector3.new(x, 50, z)
-        until not lastPosition or (newPosition - lastPosition).Magnitude >= 700
+            newPosition = Vector3.new(x, 40, z)
+        until not lastPosition or (newPosition - lastPosition).Magnitude >= 300
         lastPosition = newPosition
         return newPosition
     end
@@ -270,11 +270,11 @@ if not DamageGUID then error("❌ DamageGUID not found. Hash might've changed.")
 if PoliceGUID then
     MainRemote:FireServer(PoliceGUID, "Police")
 end
-for i = 1, 3 do
+for i = 1, 5 do
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and tostring(player.Team) == "Criminal" and player:GetAttribute("HasEscaped") == true then
             teleportToPlayerModel(player)
-            task.wait(0.3)
+            task.wait(0.2)
         end
     end
 end
