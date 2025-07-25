@@ -205,25 +205,29 @@ local function isMansionOpen(mansion, RobberyUtils, RobberyConsts)
 end
 
 --// Server hop logic using Teleport
+--// Server hop logic using Cloudflare Worker
 local function serverHop()
     local currentJobId = game.JobId
 
     local function fetchServers()
         local success, result = pcall(function()
-            local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)
+            local url = "https://robloxapi.neelseshadri31.workers.dev/"
             return HttpService:JSONDecode(game:HttpGet(url))
         end)
+
         if success and result and result.data then
             return result.data
         end
-        warn("❌ Failed to get server list. Retrying in 12s.")
+
+        warn("❌ Failed to fetch server list from Cloudflare Worker. Retrying in 12s.")
         task.wait(13)
-        serverHop()
+        return fetchServers() -- Retry recursively
     end
 
     local function tryTeleport()
         local servers = fetchServers()
         local candidates = {}
+
         for _, server in ipairs(servers) do
             if server.id ~= currentJobId and server.playing < server.maxPlayers then
                 table.insert(candidates, server.id)
@@ -231,7 +235,7 @@ local function serverHop()
         end
 
         if #candidates == 0 then
-            warn("⚠️ No servers found. Retrying in 10s.")
+            warn("⚠️ No valid servers found. Retrying in 10s.")
             task.wait(10)
             return tryTeleport()
         end
@@ -241,7 +245,7 @@ local function serverHop()
         local teleportFailed = false
         local timeout = task.delay(10, function()
             teleportFailed = true
-            warn("⚠️ Teleport timed out. Trying new server.")
+            warn("⚠️ Teleport timed out. Trying a new server.")
         end)
 
         local success, err = pcall(function()
@@ -249,19 +253,19 @@ local function serverHop()
             TeleportService:TeleportToPlaceInstance(game.PlaceId, chosen, LocalPlayer)
         end)
 
+        task.cancel(timeout)
+
         if not success or teleportFailed then
-            task.cancel(timeout)
-            warn("❌ Teleport error:", err or "timeout")
+            warn("❌ Teleport failed:", err or "timeout")
             table.remove(candidates, table.find(candidates, chosen))
             task.wait(1)
             return tryTeleport()
         end
-
-        task.cancel(timeout)
     end
 
     tryTeleport()
 end
+
 --// Execute logic
 local RobberyUtils, RobberyConsts = loadModules()
 local mansion = findMansion()
