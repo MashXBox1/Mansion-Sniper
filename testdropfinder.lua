@@ -53,7 +53,7 @@ local LocalPlayer = Players.LocalPlayer
 
 -- Constants
 local BriefcaseConsts = require(ReplicatedStorage:WaitForChild("AirDrop"):WaitForChild("BriefcaseConsts"))
-local SCAN_WAIT = 0.01
+local SCAN_WAIT = 0.3
 local MAX_SCANS = 2
 
 -- Replace this block with your fixed positions:
