@@ -81,7 +81,7 @@ local function flyToCoordinates(position, duration)
 end
 
 --// Maintain position
-local TELEPORT_DURATION = 5
+local TELEPORT_DURATION = 6
 local teleporting = false
 local positionLock = nil
 local positionLockConn = nil
