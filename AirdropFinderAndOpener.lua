@@ -251,6 +251,8 @@ task.spawn(function()
                 end
                 if not Workspace:FindFirstChild("Drop", true) then
                     warn("🔁 Drop disappeared. Restarting script...")
+                    if npcKillLoop then npcKillLoop:Disconnect() end
+                    if failsafeLoop then failsafeLoop:Disconnect() end
                     loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/AirdropFinderAndOpener.lua"))()
                 end
             end)
