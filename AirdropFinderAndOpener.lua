@@ -54,8 +54,8 @@ local LocalPlayer = Players.LocalPlayer
 -- Constants
 local BriefcaseConsts = require(ReplicatedStorage:WaitForChild("AirDrop"):WaitForChild("BriefcaseConsts"))
 local GRID_SIZE = 500
-local SCAN_HEIGHT = 300
-local SCAN_WAIT = 0.001 -- faster scan
+local SCAN_HEIGHT = 30
+local SCAN_WAIT = 0.1 -- faster scan
 local AREA_MIN = Vector3.new(-4000, 0, -4000)
 local AREA_MAX = Vector3.new(4000, 0, 4000)
 local MAX_SCANS = 2
