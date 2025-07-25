@@ -214,6 +214,8 @@ task.spawn(function()
 			end
 
 			restoreBulletEmitter()
+			task.wait(7)
+			serverHop()
 			break
 		end
 
