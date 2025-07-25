@@ -250,7 +250,7 @@ local function serverHop()
         print("🚀 Teleporting to new server:", chosenServer)
 
         -- Queue the loadstring on teleport (replace URL with your script URL)
-        queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/AirdropFinderAndOpener.lua"))()]])
+        queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testdropfinder.lua"))()]])
 
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
         return true
