@@ -23,40 +23,7 @@ if player then
 end
 task.wait(6)
 
--- FAILSAFE FOR TELEPORTING --    
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
--- Fetch server time (via a RemoteFunction)
-local function getServerTime()
-    local timeFetch = ReplicatedStorage:FindFirstChild("GetServerTime")
-    if timeFetch and timeFetch:IsA("RemoteFunction") then
-        return timeFetch:InvokeServer()
-    else
-        
-        return os.time()
-    end
-end
-
--- Wait exactly 360 seconds from server time
-local function wait360Seconds()
-    local startTime = getServerTime()
-    local endTime = startTime + 360
-    
-    local connection
-    connection = RunService.Heartbeat:Connect(function()
-        if os.time() >= endTime then
-            connection:Disconnect() -- Stop checking
-            serverHop()
-            
-            
-            
-        end
-    end)
-end
-
-wait360Seconds()
     
     
 
@@ -607,7 +574,40 @@ local function serverHop()
     task.cancel(teleportCheck)
 end
 
+-- FAILSAFE FOR TELEPORTING --    
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
+-- Fetch server time (via a RemoteFunction)
+local function getServerTime()
+    local timeFetch = ReplicatedStorage:FindFirstChild("GetServerTime")
+    if timeFetch and timeFetch:IsA("RemoteFunction") then
+        return timeFetch:InvokeServer()
+    else
+        
+        return os.time()
+    end
+end
+
+-- Wait exactly 360 seconds from server time
+local function wait360Seconds()
+    local startTime = getServerTime()
+    local endTime = startTime + 360
+    
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        if os.time() >= endTime then
+            connection:Disconnect() -- Stop checking
+            serverHop()
+            
+            
+            
+        end
+    end)
+end
+
+wait360Seconds()
 
 -- ========== MAIN LOOP ==========
 task.spawn(function()
