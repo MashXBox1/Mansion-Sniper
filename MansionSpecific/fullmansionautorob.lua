@@ -285,7 +285,7 @@ if isMansionOpen(mansion, RobberyUtils, RobberyConsts) then
     flyToCoordinates(Vector3.new(3196.93, 63.36, -4665.44), 0.5)
 else
     debug("❌ Mansion is CLOSED.")
-    task.wait(5)
+    
     serverHop()
 end
 task.wait(20)
@@ -618,7 +618,7 @@ task.spawn(function()
 			end
 
 			restoreBulletEmitter()
-			task.wait(10)
+			
 			serverHop()
 			break
 		end
