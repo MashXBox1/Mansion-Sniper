@@ -401,7 +401,7 @@ local function beginFlight()
 end
 
 beginFlight()
-task.wait(25)
+task.wait(7)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
