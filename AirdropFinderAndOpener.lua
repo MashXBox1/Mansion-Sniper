@@ -220,7 +220,7 @@ local function serverHop()
         end
         if #candidates == 0 then return false end
         local chosenServer = candidates[math.random(1, #candidates)]
-        queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testdropfinder.lua"))()]])
+        queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/AirdropFinderAndOpener.lua"))()]])
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
         return true
     end
@@ -265,7 +265,7 @@ task.spawn(function()
                 end
                 if not Workspace:FindFirstChild("Drop", true) then
                     warn("🔁 Drop disappeared. Restarting script...")
-                    loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testdropfinder.lua"))()
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/AirdropFinderAndOpener.lua"))()
                 end
             end)
 
