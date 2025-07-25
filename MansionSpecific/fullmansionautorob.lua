@@ -2,4 +2,4 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sni
 task.wait(20)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/MansionSpecific/insidemansionentry.lua"))()
 task.wait(25)
-loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/MansionSpecific/insidemansionentry.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/MansionSpecific/betterbosskilla.lua"))()
