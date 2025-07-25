@@ -3,6 +3,8 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+
 
 -- Wait until game is loaded and character exists
 
