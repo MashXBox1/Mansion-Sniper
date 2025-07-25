@@ -3,6 +3,49 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
+-- Wait until game is loaded and character exists
+
+
+-- Wait until game is loaded and character exists
+repeat task.wait() until game:IsLoaded()
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Function to fly (tween) the player to a specific position
+local function flyToCoordinates(position, duration)
+    local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+    -- Optional: disable controls during flight
+    if Character:FindFirstChild("Humanoid") then
+        Character.Humanoid.PlatformStand = true
+    end
+
+    -- Create tween
+    local goal = { CFrame = CFrame.new(position) }
+    local tweenInfo = TweenInfo.new(duration or 3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+    local tween = TweenService:Create(HumanoidRootPart, tweenInfo, goal)
+
+    -- Start tween
+    tween:Play()
+
+    -- Re-enable control after tween
+    tween.Completed:Connect(function()
+        if Character:FindFirstChild("Humanoid") then
+            Character.Humanoid.PlatformStand = false
+        end
+    end)
+end
+
+-- Example usage: fly to the coordinates over 3 seconds
+
+
+
+-- Example usage: teleport to the coordinates shown in the image
+
+
 -- Constants
 local TELEPORT_DURATION = 5 -- Duration to maintain position after teleporting
 local teleporting = false -- Flag to prevent multiple simultaneous teleports
@@ -199,9 +242,10 @@ if isMansionOpen(mansion, RobberyUtils, RobberyConsts) then
     teleportToCoordinates()
     task.wait(6)
     teleportInFront(5)
+    task.wait(1)
+    flyToCoordinates(Vector3.new(3196.93, 63.36, -4665.44), 0.5)
+
 else
     debug("❌ Mansion is CLOSED.")
 end
-
-
 
