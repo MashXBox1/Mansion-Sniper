@@ -53,47 +53,30 @@ local LocalPlayer = Players.LocalPlayer
 
 -- Constants
 local BriefcaseConsts = require(ReplicatedStorage:WaitForChild("AirDrop"):WaitForChild("BriefcaseConsts"))
-local GRID_SIZE = 500
-local SCAN_HEIGHT = 30
-local SCAN_WAIT = 0.01 -- faster scan
-local AREA_MIN = Vector3.new(-4000, 0, -4000)
-local AREA_MAX = Vector3.new(4000, 0, 4000)
+local SCAN_WAIT = 0.01
 local MAX_SCANS = 2
 
--- Globals
-local character, rootPart, camera
-local heartbeatConn = nil
-local holdEActive = false
-local dropFound = false
-local npcKillLoop = nil
+-- Replace this block with your fixed positions:
+local positions = {
+    Vector3.new(818.16, 23.88, 343.56),
+    Vector3.new(1221.85, 24.88, 128.42),
+    Vector3.new(1066.44, 30.48, -163.84),
+    Vector3.new(688.45, 35.53, -329.02),
+    Vector3.new(741.90, 46.39, -635.78),
+    Vector3.new(1176.69, 30.55, -680.19),
+    Vector3.new(1363.55, 25.44, -938.74),
+    Vector3.new(325.20, 68.84, -3065.59),
+    Vector3.new(-347.80, 34.04, -3467.75),
+    Vector3.new(-741.35, 30.78, -3932.78),
+    Vector3.new(-484.79, 31.38, -4291.34),
+    Vector3.new(161.92, 27.77, -3990.00),
+    Vector3.new(620.92, 50.75, -4292.88),
+    Vector3.new(1015.73, 43.51, -4401.44),
+    Vector3.new(988.63, 43.63, -3984.39),
+    Vector3.new(1255.77, 41.77, -4005.82)
+}
 
--- Setup character references
-local function setupCharacter()
-    character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    rootPart = character:WaitForChild("HumanoidRootPart")
-    camera = Workspace.CurrentCamera
-end
-
-LocalPlayer.CharacterAdded:Connect(setupCharacter)
-setupCharacter()
-
--- Kill all NPCs
-local function killAllNPCs()
-    for _, npc in ipairs(CollectionService:GetTagged("Humanoid")) do
-        if npc:IsA("Humanoid") and not Players:GetPlayerFromCharacter(npc.Parent) then
-            npc.Health = 0
-        end
-    end
-end
-
--- Generate grid positions
-local positions = {}
-for x = AREA_MIN.X, AREA_MAX.X, GRID_SIZE do
-    for z = AREA_MIN.Z, AREA_MAX.Z, GRID_SIZE do
-        table.insert(positions, Vector3.new(x, SCAN_HEIGHT, z))
-    end
-end
-
+-- (DO NOT EDIT BELOW THIS LINE)
 -- Get model position
 local function getPrimaryPosition(model)
     if model:IsA("BasePart") then return model.Position end
@@ -164,7 +147,32 @@ local function safeTeleport(cframe, shouldKill)
     end)
 end
 
--- Hold E to collect drop with retry
+-- Kill all NPCs
+local function killAllNPCs()
+    for _, npc in ipairs(CollectionService:GetTagged("Humanoid")) do
+        if npc:IsA("Humanoid") and not Players:GetPlayerFromCharacter(npc.Parent) then
+            npc.Health = 0
+        end
+    end
+end
+
+-- Setup character references
+local character, rootPart, camera
+local heartbeatConn = nil
+local holdEActive = false
+local dropFound = false
+local npcKillLoop = nil
+
+local function setupCharacter()
+    character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    rootPart = character:WaitForChild("HumanoidRootPart")
+    camera = Workspace.CurrentCamera
+end
+
+LocalPlayer.CharacterAdded:Connect(setupCharacter)
+setupCharacter()
+
+-- Hold E to collect drop
 local function simulateHoldEAsync(briefcase)
     if holdEActive then return end
     holdEActive = true
@@ -175,7 +183,6 @@ local function simulateHoldEAsync(briefcase)
                 break
             end
 
-            -- Wait for remotes
             local pressRemote = briefcase:FindFirstChild(BriefcaseConsts.PRESS_REMOTE_NAME)
             local collectRemote = briefcase:FindFirstChild(BriefcaseConsts.COLLECT_REMOTE_NAME)
 
@@ -189,7 +196,7 @@ local function simulateHoldEAsync(briefcase)
             end
 
             if not (pressRemote and collectRemote) then break end
-            pressRemote:FireServer(true) -- Signals "E pressed"
+            pressRemote:FireServer(true)
             local start = os.clock()
             while os.clock() - start < 25 do
                 pressRemote:FireServer(false)
@@ -202,7 +209,6 @@ local function simulateHoldEAsync(briefcase)
             end
 
             task.wait(7)
-
             if Workspace:FindFirstChild("Drop", true) then
                 -- Retry
             else
@@ -214,7 +220,7 @@ local function simulateHoldEAsync(briefcase)
     end)
 end
 
--- Server hop function with retry & player count filter
+-- Server hop
 local function serverHop()
     print("🌐 No airdrops found after scanning, hopping servers...")
 
@@ -248,10 +254,7 @@ local function serverHop()
 
         local chosenServer = candidates[math.random(1, #candidates)]
         print("🚀 Teleporting to new server:", chosenServer)
-
-        -- Queue the loadstring on teleport (replace URL with your script URL)
         queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testdropfinder.lua"))()]])
-
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
         return true
     end
@@ -259,7 +262,6 @@ local function serverHop()
     local teleported = tryHop()
     if not teleported then return end
 
-    -- Wait 10 seconds then check if JobId changed, if not, retry
     task.spawn(function()
         local start = tick()
         repeat
@@ -275,7 +277,7 @@ local function serverHop()
     end)
 end
 
--- Main airdrop finder with server hop on failure
+-- Main airdrop finder loop
 task.spawn(function()
     local scanCount = 0
     local safeTeleportCalled = false
@@ -287,36 +289,25 @@ task.spawn(function()
         if drop then
             if not drop:GetAttribute("BriefcaseLanded") then
                 print("📦 Waiting for airdrop to land...")
-                repeat
-                    task.wait(1)
-                until drop:GetAttribute("BriefcaseLanded")
+                repeat task.wait(1) until drop:GetAttribute("BriefcaseLanded")
             end
 
             local dropPos = getPrimaryPosition(drop)
             if dropPos then
                 dropFound = true
-
                 if heartbeatConn then heartbeatConn:Disconnect() end
                 safeTeleportCalled = false
 
-                -- First teleport 5 studs away from the drop (with kill)
-                local awayPosition = CFrame.new(dropPos + Vector3.new(0, 3, 5))
-                safeTeleport(awayPosition, true)
-                
-                -- Wait an additional second
+                safeTeleport(CFrame.new(dropPos + Vector3.new(0, 3, 5)), true)
                 task.wait(1)
-                
-                -- Now teleport to the drop position (without kill)
-                local dropPosition = CFrame.new(dropPos + Vector3.new(0, 3, 0))
-                safeTeleport(dropPosition, false)
+                safeTeleport(CFrame.new(dropPos + Vector3.new(0, 3, 0)), false)
                 safeTeleportCalled = true
 
                 heartbeatConn = RunService.Heartbeat:Connect(function()
                     if rootPart and drop and drop:GetAttribute("BriefcaseLanded") then
                         local pos = getPrimaryPosition(drop)
                         if pos then
-                            local cf = CFrame.new(pos + Vector3.new(0, 3, 0))
-                            camera.CFrame = cf + Vector3.new(0, 2, 0)
+                            camera.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0)) + Vector3.new(0, 2, 0)
                         end
                     end
                 end)
@@ -327,6 +318,7 @@ task.spawn(function()
                         task.wait(2)
                     end)
                 end
+
                 task.wait(2)
                 simulateHoldEAsync(drop)
 
@@ -348,7 +340,6 @@ task.spawn(function()
                 task.wait(SCAN_WAIT)
             end
         end
-
         task.wait(0.1)
     end
 
