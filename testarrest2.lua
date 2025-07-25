@@ -2,7 +2,79 @@
 repeat task.wait() until game:IsLoaded()
 print("✅ Game is fully loaded!")
 
+-- ========== SERVER HOP FUNCTION ==========
+local function serverHop()
+    
 
+    local success, result = pcall(function()
+        local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)
+        return HttpService:JSONDecode(game:HttpGet(url))
+    end)
+
+    if not success or not result or not result.data then
+        warn("❌ Failed to get server list for hopping.")
+        task.wait(12)
+        serverHop()
+    end
+
+    local currentJobId = game.JobId
+    local candidates = {}
+
+    for _, server in ipairs(result.data) do
+        if server.id ~= currentJobId and server.playing < server.maxPlayers then
+            table.insert(candidates, server.id)
+        end
+    end
+
+    if #candidates == 0 then
+        warn("⚠️ No available servers to hop to. Retrying in 10 seconds...")
+        task.wait(10)
+        return serverHop()
+    end
+
+    local chosenServer = candidates[math.random(1, #candidates)]
+    
+
+    local teleportFailed = false
+    local teleportCheck = task.delay(10, function()
+        teleportFailed = true
+        warn("⚠️ Teleport timed out (server may be full). Trying another...")
+    end)
+
+    local success, err = pcall(function()
+        queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testarrest2.lua"))()]])
+        sendChatMessage("Wanna complain? Message me. User's mashxbox. I'm sure you know where 😜.")
+        task.wait(0.5)
+        sendChatMessage("Bro everyone just got arrested by Skid Farm 😂")
+        task.wait(0.5)
+        sendChatMessage("Better than p x s t a and B l i t z fr")
+        task.wait(0.5)
+        sendChatMessage("Imagine being arrested by a SKID 💀. You bad 😂")
+        task.wait(0.5)
+        sendChatMessage("Don't even have a server. Just wanna ruin the game 😁✌️.")
+        
+        
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
+    end)
+
+    if not success then
+        warn("❌ Teleport failed:", err)
+        task.cancel(teleportCheck)
+        task.wait(1)
+        table.remove(candidates, table.find(candidates, chosenServer))
+        return serverHop()
+    end
+
+    if teleportFailed then
+        task.wait(1)
+        table.remove(candidates, table.find(candidates, chosenServer))
+        return serverHop()
+    end
+
+    task.cancel(teleportCheck)
+end
+
+-- FETCH MONEY --
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
@@ -18,6 +90,41 @@ if player then
     end
 checkMoney()
 task.wait(6)
+
+-- FAILSAFE FOR TELEPORTING --    
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+-- Fetch server time (via a RemoteFunction)
+local function getServerTime()
+    local timeFetch = ReplicatedStorage:FindFirstChild("GetServerTime")
+    if timeFetch and timeFetch:IsA("RemoteFunction") then
+        return timeFetch:InvokeServer()
+    else
+        
+        return os.time()
+    end
+end
+
+-- Wait exactly 360 seconds from server time
+local function wait360Seconds()
+    local startTime = getServerTime()
+    local endTime = startTime + 360
+    
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        if os.time() >= endTime then
+            connection:Disconnect() -- Stop checking
+            serverHop()
+            
+            
+            
+        end
+    end)
+end
+
+wait360Seconds()
     
     
 
@@ -497,77 +604,7 @@ local function startArresting(targetPlayer)
     end)
 end
 
--- ========== SERVER HOP FUNCTION ==========
-local function serverHop()
-    
 
-    local success, result = pcall(function()
-        local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)
-        return HttpService:JSONDecode(game:HttpGet(url))
-    end)
-
-    if not success or not result or not result.data then
-        warn("❌ Failed to get server list for hopping.")
-        task.wait(12)
-        serverHop()
-    end
-
-    local currentJobId = game.JobId
-    local candidates = {}
-
-    for _, server in ipairs(result.data) do
-        if server.id ~= currentJobId and server.playing < server.maxPlayers then
-            table.insert(candidates, server.id)
-        end
-    end
-
-    if #candidates == 0 then
-        warn("⚠️ No available servers to hop to. Retrying in 10 seconds...")
-        task.wait(10)
-        return serverHop()
-    end
-
-    local chosenServer = candidates[math.random(1, #candidates)]
-    
-
-    local teleportFailed = false
-    local teleportCheck = task.delay(10, function()
-        teleportFailed = true
-        warn("⚠️ Teleport timed out (server may be full). Trying another...")
-    end)
-
-    local success, err = pcall(function()
-        queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testarrest2.lua"))()]])
-        sendChatMessage("Wanna complain? Message me. User's mashxbox. I'm sure you know where 😜.")
-        task.wait(0.5)
-        sendChatMessage("Bro everyone just got arrested by Skid Farm 😂")
-        task.wait(0.5)
-        sendChatMessage("Better than p x s t a and B l i t z fr")
-        task.wait(0.5)
-        sendChatMessage("Imagine being arrested by a SKID 💀. You bad 😂")
-        task.wait(0.5)
-        sendChatMessage("Don't even have a server. Just wanna ruin the game 😁✌️.")
-        
-        
-        TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
-    end)
-
-    if not success then
-        warn("❌ Teleport failed:", err)
-        task.cancel(teleportCheck)
-        task.wait(1)
-        table.remove(candidates, table.find(candidates, chosenServer))
-        return serverHop()
-    end
-
-    if teleportFailed then
-        task.wait(1)
-        table.remove(candidates, table.find(candidates, chosenServer))
-        return serverHop()
-    end
-
-    task.cancel(teleportCheck)
-end
 
 -- ========== MAIN LOOP ==========
 task.spawn(function()
