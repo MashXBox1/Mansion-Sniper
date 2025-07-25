@@ -212,7 +212,7 @@ local function serverHop()
     if #options == 0 then return end
 
     local serverId = options[math.random(1, #options)]
-    queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testdropfinder.lua"))()]])
+    queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/AirdropFinderAndOpener.lua"))()]])
     TeleportService:TeleportToPlaceInstance(game.PlaceId, serverId, LocalPlayer)
 end
 
