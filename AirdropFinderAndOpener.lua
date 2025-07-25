@@ -41,7 +41,7 @@ for _, t in pairs(getgc(true)) do
 end
 
 if PoliceGUID then
-    MainRemote:FireServer(PoliceGUID, "Prisoner")
+    MainRemote:FireServer(PoliceGUID, "Police")
 else
     warn("❌ Police GUID not found.")
 end
