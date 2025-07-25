@@ -2,9 +2,7 @@
 local function isLoaded()
     repeat task.wait() until game:IsLoaded()
 end
-
 isLoaded()
-
 task.wait(5)
 
 -- Services
@@ -17,7 +15,7 @@ local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 
--- Find Police GUID from getgc and fire the remote with argument "prisoner"
+-- Find Remote
 local MainRemote = nil
 for _, obj in pairs(ReplicatedStorage:GetChildren()) do
     if obj:IsA("RemoteEvent") and obj.Name:find("-") then
@@ -26,10 +24,9 @@ for _, obj in pairs(ReplicatedStorage:GetChildren()) do
         break
     end
 end
-if not MainRemote then
-    error("❌ Could not find RemoteEvent with '-' in name.")
-end
+if not MainRemote then error("❌ Could not find RemoteEvent with '-' in name.") end
 
+-- Get Police GUID
 local PoliceGUID = nil
 for _, t in pairs(getgc(true)) do
     if typeof(t) == "table" and not getmetatable(t) then
@@ -40,7 +37,6 @@ for _, t in pairs(getgc(true)) do
         end
     end
 end
-
 if PoliceGUID then
     MainRemote:FireServer(PoliceGUID, "Police")
 else
@@ -55,22 +51,14 @@ local SCAN_WAIT = 0.3
 local MAX_SCANS = 2
 
 local positions = {
-    Vector3.new(818.16, 23.88, 343.56),
-    Vector3.new(1221.85, 24.88, 128.42),
-    Vector3.new(1066.44, 30.48, -163.84),
-    Vector3.new(688.45, 35.53, -329.02),
-    Vector3.new(741.90, 46.39, -635.78),
-    Vector3.new(1176.69, 30.55, -680.19),
-    Vector3.new(1363.55, 25.44, -938.74),
-    Vector3.new(325.20, 68.84, -3065.59),
-    Vector3.new(-347.80, 34.04, -3467.75),
-    Vector3.new(-741.35, 30.78, -3932.78),
-    Vector3.new(-484.79, 31.38, -4291.34),
-    Vector3.new(161.92, 27.77, -3990.00),
-    Vector3.new(620.92, 50.75, -4292.88),
-    Vector3.new(1015.73, 43.51, -4401.44),
-    Vector3.new(988.63, 43.63, -3984.39),
-    Vector3.new(1255.77, 41.77, -4005.82)
+    Vector3.new(818.16, 23.88, 343.56), Vector3.new(1221.85, 24.88, 128.42),
+    Vector3.new(1066.44, 30.48, -163.84), Vector3.new(688.45, 35.53, -329.02),
+    Vector3.new(741.90, 46.39, -635.78), Vector3.new(1176.69, 30.55, -680.19),
+    Vector3.new(1363.55, 25.44, -938.74), Vector3.new(325.20, 68.84, -3065.59),
+    Vector3.new(-347.80, 34.04, -3467.75), Vector3.new(-741.35, 30.78, -3932.78),
+    Vector3.new(-484.79, 31.38, -4291.34), Vector3.new(161.92, 27.77, -3990.00),
+    Vector3.new(620.92, 50.75, -4292.88), Vector3.new(1015.73, 43.51, -4401.44),
+    Vector3.new(988.63, 43.63, -3984.39), Vector3.new(1255.77, 41.77, -4005.82)
 }
 
 local function getPrimaryPosition(model)
@@ -239,6 +227,8 @@ end
 task.spawn(function()
     local scanCount, dropFound = 0, false
     local drop, dropPos
+    local dropGoneHandled = false
+
     while scanCount < MAX_SCANS and not dropFound do
         drop = Workspace:FindFirstChild("Drop", true)
         if drop then
@@ -252,6 +242,7 @@ task.spawn(function()
             safeTeleport(CFrame.new(dropPos + Vector3.new(0, 3, 0)), false)
 
             RunService.Heartbeat:Connect(function()
+                if dropGoneHandled then return end
                 if character and drop and drop:IsDescendantOf(Workspace) then
                     local hp = character:FindFirstChildOfClass("Humanoid")
                     if hp and hp.Health < 20 then
@@ -264,8 +255,11 @@ task.spawn(function()
                     end
                 end
                 if not Workspace:FindFirstChild("Drop", true) then
-                    warn("🔁 Drop disappeared. Restarting script...")
-                    loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/AirdropFinderAndOpener.lua"))()
+                    dropGoneHandled = true
+                    warn("🔁 Drop disappeared. Restarting script once...")
+                    task.delay(0.5, function()
+                        loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/AirdropFinderAndOpener.lua"))()
+                    end)
                 end
             end)
 
