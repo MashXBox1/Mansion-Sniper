@@ -184,7 +184,7 @@ local function serverHop()
         end
         warn("❌ Failed to get server list. Retrying in 12s.")
         task.wait(12)
-        return fetchServers()
+        serverHop()
     end
 
     local function tryTeleport()
