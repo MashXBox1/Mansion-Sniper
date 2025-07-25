@@ -205,7 +205,7 @@ local function isMansionOpen(mansion, RobberyUtils, RobberyConsts)
 end
 
 --// Server hop logic using Teleport
---// Server hop logic using Cloudflare Worker
+--// Server hop logic using Cloudflare Worker and player count limit
 local function serverHop()
     local currentJobId = game.JobId
 
@@ -221,7 +221,7 @@ local function serverHop()
 
         warn("❌ Failed to fetch server list from Cloudflare Worker. Retrying in 12s.")
         task.wait(13)
-        return fetchServers() -- Retry recursively
+        return fetchServers()
     end
 
     local function tryTeleport()
@@ -229,13 +229,13 @@ local function serverHop()
         local candidates = {}
 
         for _, server in ipairs(servers) do
-            if server.id ~= currentJobId and server.playing < server.maxPlayers then
+            if server.id ~= currentJobId and server.playing < 25 then
                 table.insert(candidates, server.id)
             end
         end
 
         if #candidates == 0 then
-            warn("⚠️ No valid servers found. Retrying in 10s.")
+            warn("⚠️ No eligible servers with <25 players. Retrying in 10s.")
             task.wait(10)
             return tryTeleport()
         end
@@ -245,7 +245,7 @@ local function serverHop()
         local teleportFailed = false
         local timeout = task.delay(10, function()
             teleportFailed = true
-            warn("⚠️ Teleport timed out. Trying a new server.")
+            warn("⚠️ Teleport timed out. Trying another server.")
         end)
 
         local success, err = pcall(function()
@@ -265,6 +265,7 @@ local function serverHop()
 
     tryTeleport()
 end
+
 
 --// Execute logic
 local RobberyUtils, RobberyConsts = loadModules()
