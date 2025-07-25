@@ -47,9 +47,9 @@ end
 task.spawn(function()
 	while true do
 		VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Y, false, nil)
-		task.wait(0.05)
+		task.wait()
 		VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Y, false, nil)
-		task.wait(1)
+		task.wait()
 	end
 end)
 
