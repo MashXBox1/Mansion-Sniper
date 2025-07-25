@@ -1,4 +1,3 @@
---// Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -13,18 +12,84 @@ local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
---// BulletEmitter Hook
+--// BulletEmitter
 local BulletEmitterModule = require(ReplicatedStorage.Game.ItemSystem.BulletEmitter)
 local OriginalEmit = BulletEmitterModule.Emit
 local OriginalCollidableFunc = BulletEmitterModule._buildCustomCollidableFunc
 
---// State Flags
-local isHooked = false
-local npcKilled = false
-local physicsRestored = false
-local reachedTarget = false
-local flightSpeed = 180
-local targetPosition = Vector3.new(3140.27, -186.77, -4434.13)
+--// GunModule Override
+local GunModule = require(ReplicatedStorage.Game.Item.Gun)
+local originalInputBegan = GunModule.InputBegan
+GunModule.InputBegan = function(self, input, ...)
+	if input.KeyCode == Enum.KeyCode.Y then
+		originalInputBegan(self, {
+			UserInputType = Enum.UserInputType.MouseButton1,
+			KeyCode = Enum.KeyCode.Y
+		}, ...)
+	else
+		originalInputBegan(self, input, ...)
+	end
+end
+
+local originalInputEnded = GunModule.InputEnded
+GunModule.InputEnded = function(self, input, ...)
+	if input.KeyCode == Enum.KeyCode.Y then
+		originalInputEnded(self, {
+			UserInputType = Enum.UserInputType.MouseButton1,
+			KeyCode = Enum.KeyCode.Y
+		}, ...)
+	else
+		originalInputEnded(self, input, ...)
+	end
+end
+
+--// Auto-fire Y key every second
+task.spawn(function()
+	while true do
+		VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Y, false, nil)
+		task.wait(0.05)
+		VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Y, false, nil)
+		task.wait(1)
+	end
+end)
+
+--// Step: Get Gun GUIDs + equip
+local PistolGUID, BuyPistolGUID, foundRemote
+
+for _, t in pairs(getgc(true)) do
+	if typeof(t) == "table" and not getmetatable(t) then
+		if t["l5cuht8e"] and t["l5cuht8e"]:sub(1, 1) == "!" then
+			PistolGUID = t["l5cuht8e"]
+		end
+		if t["izwo0hcg"] and t["izwo0hcg"]:sub(1, 1) == "!" then
+			BuyPistolGUID = t["izwo0hcg"]
+		end
+	end
+end
+
+for _, obj in pairs(ReplicatedStorage:GetChildren()) do
+	if obj:IsA("RemoteEvent") and obj.Name:find("-") then
+		foundRemote = obj
+		break
+	end
+end
+
+if BuyPistolGUID then
+	foundRemote:FireServer(BuyPistolGUID)
+end
+if PistolGUID then
+	foundRemote:FireServer(PistolGUID, "Pistol")
+end
+
+task.wait(0.5)
+local PistolRemote = LocalPlayer:FindFirstChild("Folder")
+if PistolRemote then
+	PistolRemote = PistolRemote:FindFirstChild("Pistol")
+	if PistolRemote then
+		local equip = PistolRemote:FindFirstChild("InventoryEquipRemote")
+		if equip then equip:FireServer(true) end
+	end
+end
 
 --// Get boss head
 local function getBossHead()
@@ -37,17 +102,13 @@ local function getBossHead()
 	return boss:FindFirstChild("Head")
 end
 
---// Fast click (3x per loop, 15ms delay)
-local function clickOnce()
-	local mouseLocation = UserInputService:GetMouseLocation()
-	local x, y = mouseLocation.X, mouseLocation.Y
-
-	for _ = 1, 3 do
-		VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 0)
-		task.wait(0.015)
-		VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 0)
-	end
-end
+--// State
+local isHooked = false
+local npcKilled = false
+local physicsRestored = false
+local reachedTarget = false
+local flightSpeed = 180
+local targetPosition = Vector3.new(3140.27, -186.77, -4434.13)
 
 --// Kill all NPCs
 local function killAllNPCs()
@@ -69,7 +130,7 @@ local function killAllNPCs()
 	print("✅ All NPCs killed!")
 end
 
---// Override BulletEmitter
+--// BulletEmitter override to always aim at boss head
 local function hookBulletEmitter()
 	if isHooked then return end
 	isHooked = true
@@ -89,13 +150,6 @@ local function hookBulletEmitter()
 			if head and (part == head or part:IsDescendantOf(head.Parent)) then
 				return true
 			end
-
-			for _, player in pairs(Players:GetPlayers()) do
-				if player.Character and part:IsDescendantOf(player.Character) then
-					return true
-				end
-			end
-
 			return false
 		end
 	end
@@ -103,7 +157,7 @@ local function hookBulletEmitter()
 	print("🎯 BulletEmitter hooked to target boss head.")
 end
 
---// Restore bullet logic and turn off noclip
+--// Restore BulletEmitter & physics
 local function restoreBulletEmitter()
 	if physicsRestored then return end
 	physicsRestored = true
@@ -112,17 +166,16 @@ local function restoreBulletEmitter()
 	BulletEmitterModule._buildCustomCollidableFunc = OriginalCollidableFunc
 	Humanoid.PlatformStand = false
 
-	-- Disable noclip (re-enable collisions)
 	for _, part in ipairs(Character:GetDescendants()) do
 		if part:IsA("BasePart") then
 			part.CanCollide = true
 		end
 	end
 
-	print("♻️ BulletEmitter restored, noclip disabled, player control resumed.")
+	print("♻️ BulletEmitter restored, noclip disabled.")
 end
 
---// Fly to target, then lock position
+--// Fly to target, then freeze
 RunService.Heartbeat:Connect(function(deltaTime)
 	if physicsRestored then return end
 
@@ -154,10 +207,6 @@ task.spawn(function()
 			if reachedTarget and not isHooked then
 				hookBulletEmitter()
 			end
-
-			if reachedTarget then
-				clickOnce()
-			end
 		else
 			if not npcKilled then
 				killAllNPCs()
@@ -172,4 +221,4 @@ task.spawn(function()
 	end
 end)
 
-print("🧠 Script initialized: flying to target, locking in place, fast-clicking, restoring physics & collisions after boss.")
+print("🧠 Script initialized: flying to target, equipping gun, overriding bullet aim to boss head, and restoring physics after boss.")
