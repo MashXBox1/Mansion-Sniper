@@ -1,4 +1,8 @@
 -- AUTO ARREST SCRIPT --
+repeat task.wait() until game:IsLoaded()
+print("✅ Game is fully loaded!")
+
+
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
@@ -12,17 +16,12 @@ if player then
             player:Kick("Failsafe: Money exceeded 700000 (Detected: " .. money.Value .. "). Stopped due to anti-cheat.")
         end
     end
-
-    -- Check immediately when the script loads
-    checkMoney()
-
-    -- Check every time Money changes
-    money:GetPropertyChangedSignal("Value"):Connect(checkMoney)
-end
-
-repeat task.wait() until game:IsLoaded()
-print("✅ Game is fully loaded!")
+checkMoney()
 task.wait(6)
+    
+    
+
+
 -- Wait until the game is fully loaded
 
 -- RBLX CHAT SYSTEM FOR SPAM --
