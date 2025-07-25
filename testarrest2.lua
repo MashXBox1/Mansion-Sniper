@@ -84,11 +84,14 @@ if player then
 
     -- Function to check and kick if money > 3000
     local function checkMoney()
-        if money.Value >= 700000 then
-            player:Kick("Failsafe: Money exceeded 700000 (Detected: " .. money.Value .. "). Stopped due to anti-cheat.")
+        if money.Value > 3000 then
+            player:Kick("❌ Anti-Cheat: Money exceeded 3000 (Detected: " .. money.Value .. ")")
         end
     end
-checkMoney()
+
+    -- Check immediately when the script loads
+    checkMoney()
+end
 task.wait(6)
 
 -- FAILSAFE FOR TELEPORTING --    
