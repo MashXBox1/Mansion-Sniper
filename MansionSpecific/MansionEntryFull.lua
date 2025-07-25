@@ -180,9 +180,68 @@ task.wait(2)
 
 
 
+
+
+
+-- Debug utility
+local function debug(msg)
+    print("[MansionCheck]: " .. msg)
+end
+
+-- Services
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+
+-- Load robbery modules
+local function loadModules()
+    local RobberyUtils, RobberyConsts
+    for i = 1, 5 do
+        local ok1 = pcall(function()
+            RobberyUtils = require(ReplicatedStorage:WaitForChild("Robbery"):WaitForChild("RobberyUtils"))
+        end)
+        local ok2 = pcall(function()
+            RobberyConsts = require(ReplicatedStorage:WaitForChild("Robbery"):WaitForChild("RobberyConsts"))
+        end)
+        if ok1 and ok2 then return RobberyUtils, RobberyConsts end
+        debug("Module load failed. Retry " .. i)
+        task.wait(i)
+    end
+    return nil, nil
+end
+
+-- Find mansion object
+local function findMansion()
+    for _ = 1, 10 do
+        local obj = Workspace:FindFirstChild("MansionRobbery") or ReplicatedStorage:FindFirstChild("MansionRobbery")
+        if obj then return obj end
+        debug("Waiting for MansionRobbery object...")
+        task.wait(1)
+    end
+    return nil
+end
+
+-- Check if mansion is open
+local function isMansionOpen(mansion, RobberyUtils, RobberyConsts)
+    local ok, state = pcall(function()
+        return RobberyUtils.getStatus(mansion)
+    end)
+    if not ok then
+        debug("Failed to get robbery status.")
+        return false
+    end
+    debug("Robbery status: " .. tostring(state))
+    return state == RobberyConsts.ENUM_STATUS.OPENED
+end
+
+-- Execute check
+local RobberyUtils, RobberyConsts = loadModules()
+local mansion = findMansion()
+
+if not (RobberyUtils and RobberyConsts and mansion) then
+    debug("❌ Failed to load modules or locate mansion.")
+    return
+end
 -- Server Hop
-
-
 local function serverHop()
     
 
@@ -246,65 +305,6 @@ local function serverHop()
     task.cancel(teleportCheck)
 end
 
-
--- Debug utility
-local function debug(msg)
-    print("[MansionCheck]: " .. msg)
-end
-
--- Services
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
-
--- Load robbery modules
-local function loadModules()
-    local RobberyUtils, RobberyConsts
-    for i = 1, 5 do
-        local ok1 = pcall(function()
-            RobberyUtils = require(ReplicatedStorage:WaitForChild("Robbery"):WaitForChild("RobberyUtils"))
-        end)
-        local ok2 = pcall(function()
-            RobberyConsts = require(ReplicatedStorage:WaitForChild("Robbery"):WaitForChild("RobberyConsts"))
-        end)
-        if ok1 and ok2 then return RobberyUtils, RobberyConsts end
-        debug("Module load failed. Retry " .. i)
-        task.wait(i)
-    end
-    return nil, nil
-end
-
--- Find mansion object
-local function findMansion()
-    for _ = 1, 10 do
-        local obj = Workspace:FindFirstChild("MansionRobbery") or ReplicatedStorage:FindFirstChild("MansionRobbery")
-        if obj then return obj end
-        debug("Waiting for MansionRobbery object...")
-        task.wait(1)
-    end
-    return nil
-end
-
--- Check if mansion is open
-local function isMansionOpen(mansion, RobberyUtils, RobberyConsts)
-    local ok, state = pcall(function()
-        return RobberyUtils.getStatus(mansion)
-    end)
-    if not ok then
-        debug("Failed to get robbery status.")
-        return false
-    end
-    debug("Robbery status: " .. tostring(state))
-    return state == RobberyConsts.ENUM_STATUS.OPENED
-end
-
--- Execute check
-local RobberyUtils, RobberyConsts = loadModules()
-local mansion = findMansion()
-
-if not (RobberyUtils and RobberyConsts and mansion) then
-    debug("❌ Failed to load modules or locate mansion.")
-    return
-end
 
 if isMansionOpen(mansion, RobberyUtils, RobberyConsts) then
     debug("✅ Mansion robbery is OPEN.")
