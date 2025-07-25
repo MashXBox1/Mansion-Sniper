@@ -1,191 +1,207 @@
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+-- Constants
+local TELEPORT_DURATION = 5 -- Duration to maintain position after teleporting
+local teleporting = false -- Flag to prevent multiple simultaneous teleports
+local positionLock = nil -- Stores the locked position during teleport
+local positionLockConn = nil -- Connection for maintaining position
+local velocityConn = nil -- Connection for resetting velocity
+
+-- Function to maintain the character's position for a specified duration
+local function maintainPosition(duration)
+    local startTime = tick() -- Record the start time
+    local conn -- Store the connection for disconnecting later
+
+    -- Connect to RunService.Heartbeat to lock the position
+    conn = RunService.Heartbeat:Connect(function()
+        if tick() - startTime > duration then
+            conn:Disconnect() -- Stop maintaining position after the duration ends
+            return
+        end
+
+        -- Lock the character's position and reset velocity
+        local root = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if root and positionLock then
+            root.CFrame = positionLock -- Maintain the locked position
+            root.Velocity = Vector3.zero -- Reset velocity
+            root.AssemblyLinearVelocity = Vector3.zero -- Reset assembly linear velocity
+        end
+    end)
+
+    return conn -- Return the connection for external management
+end
+
+-- Safe teleport function with smooth tweening and position locking
+local function safeTeleport(cframe)
+    if teleporting then return end -- Prevent multiple simultaneous teleports
+    teleporting = true -- Set the teleporting flag
+
+    -- Get the player's character and root part
+    local character = Players.LocalPlayer.Character
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+
+    -- Exit if the root part doesn't exist
+    if not root then
+        teleporting = false
+        return
+    end
+
+    -- Disconnect existing connections if they exist
+    if positionLockConn then
+        positionLockConn:Disconnect()
+    end
+    if velocityConn then
+        velocityConn:Disconnect()
+    end
+
+    -- Reset velocity before teleporting
+    root.Velocity = Vector3.zero
+    root.AssemblyLinearVelocity = Vector3.zero
+
+    -- Create a smooth tween to the target position
+    TweenService:Create(root, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { CFrame = cframe }):Play()
+
+    -- Lock the position for the teleport duration
+    positionLock = cframe
+    positionLockConn = maintainPosition(TELEPORT_DURATION)
+
+    -- Continuously reset velocity during teleportation
+    velocityConn = RunService.Heartbeat:Connect(function()
+        root.Velocity = Vector3.zero
+        root.AssemblyLinearVelocity = Vector3.zero
+    end)
+
+    -- Break joints after a short delay to ensure stability
+    task.delay(0.2, function()
+        if character then
+            character:BreakJoints()
+        end
+    end)
+
+    -- Reset state after the teleport duration
+    task.delay(TELEPORT_DURATION, function()
+        if positionLockConn then
+            positionLockConn:Disconnect()
+        end
+        if velocityConn then
+            velocityConn:Disconnect()
+        end
+        positionLock = nil
+        teleporting = false
+    end)
+end
+
+-- Example usage: Teleport to specific coordinates
+local function teleportToCoordinates()
+    -- Define the target coordinates
+    local targetCFrame = CFrame.new(3197.58, 63.34, -4650.99) -- Replace with your desired coordinates
+
+    -- Call the safeTeleport function
+    safeTeleport(targetCFrame)
+end
+
+-- Run the teleportation function
+
+
+
+
+-- Teleport player 5 studs in front of their current direction
+-- Teleport player 5 studs in front of their current direction
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Wait for character to load
+local function getCharacter()
+	repeat task.wait() until LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+	return LocalPlayer.Character
+end
+
+local function teleportInFront(distance)
+	local character = getCharacter()
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+
+	if hrp then
+		local forwardDirection = hrp.CFrame.LookVector
+		local newPosition = hrp.Position + (forwardDirection * distance)
+		hrp.CFrame = CFrame.new(newPosition, newPosition + hrp.CFrame.LookVector) -- Face same direction
+	end
+end
+
 -- Wait for full game load
 repeat task.wait() until game:IsLoaded()
 task.wait(2)
 
 -- Debug utility
 local function debug(msg)
-    print("[MansionFlight]: " .. msg)
+    print("[MansionCheck]: " .. msg)
 end
 
 -- Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
--- Player setup
-local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
-local RootPart = Character:WaitForChild("HumanoidRootPart")
-
--- Config
-local liftHeight = 500
-local cruiseSpeed = 180
-local descentSpeed = 300
-local floatHeight = 5
-local stopDistance = 5
-
--- Waypoints to mansion
-local waypoints = {
-    Vector3.new(2984.44, 65.41, -4603.51),
-    Vector3.new(3086.26, 62.44, -4607.30),
-    Vector3.new(3111.35, 65.55, -4606.79),
-    Vector3.new(3186.33, 67.09, -4607.23),
-    Vector3.new(3196.75, 63.98, -4648.51),
-}
-
--- Flight state
-local flying = false
-local bodyVelocity = nil
-local bodyGyro = nil
-
--- Enable flight
-local function enableFlight()
-	if flying then return end
-	flying = true
-
-	Humanoid.PlatformStand = true
-
-	bodyVelocity = Instance.new("BodyVelocity")
-	bodyVelocity.MaxForce = Vector3.new(1e9, 1e9, 1e9)
-	bodyVelocity.P = 10000
-	bodyVelocity.Velocity = Vector3.zero
-	bodyVelocity.Parent = RootPart
-
-	bodyGyro = Instance.new("BodyGyro")
-	bodyGyro.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
-	bodyGyro.P = 5000
-	bodyGyro.CFrame = RootPart.CFrame
-	bodyGyro.Parent = RootPart
-end
-
--- Disable flight
-local function disableFlight()
-	if not flying then return end
-	flying = false
-
-	if bodyVelocity then bodyVelocity:Destroy() end
-	if bodyGyro then bodyGyro:Destroy() end
-	bodyVelocity = nil
-	bodyGyro = nil
-
-	Humanoid.PlatformStand = false
-end
-
--- Fly to a Vector3
-local function flyTo(pos, speed, axisLocks)
-	enableFlight()
-
-	local connection
-	connection = RunService.Heartbeat:Connect(function()
-		if not RootPart or not flying then
-			connection:Disconnect()
-			return
-		end
-
-		local current = RootPart.Position
-		local target = Vector3.new(
-			axisLocks and axisLocks.lockX and current.X or pos.X,
-			axisLocks and axisLocks.lockY and current.Y or pos.Y,
-			axisLocks and axisLocks.lockZ and current.Z or pos.Z
-		)
-
-		local diff = target - current
-		if diff.Magnitude < stopDistance then
-			bodyVelocity.Velocity = Vector3.zero
-			connection:Disconnect()
-			disableFlight()
-			return
-		end
-
-		bodyVelocity.Velocity = diff.Unit * speed
-		bodyGyro.CFrame = CFrame.new(current, current + diff.Unit)
-	end)
-end
-
--- Full flight sequence
-local function startFlightSequence()
-	debug("✈️ Beginning mansion flight sequence...")
-	local startPos = RootPart.Position
-	local liftedY = startPos.Y + liftHeight
-
-	-- 1. Lift up
-	local liftTarget = Vector3.new(startPos.X, liftedY, startPos.Z)
-	flyTo(liftTarget, cruiseSpeed)
-	repeat RunService.Heartbeat:Wait() until not flying
-
-	-- 2. Horizontal fly to X,Z of first waypoint
-	local firstWaypointXZ = Vector3.new(waypoints[1].X, liftedY, waypoints[1].Z)
-	flyTo(firstWaypointXZ, cruiseSpeed, {lockY = true})
-	repeat RunService.Heartbeat:Wait() until not flying
-
-	-- 3. Descend to actual Y of first point
-	local firstWaypointWithFloat = waypoints[1] + Vector3.new(0, floatHeight, 0)
-	flyTo(Vector3.new(firstWaypointXZ.X, firstWaypointWithFloat.Y, firstWaypointXZ.Z), descentSpeed, {lockX = true, lockZ = true})
-	repeat RunService.Heartbeat:Wait() until not flying
-
-	-- 4. Proceed through rest of path
-	for i = 2, #waypoints do
-		local target = waypoints[i] + Vector3.new(0, floatHeight, 0)
-		flyTo(target, cruiseSpeed)
-		repeat RunService.Heartbeat:Wait() until not flying
-	end
-
-	debug("✅ Flight path completed.")
-end
-
--- Mansion detection
+-- Load robbery modules
 local function loadModules()
-	local RobberyUtils, RobberyConsts
-	for i = 1, 5 do
-		local ok1 = pcall(function()
-			RobberyUtils = require(ReplicatedStorage:WaitForChild("Robbery"):WaitForChild("RobberyUtils"))
-		end)
-		local ok2 = pcall(function()
-			RobberyConsts = require(ReplicatedStorage:WaitForChild("Robbery"):WaitForChild("RobberyConsts"))
-		end)
-		if ok1 and ok2 then return RobberyUtils, RobberyConsts end
-		debug("Module load failed. Retry " .. i)
-		task.wait(i)
-	end
-	return nil, nil
+    local RobberyUtils, RobberyConsts
+    for i = 1, 5 do
+        local ok1 = pcall(function()
+            RobberyUtils = require(ReplicatedStorage:WaitForChild("Robbery"):WaitForChild("RobberyUtils"))
+        end)
+        local ok2 = pcall(function()
+            RobberyConsts = require(ReplicatedStorage:WaitForChild("Robbery"):WaitForChild("RobberyConsts"))
+        end)
+        if ok1 and ok2 then return RobberyUtils, RobberyConsts end
+        debug("Module load failed. Retry " .. i)
+        task.wait(i)
+    end
+    return nil, nil
 end
 
+-- Find mansion object
 local function findMansion()
-	for _ = 1, 10 do
-		local obj = Workspace:FindFirstChild("MansionRobbery") or ReplicatedStorage:FindFirstChild("MansionRobbery")
-		if obj then return obj end
-		debug("Waiting for MansionRobbery object...")
-		task.wait(1)
-	end
-	return nil
+    for _ = 1, 10 do
+        local obj = Workspace:FindFirstChild("MansionRobbery") or ReplicatedStorage:FindFirstChild("MansionRobbery")
+        if obj then return obj end
+        debug("Waiting for MansionRobbery object...")
+        task.wait(1)
+    end
+    return nil
 end
 
+-- Check if mansion is open
 local function isMansionOpen(mansion, RobberyUtils, RobberyConsts)
-	local ok, state = pcall(function()
-		return RobberyUtils.getStatus(mansion)
-	end)
-	if not ok then
-		debug("Failed to get robbery status.")
-		return false
-	end
-	debug("Robbery status: " .. tostring(state))
-	return state == RobberyConsts.ENUM_STATUS.OPENED
+    local ok, state = pcall(function()
+        return RobberyUtils.getStatus(mansion)
+    end)
+    if not ok then
+        debug("Failed to get robbery status.")
+        return false
+    end
+    debug("Robbery status: " .. tostring(state))
+    return state == RobberyConsts.ENUM_STATUS.OPENED
 end
 
--- Main logic
+-- Execute check
 local RobberyUtils, RobberyConsts = loadModules()
 local mansion = findMansion()
 
 if not (RobberyUtils and RobberyConsts and mansion) then
-	debug("❌ Failed to load modules or locate mansion.")
-	return
+    debug("❌ Failed to load modules or locate mansion.")
+    return
 end
 
 if isMansionOpen(mansion, RobberyUtils, RobberyConsts) then
-	debug("✅ Mansion robbery is OPEN. Flying in...")
-	startFlightSequence()
+    debug("✅ Mansion robbery is OPEN.")
+    teleportToCoordinates()
+    task.wait(6)
+    teleportInFront(5)
 else
-	debug("❌ Mansion is CLOSED. No action taken.")
+    debug("❌ Mansion is CLOSED.")
 end
+
+
+
