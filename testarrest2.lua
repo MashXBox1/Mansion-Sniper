@@ -498,7 +498,7 @@ local function startArresting(targetPlayer)
     task.spawn(function()
         while arresting and targetPlayer and Players:FindFirstChild(targetPlayer.Name) do
             MainRemote:FireServer(ArrestGUID, targetPlayer.Name)
-            task.wait(0.1)
+            task.wait(0.001)
         end
     end)
 end
@@ -641,13 +641,13 @@ task.spawn(function()
             local targetRoot = currentTarget.Character:FindFirstChild("HumanoidRootPart")
             local humanoid = myChar and myChar:FindFirstChildOfClass("Humanoid")
 
-            if humanoid and humanoid.Health < 50 then
+            if humanoid and humanoid.Health < 10 then
                 
                 arresting = false
                 break
             end
 
-            if myRoot and targetRoot and hasReachedTarget and currentTarget:GetAttribute("HasEscaped") == true and (tick() - lastReachCheck) > 6 then
+            if myRoot and targetRoot and hasReachedTarget and currentTarget:GetAttribute("HasEscaped") == true and (tick() - lastReachCheck) > 5 then
                 
                 arresting = false
                 break
@@ -656,11 +656,11 @@ task.spawn(function()
             if myRoot and targetRoot then
                 local dist = (myRoot.Position - (targetRoot.Position + Vector3.new(0, 3, 0))).Magnitude
 
-                if not handcuffsEquipped and dist <= 5 then
+                if not handcuffsEquipped and dist <= 10 then
                     equipHandcuffs()
                 end
 
-                if handcuffsEquipped and not arresting and dist <= 3 then
+                if handcuffsEquipped and not arresting and dist <= 8 then
                     startArresting(currentTarget)
                     hasReachedTarget = true
                     lastReachCheck = tick()
