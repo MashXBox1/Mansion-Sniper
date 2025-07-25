@@ -1,3 +1,7 @@
+repeat task.wait() until game:IsLoaded()
+print("✅ Game is fully loaded!")
+task.wait(3)
+
 --// Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
