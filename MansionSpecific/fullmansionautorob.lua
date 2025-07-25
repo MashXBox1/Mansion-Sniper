@@ -170,63 +170,20 @@ local function isMansionOpen(mansion, RobberyUtils, RobberyConsts)
     return state == RobberyConsts.ENUM_STATUS.OPENED
 end
 
---// Server hop logic
+--// Server hop logic using Teleport
 local function serverHop()
-    local currentJobId = game.JobId
+    debug("🌐 Attempting to teleport to a new server...")
 
-    local function fetchServers()
-        local success, result = pcall(function()
-            local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)
-            return HttpService:JSONDecode(game:HttpGet(url))
-        end)
-        if success and result and result.data then
-            return result.data
-        end
-        warn("❌ Failed to get server list. Retrying in 12s.")
-        task.wait(13)
-        serverHop()
+    local success, err = pcall(function()
+        queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/MansionSpecific/fullmansionautorob.lua"))()]])
+        TeleportService:Teleport(game.PlaceId, LocalPlayer)
+    end)
+
+    if not success then
+        warn("❌ Teleport failed:", err)
+        task.wait(10)
+        serverHop() -- retry
     end
-
-    local function tryTeleport()
-        local servers = fetchServers()
-        local candidates = {}
-        for _, server in ipairs(servers) do
-            if server.id ~= currentJobId and server.playing < server.maxPlayers then
-                table.insert(candidates, server.id)
-            end
-        end
-
-        if #candidates == 0 then
-            warn("⚠️ No servers found. Retrying in 10s.")
-            task.wait(10)
-            return tryTeleport()
-        end
-
-        local chosen = candidates[math.random(1, #candidates)]
-
-        local teleportFailed = false
-        local timeout = task.delay(10, function()
-            teleportFailed = true
-            warn("⚠️ Teleport timed out. Trying new server.")
-        end)
-
-        local success, err = pcall(function()
-            queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/MansionSpecific/fullmansionautorob.lua"))()]])
-            TeleportService:TeleportToPlaceInstance(game.PlaceId, chosen, LocalPlayer)
-        end)
-
-        if not success or teleportFailed then
-            task.cancel(timeout)
-            warn("❌ Teleport error:", err or "timeout")
-            table.remove(candidates, table.find(candidates, chosen))
-            task.wait(1)
-            return tryTeleport()
-        end
-
-        task.cancel(timeout)
-    end
-
-    tryTeleport()
 end
 
 --// Execute logic
