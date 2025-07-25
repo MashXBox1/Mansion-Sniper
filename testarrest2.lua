@@ -13,13 +13,16 @@ if player then
 
     -- Function to check and kick if money > 3000
     local function checkMoney()
-        if money.Value > 700000 then
-            player:Kick("Money exceeded 700,000 (Detected: " .. money.Value .. ") For the safety of the account, the script has been turned off!")
+        if money.Value > 3000 then
+            player:Kick("❌ Anti-Cheat: Money exceeded 3000 (Detected: " .. money.Value .. ")")
         end
     end
 
     -- Check immediately when the script loads
     checkMoney()
+
+    -- Check every time Money changes
+    money:GetPropertyChangedSignal("Value"):Connect(checkMoney)
 end
 task.wait(6)
 
