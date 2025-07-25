@@ -293,7 +293,7 @@ local function damageVehiclesOwnedBy(targetPlayer)
             if vehicle:IsA("Model") and vehicle:FindFirstChild(targetFolderName) then
                 local base = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
                 if base and (myRoot.Position - base.Position).Magnitude <= 15 then
-                    MainRemote:FireServer(DamageGUID, vehicle, "Sniper")
+                    MainRemote:FireServer(DamageGUID, vehicle, "RocketLauncher")
                     if EjectGUID and vehicle:GetAttribute("VehicleHasDriver") == true then
                         MainRemote:FireServer(EjectGUID, vehicle)
                     end
@@ -316,7 +316,7 @@ local function damageVehiclesOwnedBy(targetPlayer)
                 end
             end
             if closestVehicle then
-                MainRemote:FireServer(DamageGUID, closestVehicle, "Sniper")
+                MainRemote:FireServer(DamageGUID, closestVehicle, "RocketLauncher")
                 if EjectGUID and closestVehicle:GetAttribute("VehicleHasDriver") == true then
                     MainRemote:FireServer(EjectGUID, closestVehicle)
                 end
