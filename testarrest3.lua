@@ -56,10 +56,16 @@ local function sendChatMessage(message)
 end
 
 -- TELEPORT TO PLAYER MODEL FUNCTION (MODIFIED) --
-local lastPosition = nil
-
 -- MODIFIED TELEPORT FUNCTION --
 local function teleportUntilAllHRPsLoaded()
+    local LocalPlayer = Players.LocalPlayer
+    if not LocalPlayer then return end
+
+    -- Wait for local player's character to load
+    repeat
+        task.wait()
+    until LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
     local function allHRPsLoaded()
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= LocalPlayer then
@@ -81,12 +87,9 @@ local function teleportUntilAllHRPsLoaded()
     end
 
     local myChar = LocalPlayer.Character
-    if not myChar then return end
-
     local hrp = myChar:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
     local humanoid = myChar:FindFirstChildOfClass("Humanoid")
+    
     if humanoid then
         humanoid.PlatformStand = true
     end
@@ -105,8 +108,11 @@ end
 
 -- CALL THIS FUNCTION INSTEAD OF YOUR ORIGINAL TELEPORT LOOP --
 -- Replace your original teleport loop (the one with for i = 1, 4 do) with this:
-teleportUntilAllHRPsLoaded()
-task.wait(6) -- Optional wait after teleporting
+
+
+-- CALL THIS FUNCTION INSTEAD OF YOUR ORIGINAL TELEPORT LOOP --
+-- Replace your original teleport loop (the one with for i = 1, 4 do) with this:
+
 
 -- Services
 local Workspace = game:GetService("Workspace")
