@@ -279,7 +279,7 @@ end
 if isMansionOpen(mansion, RobberyUtils, RobberyConsts) then
     debug("✅ Mansion robbery is OPEN.")
     teleportToCoordinates()
-    task.wait(5)
+    task.wait(6)
     teleportInFront(5)
     task.wait(1)
     flyToCoordinates(Vector3.new(3196.93, 63.36, -4665.44), 0.5)
