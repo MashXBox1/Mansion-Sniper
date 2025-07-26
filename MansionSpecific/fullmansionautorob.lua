@@ -265,6 +265,42 @@ local function serverHop()
     tryTeleport()
 end
 
+-- Start Timer
+local function getServerTime()
+    local timeFetch = ReplicatedStorage:FindFirstChild("GetServerTime")
+    if timeFetch and timeFetch:IsA("RemoteFunction") then
+        return timeFetch:InvokeServer()
+    else
+        
+        return os.time()
+    end
+end
+
+-- Wait exactly 360 seconds from server time
+local function wait360Seconds()
+    local startTime = getServerTime()
+    local endTime = startTime + 200
+    
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        if os.time() >= endTime then
+            connection:Disconnect() -- Stop checking
+            serverHop()
+            
+            
+            
+        end
+    end)
+end
+
+wait360Seconds()
+
+
+
+
+
+
+
 --// Execute logic
 local RobberyUtils, RobberyConsts = loadModules()
 local mansion = findMansion()
