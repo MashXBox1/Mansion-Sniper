@@ -204,7 +204,6 @@ local function isMansionOpen(mansion, RobberyUtils, RobberyConsts)
     return state == RobberyConsts.ENUM_STATUS.OPENED
 end
 
---// Server hop logic using Teleport
 --// Server hop logic using Cloudflare Worker and player count limit
 local function serverHop()
     local currentJobId = game.JobId
@@ -266,7 +265,6 @@ local function serverHop()
     tryTeleport()
 end
 
-
 --// Execute logic
 local RobberyUtils, RobberyConsts = loadModules()
 local mansion = findMansion()
@@ -276,16 +274,38 @@ if not (RobberyUtils and RobberyConsts and mansion) then
     return
 end
 
-if isMansionOpen(mansion, RobberyUtils, RobberyConsts) then
+--// Repeat attempt until close enough to target
+local function attemptTeleport()
     debug("✅ Mansion robbery is OPEN.")
     teleportToCoordinates()
     task.wait(6)
     teleportInFront(5)
     task.wait(1)
     flyToCoordinates(Vector3.new(3196.93, 63.36, -4665.44), 0.5)
+    task.wait(1)
+
+    -- Check distance
+    local character = getCharacter()
+    local hrp = character and character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local targetPos = Vector3.new(3197.58, 63.34, -4650.99)
+        local distance = (hrp.Position - targetPos).Magnitude
+        if distance > 200 then
+            debug("⚠️ Too far from mansion spot (" .. math.floor(distance) .. " studs). Retrying...")
+            attemptTeleport()
+        else
+            debug("✅ Close enough to mansion! (" .. math.floor(distance) .. " studs)")
+        end
+    else
+        warn("❌ Could not find HumanoidRootPart to check distance. Retrying...")
+        attemptTeleport()
+    end
+end
+
+if isMansionOpen(mansion, RobberyUtils, RobberyConsts) then
+    attemptTeleport()
 else
     debug("❌ Mansion is CLOSED.")
-    
     serverHop()
 end
 task.wait(20)
