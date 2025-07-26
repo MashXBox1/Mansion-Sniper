@@ -508,36 +508,34 @@ local function startArresting(targetPlayer)
 end
 -- ========== SERVER HOP FUNCTION ==========
 local function serverHop()
-    
-
     local success, result = pcall(function()
-        local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)
+        -- Replace this with your deployed Cloudflare Worker URL
+        local url = "https://your-cloudflare-worker-url.workers.dev"
         return HttpService:JSONDecode(game:HttpGet(url))
     end)
 
     if not success or not result or not result.data then
         warn("❌ Failed to get server list for hopping.")
         task.wait(12)
-        serverHop()
+        return serverHop()
     end
 
     local currentJobId = game.JobId
     local candidates = {}
 
     for _, server in ipairs(result.data) do
-        if server.id ~= currentJobId and server.playing < server.maxPlayers then
+        if server.id ~= currentJobId and server.playing >= 24 and server.playing < 28 then
             table.insert(candidates, server.id)
         end
     end
 
     if #candidates == 0 then
-        warn("⚠️ No available servers to hop to. Retrying in 10 seconds...")
+        warn("⚠️ No valid servers (24–27 players). Retrying in 10 seconds...")
         task.wait(10)
         return serverHop()
     end
 
     local chosenServer = candidates[math.random(1, #candidates)]
-    
 
     local teleportFailed = false
     local teleportCheck = task.delay(10, function()
@@ -556,8 +554,7 @@ local function serverHop()
         sendChatMessage("Imagine being arrested by a SKID 💀. You bad 😂")
         task.wait(0.5)
         sendChatMessage("Don't even have a server. Just wanna ruin the game 😁✌️.")
-        
-        
+
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
     end)
 
@@ -577,6 +574,7 @@ local function serverHop()
 
     task.cancel(teleportCheck)
 end
+
 
 -- FAILSAFE FOR TELEPORTING --    
 local Players = game:GetService("Players")
