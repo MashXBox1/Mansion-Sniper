@@ -58,54 +58,55 @@ end
 -- TELEPORT TO PLAYER MODEL FUNCTION (MODIFIED) --
 local lastPosition = nil
 
-local function teleportToPlayerModel()
-    local function waitForAllPlayers()
-        repeat
-            local allLoaded = true
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer and not player.Character then
-                    allLoaded = false
-                    break
+-- MODIFIED TELEPORT FUNCTION --
+local function teleportUntilAllHRPsLoaded()
+    local function allHRPsLoaded()
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                local character = player.Character
+                if not character or not character:FindFirstChild("HumanoidRootPart") then
+                    return false
                 end
             end
-            if not allLoaded then
-                task.wait(1)
-            end
-        until allLoaded
-    end
-
-    local function getNewRandomPosition()
-        local newPosition
-        repeat
-            local x = math.random(-2092, 3128)
-            local z = math.random(-5780, 2442)
-            newPosition = Vector3.new(x, 40, z)
-        until not lastPosition or (newPosition - lastPosition).Magnitude >= 300
-        lastPosition = newPosition
-        return newPosition
-    end
-
-    waitForAllPlayers() -- Wait until all players have loaded
-    
-    local LocalPlayer = game:GetService("Players").LocalPlayer
-    local myChar = LocalPlayer.Character
-    local hrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        local humanoid = myChar:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.PlatformStand = true
         end
+        return true
+    end
 
-        local randomPos = getNewRandomPosition()
+    local function getRandomPosition()
+        return Vector3.new(
+            math.random(-2092, 3128),
+            40,
+            math.random(-5780, 2442)
+        )
+    end
+
+    local myChar = LocalPlayer.Character
+    if not myChar then return end
+
+    local hrp = myChar:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local humanoid = myChar:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.PlatformStand = true
+    end
+
+    -- Keep teleporting until all HRPs are loaded
+    while not allHRPsLoaded() do
+        local randomPos = getRandomPosition()
         hrp.CFrame = CFrame.new(randomPos)
+        task.wait(0.5) -- Wait a bit between teleports
+    end
 
-        task.delay(0.5, function()
-            if humanoid then
-                humanoid.PlatformStand = true
-            end
-        end)
+    if humanoid then
+        humanoid.PlatformStand = false
     end
 end
+
+-- CALL THIS FUNCTION INSTEAD OF YOUR ORIGINAL TELEPORT LOOP --
+-- Replace your original teleport loop (the one with for i = 1, 4 do) with this:
+teleportUntilAllHRPsLoaded()
+task.wait(6) -- Optional wait after teleporting
 
 -- Services
 local Workspace = game:GetService("Workspace")
@@ -263,10 +264,7 @@ end
 
 task.wait(1)
 -- Modified teleport loop to keep teleporting until all HRPs are loaded
-for i = 1, 4 do
-    teleportToPlayerModel()
-    task.wait(0.3)
-end
+teleportUntilAllHRPsLoaded()
 task.wait(6)
 
 -- ========== VEHICLE DAMAGE SYSTEM ==========
