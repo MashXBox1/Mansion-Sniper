@@ -309,6 +309,27 @@ else
     serverHop()
 end
 task.wait(20)
+
+local character = getCharacter()
+local hrp = character and character:FindFirstChild("HumanoidRootPart")
+if hrp then
+    local targetPos = Vector3.new(3202.27, -197.30, -4683.33)
+    local distance = (hrp.Position - targetPos).Magnitude
+    if distance > 30 then
+        debug("⚠️ Too far from inside mansion spot (" .. math.floor(distance) .. " studs). Hopping...")
+        serverHop()
+    else
+        debug("✅ Close enough to the inside of mansion! (" .. math.floor(distance) .. " studs)")
+    end
+else
+    warn("❌ Could not find HumanoidRootPart to check distance. Retrying...")
+    serverHop()
+end
+
+
+
+
+
 -- Wait for game to load
 repeat task.wait() until game:IsLoaded()
 task.wait(2)
