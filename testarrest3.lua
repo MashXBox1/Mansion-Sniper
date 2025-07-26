@@ -1,73 +1,103 @@
--- AUTO ARREST SCRIPT --
-
 repeat task.wait() until game:IsLoaded()
 print("✅ Game is fully loaded!")
-task.wait(6)
--- Wait until the game is fully loaded
 
-
--- Services
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+local player = Players.LocalPlayer
 
--- Function to teleport to player model center
-local lastPosition = nil
+if player then
+    local leaderstats = player:WaitForChild("leaderstats")
+    local money = leaderstats:WaitForChild("Money")
 
-local function teleportToPlayerModel(_)
-    local function getNewRandomPosition()
-        local newPosition
-        repeat
-            local x = math.random(-2092, 3128)
-            local z = math.random(-5780, 2442)
-            newPosition = Vector3.new(x, 300, z)
-        until not lastPosition or (newPosition - lastPosition).Magnitude >= 700
-        lastPosition = newPosition
-        return newPosition
-    end
-
-    local LocalPlayer = game:GetService("Players").LocalPlayer
-    local myChar = LocalPlayer.Character
-    local hrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        local humanoid = myChar:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.PlatformStand = true
+    local function checkMoney()
+        if money.Value >= 700000 then
+            player:Kick("Money exceeded 700000 (Detected: " .. money.Value .. ")")
         end
-
-        local randomPos = getNewRandomPosition()
-        hrp.CFrame = CFrame.new(randomPos)
-
-        task.delay(0.5, function()
-            if humanoid then
-                humanoid.PlatformStand = true
-            end
-        end)
     end
+
+    checkMoney()
+    money:GetPropertyChangedSignal("Value"):Connect(checkMoney)
 end
 
+task.wait(6)
 
-
-
-
--- Loop through all players once
--- Optional wait before starting
-
-
-
--- Services
+local TextChatService = game:GetService("TextChatService")
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
-local TeleportService = game:GetService("TeleportService")
 
+local player = Players.LocalPlayer
+while not player do
+    task.wait()
+    player = Players.LocalPlayer
+end
+
+local function sendChatMessage(message)
+    if not TextChatService then
+        warn("TextChatService is not available")
+        return false
+    end
+    local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+    if not channel then
+        warn("RBXGeneral chat channel not found")
+        return false
+    end
+    local success, errorMsg = pcall(function()
+        channel:SendAsync(message)
+    end)
+    if not success then
+        warn("Failed to send message:", errorMsg)
+        return false
+    end
+    return true
+end
+
+local function alternativeSendMessage(message)
+    local chatInput = TextChatService:FindFirstChild("TextChatInput")
+    if chatInput then
+        chatInput.Text = message
+        chatInput:CaptureFocus()
+        task.wait()
+        chatInput:ReleaseFocus()
+        return true
+    end
+    return false
+end
+
+local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 -- ========== BOUNTY CHECKING SYSTEM ==========
 local targetString = "bsfz260o"
 local highBountyPlayers = {}
+
+local function checkBounties(tbl)
+    if typeof(tbl) ~= "table" then return end
+
+    local candidates = {}
+    for playerName, bounty in pairs(tbl) do
+        local bountyNum = tonumber(bounty)
+        if bountyNum and bountyNum >= 250 then
+            table.insert(candidates, {Name = playerName, Bounty = bountyNum})
+        end
+    end
+
+    if #candidates < 3 then
+        candidates = {}
+        for playerName, bounty in pairs(tbl) do
+            local bountyNum = tonumber(bounty)
+            if bountyNum and bountyNum >= 1250 then
+                table.insert(candidates, {Name = playerName, Bounty = bountyNum})
+            end
+        end
+    end
+
+    table.sort(candidates, function(a, b)
+        return a.Bounty > b.Bounty
+    end)
+
+    highBountyPlayers = {}
+    for _, data in ipairs(candidates) do
+        highBountyPlayers[data.Name] = data.Bounty
+    end
+end
 
 local function containsTarget(value)
     if typeof(value) == "string" and string.find(value, targetString) then
@@ -82,19 +112,6 @@ local function containsTarget(value)
     return false
 end
 
-local function checkBounties(tbl)
-    if typeof(tbl) ~= "table" then return end
-    for playerName, bounty in pairs(tbl) do
-        local bountyNum = tonumber(bounty)
-        if bountyNum and bountyNum >= 500 then
-            highBountyPlayers[playerName] = bountyNum
-           
-        else
-            highBountyPlayers[playerName] = nil
-        end
-    end
-end
-
 local function onEvent(remote)
     remote.OnClientEvent:Connect(function(...)
         local args = {...}
@@ -107,25 +124,24 @@ local function onEvent(remote)
     end)
 end
 
-for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
+for _, v in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
     if v:IsA("RemoteEvent") then
         task.spawn(onEvent, v)
     end
 end
 
-ReplicatedStorage.DescendantAdded:Connect(function(v)
+game:GetService("ReplicatedStorage").DescendantAdded:Connect(function(v)
     if v:IsA("RemoteEvent") then
         task.spawn(onEvent, v)
     end
 end)
 
--- ========== PLAYER LOADING SYSTEM ==========
 local function ensureCharacterLoaded(player)
     if not player.Character then
-        local charAdded
         local loaded = false
-        charAdded = player.CharacterAdded:Connect(function(char)
-            charAdded:Disconnect()
+        local conn
+        conn = player.CharacterAdded:Connect(function(char)
+            conn:Disconnect()
             if char:WaitForChild("HumanoidRootPart", 5) then
                 loaded = true
             end
@@ -138,75 +154,109 @@ end
 
 local function getLoadedCriminals()
     local criminals = {}
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and tostring(player.Team) == "Criminal" and player:GetAttribute("HasEscaped") == true then
-            if highBountyPlayers[player.Name] and ensureCharacterLoaded(player) then
-                table.insert(criminals, player)
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and tostring(p.Team) == "Criminal" and p:GetAttribute("HasEscaped") == true then
+            if highBountyPlayers[p.Name] and ensureCharacterLoaded(p) then
+                table.insert(criminals, p)
             end
         end
     end
     return criminals
 end
 
--- ========== FIND MAIN REMOTE ==========
-local MainRemote = nil
-for _, obj in pairs(ReplicatedStorage:GetChildren()) do
+-- ========== Target selection: highest bounty first ==========
+local function getValidCriminalTarget()
+    local criminals = getLoadedCriminals()
+    if #criminals == 0 then return nil end
+
+    local highestBounty = -1
+    local bestTarget = nil
+
+    for _, p in ipairs(criminals) do
+        local bounty = highBountyPlayers[p.Name]
+        if bounty and bounty > highestBounty then
+            highestBounty = bounty
+            bestTarget = p
+        end
+    end
+
+    return bestTarget
+end
+
+-- ========== POLICE TEAM SETUP ==========
+local MainRemote
+for _, obj in pairs(game:GetService("ReplicatedStorage"):GetChildren()) do
     if obj:IsA("RemoteEvent") and obj.Name:find("-") then
         MainRemote = obj
-        
         break
     end
 end
-if not MainRemote then
-    error("❌ Could not find RemoteEvent with '-' in name.")
-end
+if not MainRemote then error("❌ Could not find RemoteEvent with '-' in name.") end
 
--- ========== FIND GUIDS ==========
 local PoliceGUID, EjectGUID, DamageGUID, ArrestGUID
-
 for _, t in pairs(getgc(true)) do
     if typeof(t) == "table" and not getmetatable(t) then
-        if t["mto4108g"] and t["mto4108g"]:sub(1,1) == "!" then
-            PoliceGUID = t["mto4108g"]
-            
+        if t["mto4108g"] and t["mto4108g"]:sub(1,1) == "!" then PoliceGUID = t["mto4108g"] end
+        if t["bi6lm6ja"] and t["bi6lm6ja"]:sub(1, 1) == "!" then EjectGUID = t["bi6lm6ja"] end
+        if t["vum9h1ez"] and t["vum9h1ez"]:sub(1, 1) == "!" then DamageGUID = t["vum9h1ez"] end
+        if t["xuv9rqpj"] and t["xuv9rqpj"]:sub(1, 1) == "!" then ArrestGUID = t["xuv9rqpj"] end
+    end
+end
+if not (ArrestGUID and PoliceGUID and EjectGUID and DamageGUID) then
+    error("❌ One or more GUIDs not found. Hash might've changed.")
+end
+
+MainRemote:FireServer(PoliceGUID, "Police")
+task.wait(1)
+
+-- ========== TELEPORT TO PLAYER MODEL (updated) ==========
+local function teleportToPlayerModel(targetPlayer)
+    -- Wait until target player's HRP exists
+    while true do
+        local char = targetPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            break
         end
-        if t["bi6lm6ja"] and t["bi6lm6ja"]:sub(1, 1) == "!" then
-            EjectGUID = t["bi6lm6ja"]
-            
-        end
-        if t["vum9h1ez"] and t["vum9h1ez"]:sub(1, 1) == "!" then
-            DamageGUID = t["vum9h1ez"]
-            
-        end
-        if t["xuv9rqpj"] and t["xuv9rqpj"]:sub(1, 1) == "!" then
-            ArrestGUID = t["xuv9rqpj"]
-            
-        end
+        task.wait(0.1)
+    end
+
+    local function getNewRandomPosition()
+        local newPosition
+        repeat
+            local x = math.random(-2092, 3128)
+            local z = math.random(-5780, 2442)
+            newPosition = Vector3.new(x, 40, z)
+        until not lastPosition or (newPosition - lastPosition).Magnitude >= 300
+        lastPosition = newPosition
+        return newPosition
+    end
+
+    local myChar = LocalPlayer.Character
+    local hrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local humanoid = myChar:FindFirstChildOfClass("Humanoid")
+        if humanoid then humanoid.PlatformStand = true end
+
+        local randomPos = getNewRandomPosition()
+        hrp.CFrame = CFrame.new(randomPos)
+
+        task.delay(0.5, function()
+            if humanoid then humanoid.PlatformStand = true end
+        end)
     end
 end
 
-if not ArrestGUID then error("❌ Arrest GUID not found. Hash might've changed.") end
-if not PoliceGUID then error("❌ PoliceGUID not found. Hash might've changed.") end
-if not EjectGUID then error("❌ EjectGUID not found. Hash might've changed.") end
-if not DamageGUID then error("❌ DamageGUID not found. Hash might've changed.") end
-
--- ========== POLICE TEAM SETUP ==========
-if PoliceGUID then
-    MainRemote:FireServer(PoliceGUID, "Police")
-end
+task.wait(0.3)
 for i = 1, 4 do
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and tostring(player.Team) == "Criminal" and player:GetAttribute("HasEscaped") == true then
-            teleportToPlayerModel() -- no need to pass `player`
-            task.wait(0.2)
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and tostring(p.Team) == "Criminal" and p:GetAttribute("HasEscaped") == true then
+            teleportToPlayerModel(p)
+            task.wait(0.3)
         end
     end
 end
-
-
 task.wait(6)
--- ========== CHARACTER SETUP ==========
-
 
 -- ========== VEHICLE DAMAGE SYSTEM ==========
 local function damageVehiclesOwnedBy(targetPlayer)
@@ -424,43 +474,40 @@ local function startArresting(targetPlayer)
     task.spawn(function()
         while arresting and targetPlayer and Players:FindFirstChild(targetPlayer.Name) do
             MainRemote:FireServer(ArrestGUID, targetPlayer.Name)
-            task.wait(0.1)
+            task.wait(0.001)
         end
     end)
 end
-
 -- ========== SERVER HOP FUNCTION ==========
 local function serverHop()
-    
-
     local success, result = pcall(function()
-        local url = ("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)
+        -- Replace this with your deployed Cloudflare Worker URL
+        local url = "https://robloxapi.neelseshadri31.workers.dev/"
         return HttpService:JSONDecode(game:HttpGet(url))
     end)
 
     if not success or not result or not result.data then
         warn("❌ Failed to get server list for hopping.")
         task.wait(12)
-        serverHop()
+        return serverHop()
     end
 
     local currentJobId = game.JobId
     local candidates = {}
 
     for _, server in ipairs(result.data) do
-        if server.id ~= currentJobId and server.playing < server.maxPlayers then
+        if server.id ~= currentJobId and server.playing >= 24 and server.playing < 28 then
             table.insert(candidates, server.id)
         end
     end
 
     if #candidates == 0 then
-        warn("⚠️ No available servers to hop to. Retrying in 10 seconds...")
+        warn("⚠️ No valid servers (24–27 players). Retrying in 10 seconds...")
         task.wait(10)
         return serverHop()
     end
 
     local chosenServer = candidates[math.random(1, #candidates)]
-    
 
     local teleportFailed = false
     local teleportCheck = task.delay(10, function()
@@ -470,6 +517,8 @@ local function serverHop()
 
     local success, err = pcall(function()
         queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testarrest3.lua"))()]])
+        
+
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
     end)
 
@@ -489,6 +538,42 @@ local function serverHop()
 
     task.cancel(teleportCheck)
 end
+
+
+-- FAILSAFE FOR TELEPORTING --    
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+-- Fetch server time (via a RemoteFunction)
+local function getServerTime()
+    local timeFetch = ReplicatedStorage:FindFirstChild("GetServerTime")
+    if timeFetch and timeFetch:IsA("RemoteFunction") then
+        return timeFetch:InvokeServer()
+    else
+        
+        return os.time()
+    end
+end
+
+-- Wait exactly 360 seconds from server time
+local function wait360Seconds()
+    local startTime = getServerTime()
+    local endTime = startTime + 360
+    
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        if os.time() >= endTime then
+            connection:Disconnect() -- Stop checking
+            serverHop()
+            
+            
+            
+        end
+    end)
+end
+
+wait360Seconds()
 
 -- ========== MAIN LOOP ==========
 task.spawn(function()
