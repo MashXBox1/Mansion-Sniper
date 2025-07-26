@@ -146,13 +146,19 @@ ReplicatedStorage.DescendantAdded:Connect(function(v)
 end)
 -- ========== PLAYER LOADING SYSTEM ==========
 local function ensureCharacterLoaded(player)
-    while not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") do
-        task.wait()
-        if not player.Character then
-            player.CharacterAdded:Wait()
-        end
+    if not player.Character then
+        local charAdded
+        local loaded = false
+        charAdded = player.CharacterAdded:Connect(function(char)
+            charAdded:Disconnect()
+            if char:WaitForChild("HumanoidRootPart", 5) then
+                loaded = true
+            end
+        end)
+        task.wait(0.9)
+        return loaded
     end
-    return true
+    return player.Character:FindFirstChild("HumanoidRootPart") ~= nil
 end
 local function getLoadedCriminals()
     local criminals = {}
@@ -268,27 +274,15 @@ local hasReachedTarget = false
 local handcuffsEquipped = false
 local arresting = false
 local function getValidCriminalTarget()
-    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return nil end
     local criminals = getLoadedCriminals()
     if #criminals == 0 then return nil end
-    local nearestPlayer, shortestDistance = nil, math.huge
-    for _, player in ipairs(criminals) do
-        local root = player.Character
-        if root then
-            -- Use PrimaryPart or fallback to Pivot or HumanoidRootPart for position
-            local posPart = root.PrimaryPart or root:FindFirstChild("HumanoidRootPart") or root:GetPivot()
-            if posPart then
-                local position = (typeof(posPart) == "CFrame") and posPart.Position or posPart.Position
-                local dist = (myRoot.Position - position).Magnitude
-                if dist < shortestDistance then
-                    shortestDistance = dist
-                    nearestPlayer = player
-                end
-            end
-        end
-    end
-    return nearestPlayer
+
+    -- Sort criminals by bounty (highest first)
+    table.sort(criminals, function(a, b)
+        return highBountyPlayers[a.Name] > highBountyPlayers[b.Name]
+    end)
+
+    return criminals[1] -- Return the highest bounty criminal
 end
 local function maintainPosition(duration)
     local startTime = tick()
@@ -439,7 +433,7 @@ local function serverHop()
     end)
     local success, err = pcall(function()
         queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testarrest3.lua"))()]])
-        
+       
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
     end)
     if not success then
