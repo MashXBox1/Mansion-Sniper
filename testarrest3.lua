@@ -98,7 +98,7 @@ local function teleportUntilAllCriminalHRPsLoaded()
     
     -- Configuration
     local SCAN_HEIGHT = 100  -- Optimal height to avoid obstacles
-    local SCAN_WAIT = 0.05   -- Fast scanning interval
+    local SCAN_WAIT = 0.1   -- Fast scanning interval
     local MIN_DISTANCE = 500 -- Minimum distance between scan points
     local lastPosition = nil
     
