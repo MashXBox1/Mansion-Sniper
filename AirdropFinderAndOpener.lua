@@ -1,294 +1,322 @@
--- Wait until the game is fully loaded
-local function isLoaded()
-    repeat task.wait() until game:IsLoaded()
-end
-isLoaded()
-task.wait(5)
+--== CONFIG: Replace this with whatever you want to run in the new server ==--
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/TestEnter.lua"))()]]
 
--- Services
+--== SERVICES ==--
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-local CollectionService = game:GetService("CollectionService")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 
--- Find Remote
-local MainRemote = nil
-for _, obj in pairs(ReplicatedStorage:GetChildren()) do
-    if obj:IsA("RemoteEvent") and obj.Name:find("-") then
-        MainRemote = obj
-        print("✅ Found RemoteEvent:", obj:GetFullName())
-        break
-    end
-end
-if not MainRemote then error("❌ Could not find RemoteEvent with '-' in name.") end
+local LocalPlayer = Players.LocalPlayer
 
--- Get Police GUID
-local PoliceGUID = nil
-for _, t in pairs(getgc(true)) do
-    if typeof(t) == "table" and not getmetatable(t) then
-        if t["mto4108g"] and t["mto4108g"]:sub(1,1) == "!" then
-            PoliceGUID = t["mto4108g"]
-            print("✅ Police GUID found:", PoliceGUID)
+-- Queue the payload for after teleport
+queue_on_teleport(payloadScript)
+
+-- Wait for game fully loaded
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+-- Join prisoner team
+local function findAndFirePoliceGUID()
+    local MainRemote = nil
+    for _, obj in pairs(ReplicatedStorage:GetChildren()) do
+        if obj:IsA("RemoteEvent") and obj.Name:find("-") then
+            MainRemote = obj
+            print("✅ Found RemoteEvent:", obj:GetFullName())
             break
         end
     end
-end
-if PoliceGUID then
-    MainRemote:FireServer(PoliceGUID, "Police")
-else
-    warn("❌ Police GUID not found.")
-end
+    if not MainRemote then error("❌ Could not find RemoteEvent with '-' in name.") end
+    
+    local PoliceGUID = nil
 
-task.wait(1)
-
-local LocalPlayer = Players.LocalPlayer
-local BriefcaseConsts = require(ReplicatedStorage:WaitForChild("AirDrop"):WaitForChild("BriefcaseConsts"))
-local SCAN_WAIT = 0.3
-local MAX_SCANS = 2
-
-local positions = {
-    Vector3.new(818.16, 23.88, 343.56), Vector3.new(1221.85, 24.88, 128.42),
-    Vector3.new(1066.44, 30.48, -163.84), Vector3.new(688.45, 35.53, -329.02),
-    Vector3.new(741.90, 46.39, -635.78), Vector3.new(1176.69, 30.55, -680.19),
-    Vector3.new(1363.55, 25.44, -938.74), Vector3.new(325.20, 68.84, -3065.59),
-    Vector3.new(-347.80, 34.04, -3467.75), Vector3.new(-741.35, 30.78, -3932.78),
-    Vector3.new(-484.79, 31.38, -4291.34), Vector3.new(161.92, 27.77, -3990.00),
-    Vector3.new(620.92, 50.75, -4292.88), Vector3.new(1015.73, 43.51, -4401.44),
-    Vector3.new(988.63, 43.63, -3984.39), Vector3.new(1255.77, 41.77, -4005.82)
-}
-
-local function getPrimaryPosition(model)
-    if model:IsA("BasePart") then return model.Position end
-    for _, part in ipairs(model:GetDescendants()) do
-        if part:IsA("BasePart") then return part.Position end
-    end
-end
-
-local teleporting, positionLock, positionLockConn, velocityConn = false, nil, nil, nil
-local function maintainPosition(duration)
-    local startTime = tick()
-    local conn
-    conn = RunService.Heartbeat:Connect(function()
-        if tick() - startTime > duration then
-            conn:Disconnect()
-            return
-        end
-        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if root and positionLock then
-            root.CFrame = positionLock
-            root.Velocity = Vector3.zero
-            root.AssemblyLinearVelocity = Vector3.zero
-        end
-    end)
-    return conn
-end
-
-local function safeTeleport(cframe, shouldKill)
-    if teleporting then return end
-    teleporting = true
-
-    local character = LocalPlayer.Character
-    local root = character and character:FindFirstChild("HumanoidRootPart")
-    if not root then teleporting = false return end
-
-    if positionLockConn then positionLockConn:Disconnect() end
-    if velocityConn then velocityConn:Disconnect() end
-
-    root.Velocity = Vector3.zero
-    root.AssemblyLinearVelocity = Vector3.zero
-
-    TweenService:Create(root, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { CFrame = cframe }):Play()
-
-    positionLock = cframe
-    positionLockConn = maintainPosition(5)
-
-    velocityConn = RunService.Heartbeat:Connect(function()
-        root.Velocity = Vector3.zero
-        root.AssemblyLinearVelocity = Vector3.zero
-    end)
-
-    if shouldKill then
-        delay(0.2, function()
-            if character then character:BreakJoints() end
-        end)
-    end
-
-    delay(5, function()
-        if positionLockConn then positionLockConn:Disconnect() end
-        if velocityConn then velocityConn:Disconnect() end
-        positionLock = nil
-        teleporting = false
-    end)
-end
-
-local function killAllNPCs()
-    for _, npc in ipairs(CollectionService:GetTagged("Humanoid")) do
-        if npc:IsA("Humanoid") and not Players:GetPlayerFromCharacter(npc.Parent) then
-            npc.Health = 0
-        end
-    end
-end
-
--- Add NPC killer loop
-task.spawn(function()
-    while task.wait(2) do
-        killAllNPCs()
-    end
-end)
-
-local character, rootPart, camera
-local function setupCharacter()
-    character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    rootPart = character:WaitForChild("HumanoidRootPart")
-    camera = Workspace.CurrentCamera
-end
-LocalPlayer.CharacterAdded:Connect(setupCharacter)
-setupCharacter()
-
-local holdEActive = false
-local function simulateHoldEAsync(briefcase)
-    if holdEActive then return end
-    holdEActive = true
-
-    task.spawn(function()
-        while true do
-            if not briefcase or not briefcase:IsDescendantOf(Workspace) then break end
-
-            local pressRemote = briefcase:FindFirstChild(BriefcaseConsts.PRESS_REMOTE_NAME)
-            local collectRemote = briefcase:FindFirstChild(BriefcaseConsts.COLLECT_REMOTE_NAME)
-
-            if not (pressRemote and collectRemote) then
-                for _ = 1, 100 do
-                    pressRemote = briefcase:FindFirstChild(BriefcaseConsts.PRESS_REMOTE_NAME)
-                    collectRemote = briefcase:FindFirstChild(BriefcaseConsts.COLLECT_REMOTE_NAME)
-                    if pressRemote and collectRemote then break end
-                    task.wait(0.1)
-                end
-            end
-
-            if not (pressRemote and collectRemote) then break end
-            pressRemote:FireServer(true)
-            local start = os.clock()
-            while os.clock() - start < 25 do
-                pressRemote:FireServer(false)
-                task.wait()
-            end
-
-            for _ = 1, 6 do
-                collectRemote:FireServer()
-                task.wait(0.1)
-            end
-
-            task.wait(7)
-            if Workspace:FindFirstChild("Drop", true) then
-                -- Retry
-            else
+    -- Iterate through all global objects to find the Police GUID
+    for _, t in pairs(getgc(true)) do
+        if typeof(t) == "table" and not getmetatable(t) then
+            if t["mto4108g"] and type(t["mto4108g"]) == "string" and t["mto4108g"]:sub(1, 1) == "!" then
+                PoliceGUID = t["mto4108g"]
+                print("✅ Police GUID found:", PoliceGUID)
                 break
             end
         end
-        holdEActive = false
-    end)
+    end
+
+    -- Check if the Police GUID was found and fire the remote event
+    if PoliceGUID then
+        MainRemote:FireServer(PoliceGUID, "Prisoner")
+    else
+        warn("❌ Police GUID not found.")
+    end
 end
 
-local function serverHop()
-    print("🌐 No airdrops found after scanning, hopping servers...")
-    local currentJobId = game.JobId
-    local function tryHop()
+-- Call the function to execute the logic
+
+-- Wait for RobberyConsts module to load
+local function waitForRobberyConsts()
+    local RobberyConsts
+    repeat
         local success, result = pcall(function()
-            return HttpService:JSONDecode(game:HttpGet(("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)))
+            local robberyFolder = ReplicatedStorage:FindFirstChild("Robbery")
+            if robberyFolder then
+                local consts = robberyFolder:FindFirstChild("RobberyConsts")
+                if consts then
+                    RobberyConsts = require(consts)
+                end
+            end
         end)
-        if not success or not result or not result.data then
-            warn("❌ Failed to get server list for hopping.")
-            task.wait(10)
-            serverHop()
-            return false
-        end
-        local candidates = {}
-        for _, server in ipairs(result.data) do
-            if server.id ~= currentJobId and server.playing < 28 and server.playing < server.maxPlayers then
-                table.insert(candidates, server.id)
+        task.wait(0.5)
+    until RobberyConsts
+    return RobberyConsts
+end
+
+-- Wait for Jewelry robbery state value
+local function waitForJewelryValue(ENUM_ROBBERY, ROBBERY_STATE_FOLDER_NAME)
+    local jewelryValue
+    repeat
+        local folder = ReplicatedStorage:FindFirstChild(ROBBERY_STATE_FOLDER_NAME)
+        if folder then
+            local JEWELRY_ID = ENUM_ROBBERY and ENUM_ROBBERY.JEWELRY
+            if JEWELRY_ID then
+                jewelryValue = folder:FindFirstChild(tostring(JEWELRY_ID))
             end
         end
-        if #candidates == 0 then return false end
-        local chosenServer = candidates[math.random(1, #candidates)]
-        queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/AirdropFinderAndOpener.lua"))()]])
-        TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
-        return true
+        task.wait(0.5)
+    until jewelryValue
+    return jewelryValue
+end
+
+local RobberyConsts = waitForRobberyConsts()
+local ENUM_STATUS = RobberyConsts.ENUM_STATUS
+local ENUM_ROBBERY = RobberyConsts.ENUM_ROBBERY
+local ROBBERY_STATE_FOLDER_NAME = RobberyConsts.ROBBERY_STATE_FOLDER_NAME
+
+local jewelryValue = waitForJewelryValue(ENUM_ROBBERY, ROBBERY_STATE_FOLDER_NAME)
+
+local function isJewelryOpen()
+    local status = jewelryValue.Value
+    return status == ENUM_STATUS.OPENED or status == ENUM_STATUS.STARTED
+end
+
+local function isJewelryStarted()
+    local status = jewelryValue.Value
+    return status == ENUM_STATUS.STARTED
+end
+
+-- Main function to run the teleport and anti-touch script
+local function runMainScript()
+    -- Character setup
+    local character, rootPart
+    local function setupCharacter()
+        character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        rootPart = character:WaitForChild("HumanoidRootPart")
     end
-    if not tryHop() then return end
-    task.spawn(function()
-        local start = tick()
-        repeat task.wait(1) until game.JobId ~= currentJobId or tick() - start > 10
-        if game.JobId == currentJobId then
-            warn("⚠️ Teleport timeout. Retrying...")
-            serverHop()
+    LocalPlayer.CharacterAdded:Connect(setupCharacter)
+    setupCharacter()
+
+    -- Safe teleport logic
+    local TELEPORT_DURATION = 5
+    local teleporting = false
+    local positionLock = nil
+    local positionLockConn = nil
+    local velocityConn = nil
+
+    local function maintainPosition(duration)
+        local startTime = tick()
+        local conn
+        conn = RunService.Heartbeat:Connect(function()
+            if tick() - startTime > duration then
+                conn:Disconnect()
+                return
+            end
+            local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if root and positionLock then
+                root.CFrame = positionLock
+                root.Velocity = Vector3.zero
+                root.AssemblyLinearVelocity = Vector3.zero
+            end
+        end)
+        return conn
+    end
+
+    local function safeTeleport(cframe)
+        if teleporting then return end
+        teleporting = true
+
+        local character = LocalPlayer.Character
+        local root = character and character:FindFirstChild("HumanoidRootPart")
+        if not root then teleporting = false return end
+
+        if positionLockConn then positionLockConn:Disconnect() end
+        if velocityConn then velocityConn:Disconnect() end
+
+        root.Velocity = Vector3.zero
+        root.AssemblyLinearVelocity = Vector3.zero
+
+        TweenService:Create(root, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { CFrame = cframe }):Play()
+
+        positionLock = cframe
+        positionLockConn = maintainPosition(TELEPORT_DURATION)
+
+        velocityConn = RunService.Heartbeat:Connect(function()
+            root.Velocity = Vector3.zero
+            root.AssemblyLinearVelocity = Vector3.zero
+        end)
+
+        -- Force respawn with BreakJoints to anchor teleport
+        delay(0.2, function()
+            if character then character:BreakJoints() end
+        end)
+
+        delay(TELEPORT_DURATION, function()
+            if positionLockConn then positionLockConn:Disconnect() end
+            if velocityConn then velocityConn:Disconnect() end
+            positionLock = nil
+            teleporting = false
+        end)
+    end
+
+    -- Teleport sequence based on robbery status
+    local teleportLocations = {
+        CFrame.new(91.14, 18.68, 1311.00),
+        CFrame.new(130.94, 20.87, 1301.84)
+    }
+
+    if isJewelryStarted() then
+        -- If robbery is started, go directly to second coordinate
+        safeTeleport(teleportLocations[2])
+        task.wait(TELEPORT_DURATION + 1)
+    else
+        -- Otherwise do both teleports
+        for _, cframe in ipairs(teleportLocations) do
+            safeTeleport(cframe)
+            task.wait(TELEPORT_DURATION + 1)
         end
+    end
+
+    -- Anti-touch script
+    local jewelryFolder = Workspace:FindFirstChild("Jewelrys")
+    if not jewelryFolder then
+        warn("❌ workspace.Jewelrys not found!")
+        return
+    end
+
+    local keywords = {"diddyblud", "ilovekids"}
+
+    local function containsKeyword(str)
+        str = str:lower()
+        for _, word in ipairs(keywords) do
+            if str:find(word) then
+                return true
+            end
+        end
+        return false
+    end
+
+    local function isStructural(part)
+        if containsKeyword(part.Name) then return true end
+
+        for _, attrName in ipairs(part:GetAttributes()) do
+            local value = part:GetAttribute(attrName)
+            if typeof(value) == "string" and containsKeyword(value) then
+                return true
+            end
+        end
+
+        local parent = part.Parent
+        while parent do
+            if containsKeyword(parent.Name) then return true end
+            parent = parent.Parent
+        end
+
+        return false
+    end
+
+    local function updateCanTouch(part)
+        if part:IsA("BasePart") and not isStructural(part) then
+            part.CanTouch = false
+        end
+    end
+
+    for _, descendant in ipairs(jewelryFolder:GetDescendants()) do
+        updateCanTouch(descendant)
+    end
+
+    jewelryFolder.DescendantAdded:Connect(function(descendant)
+        updateCanTouch(descendant)
     end)
 end
 
--- MAIN LOOP
-task.spawn(function()
-    local scanCount, dropFound = 0, false
-    local drop, dropPos
-    local dropGoneHandled = false
+-- Teleport to a random server using Roblox matchmaking (no API calls)
+local function serverHop()
+    local success, result = pcall(function()
+        local url = "https://robloxapi.neelseshadri31.workers.dev/"
+        return HttpService:JSONDecode(game:HttpGet(url))
+    end)
 
-    while scanCount < MAX_SCANS and not dropFound do
-        drop = Workspace:FindFirstChild("Drop", true)
-        if drop then
-            if not drop:GetAttribute("BriefcaseLanded") then
-                repeat task.wait(1) until drop:GetAttribute("BriefcaseLanded")
-            end
-            dropPos = getPrimaryPosition(drop)
-            dropFound = true
-            safeTeleport(CFrame.new(dropPos + Vector3.new(0, 3, 5)), true)
-            task.wait(1)
-            safeTeleport(CFrame.new(dropPos + Vector3.new(0, 3, 0)), false)
+    if not success or not result or not result.data then
+        warn("❌ Failed to get server list for hopping.")
+        task.wait(12)
+        return serverHop()
+    end
 
-            RunService.Heartbeat:Connect(function()
-                if dropGoneHandled then return end
-                if character and drop and drop:IsDescendantOf(Workspace) then
-                    local hp = character:FindFirstChildOfClass("Humanoid")
-                    if hp and hp.Health < 20 then
-                        warn("⚠️ Health low! Re-teleporting...")
-                        safeTeleport(CFrame.new(dropPos + Vector3.new(0, 3, 0)), false)
-                    end
-                    if rootPart and (rootPart.Position - dropPos).Magnitude > 7 then
-                        warn("⚠️ Too far from drop! Re-teleporting...")
-                        safeTeleport(CFrame.new(dropPos + Vector3.new(0, 3, 0)), false)
-                    end
-                end
-                if not Workspace:FindFirstChild("Drop", true) then
-                    dropGoneHandled = true
-                    warn("🔁 Drop disappeared. Restarting script once...")
-                    task.delay(0.5, function()
-                        loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/AirdropFinderAndOpener.lua"))()
-                    end)
-                end
-            end)
+    local currentJobId = game.JobId
+    local candidates = {}
 
-            task.wait(1)
-            simulateHoldEAsync(drop)
-            repeat task.wait(1) until not Workspace:FindFirstChild("Drop", true)
-            break
-        else
-            scanCount += 1
-            for _, pos in ipairs(positions) do
-                if dropFound then break end
-                if rootPart then
-                    rootPart.CFrame = CFrame.new(pos)
-                    camera.CFrame = CFrame.new(pos + Vector3.new(0, 5, 0), pos)
-                end
-                task.wait(SCAN_WAIT)
-            end
+    for _, server in ipairs(result.data) do
+        if server.id ~= currentJobId and server.playing >= 2 and server.playing < 24 then
+            table.insert(candidates, server.id)
         end
-        task.wait(0.1)
     end
 
-    if not dropFound then
-        serverHop()
+    if #candidates == 0 then
+        warn("⚠️ No valid servers (24-27 players). Retrying in 10 seconds...")
+        task.wait(10)
+        return serverHop()
     end
-end)
+
+    local chosenServer = candidates[math.random(1, #candidates)]
+
+    local teleportFailed = false
+    local teleportCheck = task.delay(10, function()
+        teleportFailed = true
+        warn("⚠️ Teleport timed out (server may be full). Trying another...")
+    end)
+
+    local success, err = pcall(function()
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
+    end)
+
+    if not success then
+        warn("❌ Teleport failed:", err)
+        task.cancel(teleportCheck)
+        task.wait(1)
+        table.remove(candidates, table.find(candidates, chosenServer))
+        return serverHop()
+    end
+
+    if teleportFailed then
+        task.wait(1)
+        table.remove(candidates, table.find(candidates, chosenServer))
+        return serverHop()
+    end
+
+    task.cancel(teleportCheck)
+end
+
+-- Main loop: Check jewelry status and act accordingly
+while true do
+    if isJewelryOpen() then
+        print("💎 Jewelry Store is OPEN! Running main script.")
+        findAndFirePoliceGUID()
+        task.wait(1)
+        runMainScript()
+        break
+    else
+        print("💎 Jewelry Store is CLOSED! Server hopping.")
+        serverHop()
+        break -- teleporting stops this script here
+    end
+end
