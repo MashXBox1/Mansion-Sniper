@@ -1,312 +1,108 @@
---== SERVICES ==--
+-- Wait for the game to fully load
+repeat task.wait() until game:IsLoaded()
+
+-- Services
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
-local TeleportService = game:GetService("TeleportService")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
 
-local LocalPlayer = Players.LocalPlayer
+-- Find the Diamond GUID and RemoteEvent
+local DiamondGUID = nil
+local foundRemote = nil
 
--- Queue the payload for after teleport
-queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/TestEnter.lua"))()]])
-
--- Wait for game fully loaded
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
-
--- Function to find and fire police GUID
-local function findAndFirePoliceGUID()
-    local MainRemote = nil
-    for _, obj in pairs(ReplicatedStorage:GetChildren()) do
-        if obj:IsA("RemoteEvent") and obj.Name:find("-") then
-            MainRemote = obj
-            print("✅ Found RemoteEvent:", obj:GetFullName())
-            break
-        end
-    end
-    if not MainRemote then error("❌ Could not find RemoteEvent with '-' in name.") end
-    
-    local PoliceGUID = nil
-
-    -- Iterate through all global objects to find the Police GUID
-    for _, t in pairs(getgc(true)) do
-        if typeof(t) == "table" and not getmetatable(t) then
-            if t["mto4108g"] and type(t["mto4108g"]) == "string" and t["mto4108g"]:sub(1, 1) == "!" then
-                PoliceGUID = t["mto4108g"]
-                print("✅ Police GUID found:", PoliceGUID)
-                break
-            end
-        end
-    end
-
-    -- Check if the Police GUID was found and fire the remote event
-    if PoliceGUID then
-        MainRemote:FireServer(PoliceGUID, "Prisoner")
-        task.wait(3)
-    else
-        warn("❌ Police GUID not found.")
+-- Find the GUID in GC
+for _, t in pairs(getgc(true)) do
+    if typeof(t) == "table" and not getmetatable(t) and t["vossq4qd"] and t["vossq4qd"]:sub(1, 1) == "!" then
+        DiamondGUID = t["vossq4qd"]
+        print("✅ Diamond GUID (vossq4qd):", DiamondGUID)
+        break
     end
 end
 
--- Call the police GUID function immediately
-findAndFirePoliceGUID()
-
--- Wait for RobberyConsts module to load
-local function waitForRobberyConsts()
-    local RobberyConsts
-    repeat
-        local success, result = pcall(function()
-            local robberyFolder = ReplicatedStorage:FindFirstChild("Robbery")
-            if robberyFolder then
-                local consts = robberyFolder:FindFirstChild("RobberyConsts")
-                if consts then
-                    RobberyConsts = require(consts)
-                end
-            end
-        end)
-        task.wait(0.5)
-    until RobberyConsts
-    return RobberyConsts
+if not DiamondGUID then
+    error("❌ Could not find vossq4qd mapping.")
 end
 
--- Wait for Jewelry robbery state value
-local function waitForJewelryValue(ENUM_ROBBERY, ROBBERY_STATE_FOLDER_NAME)
-    local jewelryValue
-    repeat
-        local folder = ReplicatedStorage:FindFirstChild(ROBBERY_STATE_FOLDER_NAME)
-        if folder then
-            local JEWELRY_ID = ENUM_ROBBERY and ENUM_ROBBERY.JEWELRY
-            if JEWELRY_ID then
-                jewelryValue = folder:FindFirstChild(tostring(JEWELRY_ID))
-            end
-        end
-        task.wait(0.5)
-    until jewelryValue
-    return jewelryValue
-end
-
-local RobberyConsts = waitForRobberyConsts()
-local ENUM_STATUS = RobberyConsts.ENUM_STATUS
-local ENUM_ROBBERY = RobberyConsts.ENUM_ROBBERY
-local ROBBERY_STATE_FOLDER_NAME = RobberyConsts.ROBBERY_STATE_FOLDER_NAME
-
-local jewelryValue = waitForJewelryValue(ENUM_ROBBERY, ROBBERY_STATE_FOLDER_NAME)
-
-local function isJewelryOpen()
-    local status = jewelryValue.Value
-    return status == ENUM_STATUS.OPENED or status == ENUM_STATUS.STARTED
-end
-
--- Teleport to a random server using Roblox matchmaking (no API calls)
-local function serverHop()
-    local success, result = pcall(function()
-        -- Replace this with your deployed Cloudflare Worker URL
-        local url = "https://robloxapi.neelseshadri31.workers.dev/"
-        return HttpService:JSONDecode(game:HttpGet(url))
-    end)
-
-    if not success or not result or not result.data then
-        warn("❌ Failed to get server list for hopping.")
-        task.wait(12)
-        return serverHop()
+-- Find the RemoteEvent
+for _, obj in pairs(ReplicatedStorage:GetChildren()) do
+    if obj:IsA("RemoteEvent") and obj.Name:find("-") then
+        foundRemote = obj
+        print("✅ Found RemoteEvent:", obj:GetFullName())
+        break
     end
-
-    local currentJobId = game.JobId
-    local candidates = {}
-
-    for _, server in ipairs(result.data) do
-        if server.id ~= currentJobId and server.playing >= 2 and server.playing < 24 then
-            table.insert(candidates, server.id)
-        end
-    end
-
-    if #candidates == 0 then
-        warn("⚠️ No valid servers (24–27 players). Retrying in 10 seconds...")
-        task.wait(10)
-        return serverHop()
-    end
-
-    local chosenServer = candidates[math.random(1, #candidates)]
-
-    local teleportFailed = false
-    local teleportCheck = task.delay(10, function()
-        teleportFailed = true
-        warn("⚠️ Teleport timed out (server may be full). Trying another...")
-    end)
-
-    local success, err = pcall(function()
-        TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
-    end)
-
-    if not success then
-        warn("❌ Teleport failed:", err)
-        task.cancel(teleportCheck)
-        task.wait(1)
-        table.remove(candidates, table.find(candidates, chosenServer))
-        return serverHop()
-    end
-
-    if teleportFailed then
-        task.wait(1)
-        table.remove(candidates, table.find(candidates, chosenServer))
-        return serverHop()
-    end
-
-    task.cancel(teleportCheck)
 end
 
--- Check if jewelry is open before proceeding
-if not isJewelryOpen() then
-    print("💎 Jewelry Store is CLOSED! Server hopping...")
-    serverHop()
-    return
+if not foundRemote then
+    error("❌ Could not find RemoteEvent with '-' in name directly under ReplicatedStorage.")
 end
 
--- Character setup
-local character, rootPart
-local function setupCharacter()
-    character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    rootPart = character:WaitForChild("HumanoidRootPart")
-end
-LocalPlayer.CharacterAdded:Connect(setupCharacter)
-setupCharacter()
-
--- Safe teleport logic
-local TELEPORT_DURATION = 5
-local teleporting = false
-local positionLock = nil
-local positionLockConn = nil
-local velocityConn = nil
-
-local function maintainPosition(duration)
-    local startTime = tick()
-    local conn
-    conn = RunService.Heartbeat:Connect(function()
-        if tick() - startTime > duration then
-            conn:Disconnect()
-            return
-        end
-        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if root and positionLock then
-            root.CFrame = positionLock
-            root.Velocity = Vector3.zero
-            root.AssemblyLinearVelocity = Vector3.zero
-        end
-    end)
-    return conn
+-- Degrees to radians helper
+local function degToRad(deg)
+    return math.rad(deg)
 end
 
-local function safeTeleport(cframe)
-    if teleporting then return end
-    teleporting = true
-
-    local character = LocalPlayer.Character
-    local root = character and character:FindFirstChild("HumanoidRootPart")
-    if not root then teleporting = false return end
-
-    if positionLockConn then positionLockConn:Disconnect() end
-    if velocityConn then velocityConn:Disconnect() end
-
-    root.Velocity = Vector3.zero
-    root.AssemblyLinearVelocity = Vector3.zero
-
-    TweenService:Create(root, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { CFrame = cframe }):Play()
-
-    positionLock = cframe
-    positionLockConn = maintainPosition(TELEPORT_DURATION)
-
-    velocityConn = RunService.Heartbeat:Connect(function()
-        root.Velocity = Vector3.zero
-        root.AssemblyLinearVelocity = Vector3.zero
-    end)
-
-    -- Force respawn with BreakJoints to anchor teleport
-    delay(0.2, function()
-        if character then character:BreakJoints() end
-    end)
-
-    delay(TELEPORT_DURATION, function()
-        if positionLockConn then positionLockConn:Disconnect() end
-        if velocityConn then velocityConn:Disconnect() end
-        positionLock = nil
-        teleporting = false
-    end)
+-- Invert angle by 180°, wrap around 360°
+local function invertAngle(deg)
+    return (deg + 180) % 360
 end
 
--- Jewelry store teleport locations
-local teleportLocations = {
-    CFrame.new(91.14, 18.68, 1311.00),  -- First position
-    CFrame.new(130.94, 20.87, 1301.84)  -- Second position
+-- Raw path data from your log
+local rawPath = {
+    {pos = Vector3.new(130.9, 20.8, 1301.9), heading = 274.7},
+    {pos = Vector3.new(133.3, 21.3, 1313.4), heading = 281.6},
+    {pos = Vector3.new(115.4, 19.2, 1324.6), heading = 103.1},
+    {pos = Vector3.new(114.0, 19.4, 1317.5), heading = 104.5},
+    {pos = Vector3.new(112.0, 19.4, 1306.0), heading = 93.9},
+    {pos = Vector3.new(106.9, 19.2, 1284.9), heading = 13.9},
+    {pos = Vector3.new(116.5, 19.4, 1283.1), heading = 1.7},
+    {pos = Vector3.new(126.3, 19.4, 1281.4), heading = 5.8},
+    {pos = Vector3.new(137.5, 19.4, 1279.5), heading = 359.7},
+    {pos = Vector3.new(151.0, 19.0, 1291.7), heading = 277.5},
+    {pos = Vector3.new(139.5, 21.3, 1300.1), heading = 96.1},
+    {pos = Vector3.new(141.5, 20.9, 1310.0), heading = 114.2},
+    {pos = Vector3.new(153.6, 18.8, 1307.2), heading = 279.9},
 }
 
--- Check robbery status to determine which positions to use
-local function executeTeleportSequence()
-    if jewelryValue.Value == ENUM_STATUS.STARTED then
-        print("💎 Jewelry robbery already started - skipping first position")
-        safeTeleport(teleportLocations[2])
-        task.wait(TELEPORT_DURATION + 1)
-    else
-        print("💎 Jewelry robbery not started - using full sequence")
-        for _, cframe in ipairs(teleportLocations) do
-            safeTeleport(cframe)
-            task.wait(TELEPORT_DURATION + 1)
-        end
+-- Apply inversion rules to generate final path
+local path = {}
+for i, step in ipairs(rawPath) do
+    local adjustedHeading = step.heading
+    if i <= 5 or i >= 10 then
+        adjustedHeading = invertAngle(step.heading)
+    end
+    table.insert(path, {pos = step.pos, heading = adjustedHeading})
+end
+
+-- Teleport and rotate
+local function teleportTo(position, headingDeg)
+    local headingRad = degToRad(headingDeg)
+    local rotation = CFrame.Angles(0, -headingRad, 0)
+    hrp.CFrame = CFrame.new(position) * rotation
+end
+
+-- Function to fire the RemoteEvent repeatedly
+local function fireEvents()
+    for i = 1, 20 do  -- Fire 20 times (adjust as needed)
+        foundRemote:FireServer(DiamondGUID)
+        task.wait(0.2)  -- Fire every 0.2 seconds (adjust as needed)
     end
 end
 
--- Disable touch on jewelry parts except for important ones
-local jewelryFolder = Workspace:FindFirstChild("Jewelrys")
-if jewelryFolder then
-    local keywords = {"diddyblud", "ilovekids"}
-    
-    local function containsKeyword(str)
-        str = str:lower()
-        for _, word in ipairs(keywords) do
-            if str:find(word) then
-                return true
-            end
-        end
-        return false
+-- Main loop
+while true do
+    -- Forward path
+    for _, waypoint in ipairs(path) do
+        teleportTo(waypoint.pos, waypoint.heading)
+        fireEvents()
+        task.wait(1)  -- Wait 1 second after firing before moving to next waypoint
     end
-    
-    local function isStructural(part)
-        if containsKeyword(part.Name) then return true end
-        
-        for _, attrName in ipairs(part:GetAttributes()) do
-            local value = part:GetAttribute(attrName)
-            if typeof(value) == "string" and containsKeyword(value) then
-                return true
-            end
-        end
-        
-        local parent = part.Parent
-        while parent do
-            if containsKeyword(parent.Name) then return true end
-            parent = parent.Parent
-        end
-        
-        return false
-    end
-    
-    local function updateCanTouch(part)
-        if part:IsA("BasePart") and not isStructural(part) then
-            part.CanTouch = false
-        end
-    end
-    
-    for _, descendant in ipairs(jewelryFolder:GetDescendants()) do
-        updateCanTouch(descendant)
-    end
-    
-    jewelryFolder.DescendantAdded:Connect(function(descendant)
-        updateCanTouch(descendant)
-    end)
-else
-    warn("❌ workspace.Jewelrys not found!")
-end
 
--- Execute the teleport sequence
-executeTeleportSequence()
+    -- Reverse path
+    for i = #path, 1, -1 do
+        teleportTo(path[i].pos, path[i].heading)
+        fireEvents()
+        task.wait(1)  -- Wait 1 second after firing before moving to next waypoint
+    end
+end
