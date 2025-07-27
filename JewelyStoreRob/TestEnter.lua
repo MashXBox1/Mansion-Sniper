@@ -16,7 +16,7 @@ queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/M
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
-
+task.wait(3)
 -- Function to find and fire police GUID
 local function findAndFirePoliceGUID()
     local MainRemote = nil
