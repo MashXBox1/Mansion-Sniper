@@ -98,55 +98,26 @@ local LocalPlayer = Players.LocalPlayer
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
 local function teleportUntilAllHRPsLoaded()
-    -- Settings
+    -- Grid scan settings
     local GRID_SIZE = 300
     local SCAN_HEIGHT = 200
-    local AREA_MIN = Vector2.new(-5500, -5500)
-    local AREA_MAX = Vector2.new(5500, 5500)
+    local AREA_MIN = Vector3.new(-5500, SCAN_HEIGHT, -5500)
+    local AREA_MAX = Vector3.new(5500, SCAN_HEIGHT, 5500)
     local SCAN_WAIT = 0.01
 
-    -- Generate spiral pattern from outer to inner
-    local function generateSpiralGrid()
-        local visited = {}
-        local directions = {
-            Vector2.new(1, 0), Vector2.new(0, 1),
-            Vector2.new(-1, 0), Vector2.new(0, -1)
-        }
-        local result = {}
-
-        local center = Vector2.new(
-            math.floor((AREA_MIN.X + AREA_MAX.X) / 2 / GRID_SIZE),
-            math.floor((AREA_MIN.Y + AREA_MAX.Y) / 2 / GRID_SIZE)
-        )
-        local steps = 1
-        local x, y = center.X, center.Y
-
-        while true do
-            local added = false
-            for _, dir in ipairs(directions) do
-                for _ = 1, steps do
-                    local px = x * GRID_SIZE
-                    local pz = y * GRID_SIZE
-
-                    if px >= AREA_MIN.X and px <= AREA_MAX.X and
-                       pz >= AREA_MIN.Y and pz <= AREA_MAX.Y then
-                        local key = px .. "," .. pz
-                        if not visited[key] then
-                            table.insert(result, Vector3.new(px, SCAN_HEIGHT, pz))
-                            visited[key] = true
-                            added = true
-                        end
-                    end
-                    x += dir.X
-                    y += dir.Y
-                end
+    -- Generate flat grid of positions
+    local function generateGrid()
+        local positions = {}
+        for x = AREA_MIN.X, AREA_MAX.X, GRID_SIZE do
+            for z = AREA_MIN.Z, AREA_MAX.Z, GRID_SIZE do
+                table.insert(positions, Vector3.new(x, SCAN_HEIGHT, z))
             end
-            steps += 1
-            if not added then break end
         end
-
-        return result
+        return positions
     end
 
     -- Get list of criminals missing HRP
@@ -163,7 +134,7 @@ local function teleportUntilAllHRPsLoaded()
         return missing
     end
 
-    -- Wait until local character + HRP is valid
+    -- Wait for character and HRP
     local function waitForCharacter()
         while true do
             local char = LocalPlayer.Character
@@ -173,28 +144,30 @@ local function teleportUntilAllHRPsLoaded()
         end
     end
 
-    -- Start persistent scanning
+    -- Persistent scanning
     task.spawn(function()
         local scanCount = 0
-        local positions = generateSpiralGrid()
+        local positions = generateGrid()
 
-        print("🌀 Starting spiral scan across the map...")
+        print("🔳 Starting full grid scan...")
 
         while true do
             local char, root = waitForCharacter()
             local humanoid = char:FindFirstChildOfClass("Humanoid")
 
+            -- Disable movement
             if humanoid then
                 humanoid.PlatformStand = true
                 humanoid.AutoRotate = false
             end
 
+            -- Main scan loop
             while LocalPlayer.Character == char do
                 scanCount += 1
                 local missing = getMissingCriminals()
 
                 if #missing == 0 then
-                    print("✅ All HRPs loaded. Scan complete.")
+                    print("✅ All HRPs are loaded.")
                     if humanoid then
                         humanoid.PlatformStand = false
                         humanoid.AutoRotate = true
@@ -202,7 +175,7 @@ local function teleportUntilAllHRPsLoaded()
                     return
                 end
 
-                print(string.format("🔄 Spiral Scan %d | Missing: %d [%s]",
+                print(string.format("🔄 Grid Scan %d | Missing: %d [%s]",
                     scanCount, #missing, (#missing < 5 and table.concat(missing, ", ") or "Too many to list")))
 
                 for _, pos in ipairs(positions) do
@@ -212,11 +185,11 @@ local function teleportUntilAllHRPsLoaded()
                 end
 
                 if scanCount % 3 == 0 then
-                    print("📊 Spiral pass count:", scanCount)
+                    print("📊 Completed", scanCount, "grid scan passes")
                 end
             end
 
-            print("⚠️ Player died or reset. Waiting for respawn...")
+            print("⚠️ LocalPlayer died — resuming after respawn...")
         end
     end)
 end
