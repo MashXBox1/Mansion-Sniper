@@ -94,37 +94,19 @@ end
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- Function to teleport to player model center
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
 local function teleportUntilAllHRPsLoaded()
-    -- Grid scan settings
-    local GRID_SIZE = 300
+    -- Configuration
+    local GRID_SIZE = 500
     local SCAN_HEIGHT = 200
+    local SCAN_WAIT = 0.00001
     local AREA_MIN = Vector3.new(-5500, SCAN_HEIGHT, -5500)
     local AREA_MAX = Vector3.new(5500, SCAN_HEIGHT, 5500)
-    local SCAN_WAIT = 0.01
 
-    -- Generate flat grid of positions
-    local function generateGrid()
-        local positions = {}
-        for x = AREA_MIN.X, AREA_MAX.X, GRID_SIZE do
-            for z = AREA_MIN.Z, AREA_MAX.Z, GRID_SIZE do
-                table.insert(positions, Vector3.new(x, SCAN_HEIGHT, z))
-            end
-        end
-        return positions
-    end
-
-    -- Get list of criminals missing HRP
+    -- Criminal check function
     local function getMissingCriminals()
         local missing = {}
         for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and tostring(player.Team) == "Criminal" and player:GetAttribute("HasEscaped") then
+            if player ~= LocalPlayer and tostring(player.Team) == "Criminal" and player:GetAttribute("HasEscaped") == true then
                 local char = player.Character
                 if not char or not char:FindFirstChild("HumanoidRootPart") then
                     table.insert(missing, player.Name)
@@ -134,40 +116,39 @@ local function teleportUntilAllHRPsLoaded()
         return missing
     end
 
-    -- Wait for character and HRP
-    local function waitForCharacter()
-        while true do
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if char and hrp then return char, hrp end
-            LocalPlayer.CharacterAdded:Wait()
+    -- Build grid
+    local positions = {}
+    for x = AREA_MIN.X, AREA_MAX.X, GRID_SIZE do
+        for z = AREA_MIN.Z, AREA_MAX.Z, GRID_SIZE do
+            table.insert(positions, Vector3.new(x, SCAN_HEIGHT, z))
         end
     end
 
-    -- Persistent scanning
+    -- Persistent scanning loop
     task.spawn(function()
         local scanCount = 0
-        local positions = generateGrid()
-
-        print("🔳 Starting full grid scan...")
+        print("🔍 Beginning Criminal HRP scan (-5500 to 5500 grid)...")
 
         while true do
-            local char, root = waitForCharacter()
+            -- Wait for valid character + HRP
+            repeat task.wait() until LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local char = LocalPlayer.Character
+            local root = char:FindFirstChild("HumanoidRootPart")
             local humanoid = char:FindFirstChildOfClass("Humanoid")
 
-            -- Disable movement
+            -- Lock movement
             if humanoid then
                 humanoid.PlatformStand = true
                 humanoid.AutoRotate = false
             end
 
-            -- Main scan loop
+            -- Main scanning loop (until character death or all HRPs found)
             while LocalPlayer.Character == char do
                 scanCount += 1
                 local missing = getMissingCriminals()
 
                 if #missing == 0 then
-                    print("✅ All HRPs are loaded.")
+                    print("✅ SUCCESS: All Criminal HRPs loaded!")
                     if humanoid then
                         humanoid.PlatformStand = false
                         humanoid.AutoRotate = true
@@ -175,8 +156,8 @@ local function teleportUntilAllHRPsLoaded()
                     return
                 end
 
-                print(string.format("🔄 Grid Scan %d | Missing: %d [%s]",
-                    scanCount, #missing, (#missing < 5 and table.concat(missing, ", ") or "Too many to list")))
+                print(string.format("🔄 Scan %d | Missing %d: %s",
+                    scanCount, #missing, #missing < 5 and table.concat(missing, ", ") or "Too many to list"))
 
                 for _, pos in ipairs(positions) do
                     if #getMissingCriminals() == 0 then break end
@@ -184,16 +165,16 @@ local function teleportUntilAllHRPsLoaded()
                     task.wait(SCAN_WAIT)
                 end
 
-                if scanCount % 3 == 0 then
-                    print("📊 Completed", scanCount, "grid scan passes")
+                if scanCount % 5 == 0 then
+                    print(string.format("📊 Still scanning... Completed %d full grid passes", scanCount))
                 end
             end
 
-            print("⚠️ LocalPlayer died — resuming after respawn...")
+            -- Wait for respawn if player died
+            print("⚠️ Player died or reset. Waiting for respawn...")
         end
     end)
 end
-
 
 -- Loop through all players once
 -- Optional wait before starting
