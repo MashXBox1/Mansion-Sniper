@@ -1,0 +1,162 @@
+
+
+-- Services
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- Character setup
+local character, rootPart
+local function setupCharacter()
+    character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    rootPart = character:WaitForChild("HumanoidRootPart")
+end
+LocalPlayer.CharacterAdded:Connect(setupCharacter)
+setupCharacter()
+
+-- Safe teleport logic
+local TELEPORT_DURATION = 5
+local teleporting = false
+local positionLock = nil
+local positionLockConn = nil
+local velocityConn = nil
+
+local function maintainPosition(duration)
+    local startTime = tick()
+    local conn
+    conn = RunService.Heartbeat:Connect(function()
+        if tick() - startTime > duration then
+            conn:Disconnect()
+            return
+        end
+        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if root and positionLock then
+            root.CFrame = positionLock
+            root.Velocity = Vector3.zero
+            root.AssemblyLinearVelocity = Vector3.zero
+        end
+    end)
+    return conn
+end
+
+local function safeTeleport(cframe)
+    if teleporting then return end
+    teleporting = true
+
+    local character = LocalPlayer.Character
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    if not root then teleporting = false return end
+
+    if positionLockConn then positionLockConn:Disconnect() end
+    if velocityConn then velocityConn:Disconnect() end
+
+    root.Velocity = Vector3.zero
+    root.AssemblyLinearVelocity = Vector3.zero
+
+    TweenService:Create(root, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { CFrame = cframe }):Play()
+
+    positionLock = cframe
+    positionLockConn = maintainPosition(TELEPORT_DURATION)
+
+    velocityConn = RunService.Heartbeat:Connect(function()
+        root.Velocity = Vector3.zero
+        root.AssemblyLinearVelocity = Vector3.zero
+    end)
+
+    -- 🔁 Force respawn with BreakJoints to anchor teleport
+    delay(0.2, function()
+        if character then character:BreakJoints() end
+    end)
+
+    delay(TELEPORT_DURATION, function()
+        if positionLockConn then positionLockConn:Disconnect() end
+        if velocityConn then velocityConn:Disconnect() end
+        positionLock = nil
+        teleporting = false
+    end)
+end
+
+-- 🔁 Initial teleport sequence before main script
+local teleportLocations = {
+    CFrame.new(91.14, 18.68, 1311.00),
+    CFrame.new(130.94, 20.87, 1301.84)
+    
+}
+
+for _, cframe in ipairs(teleportLocations) do
+    safeTeleport(cframe)
+    task.wait(TELEPORT_DURATION + 1)
+end
+
+
+
+
+
+
+
+-- Services
+local Workspace = game:GetService("Workspace")
+
+-- Folder to scan
+local jewelryFolder = Workspace:FindFirstChild("Jewelrys")
+if not jewelryFolder then
+    warn("❌ workspace.Jewelrys not found!")
+    return
+end
+
+-- Keywords to preserve touch on
+local keywords = {"diddyblud", "ilovekids"}
+
+-- Utility: checks if string contains keyword
+local function containsKeyword(str)
+    str = str:lower()
+    for _, word in ipairs(keywords) do
+        if str:find(word) then
+            return true
+        end
+    end
+    return false
+end
+
+-- Utility: checks if part or its ancestry/attributes indicate it's a structure
+local function isStructural(part)
+    -- Check part name
+    if containsKeyword(part.Name) then return true end
+
+    -- Check all attributes
+    for _, attrName in ipairs(part:GetAttributes()) do
+        local value = part:GetAttribute(attrName)
+        if typeof(value) == "string" and containsKeyword(value) then
+            return true
+        end
+    end
+
+    -- Check all ancestors
+    local parent = part.Parent
+    while parent do
+        if containsKeyword(parent.Name) then return true end
+        parent = parent.Parent
+    end
+
+    return false
+end
+
+-- Apply rule to a part
+local function updateCanTouch(part)
+    if part:IsA("BasePart") and not isStructural(part) then
+        part.CanTouch = false
+    end
+end
+
+-- Run on all current parts
+for _, descendant in ipairs(jewelryFolder:GetDescendants()) do
+    updateCanTouch(descendant)
+end
+
+-- Listen for future parts
+jewelryFolder.DescendantAdded:Connect(function(descendant)
+    updateCanTouch(descendant)
+end)
