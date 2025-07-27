@@ -95,18 +95,18 @@ local LocalPlayer = Players.LocalPlayer
 -- Function to teleport to player model center
 local function teleportUntilAllHRPsLoaded()
     -- Configuration
-    local GRID_SIZE = 300  -- More dense grid for better coverage
-    local SCAN_HEIGHT = 40
-    local SCAN_WAIT = 0.000001
-    local AREA_MIN = Vector3.new(-6000, 10, -6000)  -- Adjusted Y to avoid underground
-    local AREA_MAX = Vector3.new(6000, 10, 6000)
+    local GRID_SIZE = 500  -- Optimal balance between coverage and speed
+    local SCAN_HEIGHT = 200
+    local SCAN_WAIT = 0.00001
+    local AREA_MIN = Vector3.new(-5500, SCAN_HEIGHT, -5500)  -- Your requested range
+    local AREA_MAX = Vector3.new(5500, SCAN_HEIGHT, 5500)
 
     -- Wait for local character
     repeat
         task.wait()
     until LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 
-    -- Criminal check function (now returns list of missing criminals)
+    -- Criminal check function
     local function getMissingCriminals()
         local missing = {}
         for _, player in ipairs(Players:GetPlayers()) do
@@ -120,24 +120,11 @@ local function teleportUntilAllHRPsLoaded()
         return missing
     end
 
-    -- Build scan grid (optimized spiral pattern)
+    -- Build simple grid from -5500 to 5500
     local positions = {}
-    local center = Vector3.new(0, SCAN_HEIGHT, 0)
-    local rings = math.ceil(math.max(AREA_MAX.X, AREA_MAX.Z) / GRID_SIZE)
-    
-    -- Spiral outward from center for faster finds
-    for r = 0, rings do
-        for x = -r, r do
-            table.insert(positions, center + Vector3.new(x * GRID_SIZE, 0, r * GRID_SIZE))
-            if r ~= 0 then
-                table.insert(positions, center + Vector3.new(x * GRID_SIZE, 0, -r * GRID_SIZE))
-            end
-        end
-        for z = -r + 1, r - 1 do
-            table.insert(positions, center + Vector3.new(r * GRID_SIZE, 0, z * GRID_SIZE))
-            if r ~= 0 then
-                table.insert(positions, center + Vector3.new(-r * GRID_SIZE, 0, z * GRID_SIZE))
-            end
+    for x = AREA_MIN.X, AREA_MAX.X, GRID_SIZE do
+        for z = AREA_MIN.Z, AREA_MAX.Z, GRID_SIZE do
+            table.insert(positions, Vector3.new(x, SCAN_HEIGHT, z))
         end
     end
 
@@ -148,9 +135,9 @@ local function teleportUntilAllHRPsLoaded()
         humanoid.AutoRotate = false
     end
 
-    print("🔍 Beginning infinite Criminal HRP scan...")
+    print("🔍 Beginning Criminal HRP scan (-5500 to 5500 grid)...")
     
-    -- INFINITE SCAN LOOP
+    -- INFINITE GRID SCAN LOOP
     local scanCount = 0
     local root = LocalPlayer.Character.HumanoidRootPart
     while true do
@@ -158,35 +145,26 @@ local function teleportUntilAllHRPsLoaded()
         local missing = getMissingCriminals()
         
         if #missing == 0 then
-            print("✅ ALL CRIMINAL HRPs LOADED! Found all targets.")
+            print("✅ SUCCESS: All Criminal HRPs loaded!")
             break
         end
 
-        print(string.format("🔄 Scan %d | Missing %d criminals: %s", 
-              scanCount, #missing, table.concat(missing, ", ")))
+        print(string.format("🔄 Scan %d | Missing %d: %s", 
+              scanCount, #missing, #missing < 5 and table.concat(missing, ", ") or "Too many to list"))
 
         -- Full grid scan pass
         for _, pos in ipairs(positions) do
             -- Early exit if we found everyone
             if #getMissingCriminals() == 0 then break end
             
-            -- Teleport to scan point
+            -- Teleport to grid point
             root.CFrame = CFrame.new(pos)
             task.wait(SCAN_WAIT)
-            
-            -- Micro-optimization: Skip positions far from spawn
-            if pos.Magnitude > 2000 and scanCount % 3 ~= 0 then
-                continue
-            end
         end
         
-        -- Anti-stuck: Random jump every 3 scans
-        if scanCount % 3 == 0 then
-            root.CFrame = CFrame.new(
-                math.random(-2000, 2000),
-                SCAN_HEIGHT,
-                math.random(-2000, 2000)
-            )
+        -- Status update every 5 scans
+        if scanCount % 5 == 0 then
+            print(string.format("📊 Still scanning... Completed %d full grid passes", scanCount))
         end
     end
 
@@ -195,6 +173,7 @@ local function teleportUntilAllHRPsLoaded()
         humanoid.PlatformStand = false
         humanoid.AutoRotate = true
     end
+    print("🚀 All targets acquired! Proceeding to arrests...")
 end
 
 
