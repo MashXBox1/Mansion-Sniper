@@ -134,7 +134,7 @@ local function teleportUntilAllHRPsLoaded()
     while not allHRPsLoaded() do
         local randomPos = getRandomPosition()
         hrp.CFrame = CFrame.new(randomPos)
-        task.wait(0.5) -- Wait a bit between teleports
+        task.wait(0.2) -- Wait a bit between teleports
     end
 
     if humanoid then
