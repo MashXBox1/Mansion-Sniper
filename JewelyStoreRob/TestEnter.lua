@@ -36,7 +36,7 @@ local function findAndFirePoliceGUID()
 
     -- Check if the Police GUID was found and fire the remote event
     if PoliceGUID then
-        MainRemote:FireServer(PoliceGUID, "Police")
+        MainRemote:FireServer(PoliceGUID, "Prisoner")
     else
         warn("❌ Police GUID not found.")
     end
