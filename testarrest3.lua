@@ -324,7 +324,7 @@ if not DamageGUID then error("❌ DamageGUID not found. Hash might've changed.")
 if PoliceGUID then
     MainRemote:FireServer(PoliceGUID, "Police")
 end
-task.wait(1)
+task.wait(3)
 
 teleportUntilAllCriminalHRPsLoaded()
 
