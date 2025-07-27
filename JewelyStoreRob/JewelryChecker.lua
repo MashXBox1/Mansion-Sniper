@@ -3,7 +3,11 @@ local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.c
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 
 local LocalPlayer = Players.LocalPlayer
@@ -63,10 +67,64 @@ local function isJewelryOpen()
 end
 
 -- Teleport to a random server using Roblox matchmaking (no API calls)
-local function teleportToRandomServer()
-    print("🔁 Jewelry Store is closed. Teleporting to a new server in 5 seconds...")
-    task.wait(5)
-    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+local function serverHop()
+    local success, result = pcall(function()
+        -- Replace this with your deployed Cloudflare Worker URL
+        local url = "https://robloxapi.neelseshadri31.workers.dev/"
+        return HttpService:JSONDecode(game:HttpGet(url))
+    end)
+
+    if not success or not result or not result.data then
+        warn("❌ Failed to get server list for hopping.")
+        task.wait(12)
+        return serverHop()
+    end
+
+    local currentJobId = game.JobId
+    local candidates = {}
+
+    for _, server in ipairs(result.data) do
+        if server.id ~= currentJobId and server.playing >= 24 and server.playing < 28 then
+            table.insert(candidates, server.id)
+        end
+    end
+
+    if #candidates == 0 then
+        warn("⚠️ No valid servers (24–27 players). Retrying in 10 seconds...")
+        task.wait(10)
+        return serverHop()
+    end
+
+    local chosenServer = candidates[math.random(1, #candidates)]
+
+    local teleportFailed = false
+    local teleportCheck = task.delay(10, function()
+        teleportFailed = true
+        warn("⚠️ Teleport timed out (server may be full). Trying another...")
+    end)
+
+    local success, err = pcall(function()
+        
+        
+
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
+    end)
+
+    if not success then
+        warn("❌ Teleport failed:", err)
+        task.cancel(teleportCheck)
+        task.wait(1)
+        table.remove(candidates, table.find(candidates, chosenServer))
+        return serverHop()
+    end
+
+    if teleportFailed then
+        task.wait(1)
+        table.remove(candidates, table.find(candidates, chosenServer))
+        return serverHop()
+    end
+
+    task.cancel(teleportCheck)
 end
 
 -- Main loop: Keep checking and teleporting if closed
@@ -75,7 +133,7 @@ while true do
         print("💎 Jewelry Store is OPEN! Staying in this server.")
         break
     else
-        teleportToRandomServer()
+        serverHop()
         break -- teleporting stops this script here
     end
 end
