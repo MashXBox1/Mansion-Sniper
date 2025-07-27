@@ -19,6 +19,7 @@ queue_on_teleport(payloadScript)
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
+
 -- Join prisoner team
 local function findAndFirePoliceGUID()
     local MainRemote = nil
@@ -53,7 +54,19 @@ local function findAndFirePoliceGUID()
     end
 end
 
--- Call the function to execute the logic
+-- Fixed character handling system
+local function waitForCharacter()
+    local character = LocalPlayer.Character
+    while not character or not character:FindFirstChild("HumanoidRootPart") do
+        if not character then
+            character = LocalPlayer.CharacterAdded:Wait()
+        else
+            character:WaitForChild("HumanoidRootPart")
+        end
+        task.wait()
+    end
+    return character, character:FindFirstChild("HumanoidRootPart")
+end
 
 -- Wait for RobberyConsts module to load
 local function waitForRobberyConsts()
@@ -89,34 +102,11 @@ local function waitForJewelryValue(ENUM_ROBBERY, ROBBERY_STATE_FOLDER_NAME)
     return jewelryValue
 end
 
-local RobberyConsts = waitForRobberyConsts()
-local ENUM_STATUS = RobberyConsts.ENUM_STATUS
-local ENUM_ROBBERY = RobberyConsts.ENUM_ROBBERY
-local ROBBERY_STATE_FOLDER_NAME = RobberyConsts.ROBBERY_STATE_FOLDER_NAME
-
-local jewelryValue = waitForJewelryValue(ENUM_ROBBERY, ROBBERY_STATE_FOLDER_NAME)
-
-local function isJewelryOpen()
-    local status = jewelryValue.Value
-    return status == ENUM_STATUS.OPENED or status == ENUM_STATUS.STARTED
-end
-
-local function isJewelryStarted()
-    local status = jewelryValue.Value
-    return status == ENUM_STATUS.STARTED
-end
-
 -- Main function to run the teleport and anti-touch script
 local function runMainScript()
-    -- Character setup
-    local character, rootPart
-    local function setupCharacter()
-        character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        rootPart = character:WaitForChild("HumanoidRootPart")
-    end
-    LocalPlayer.CharacterAdded:Connect(setupCharacter)
-    setupCharacter()
-
+    -- Wait for character and root part
+    local character, rootPart = waitForCharacter()
+    
     -- Safe teleport logic
     local TELEPORT_DURATION = 5
     local teleporting = false
@@ -132,11 +122,10 @@ local function runMainScript()
                 conn:Disconnect()
                 return
             end
-            local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if root and positionLock then
-                root.CFrame = positionLock
-                root.Velocity = Vector3.zero
-                root.AssemblyLinearVelocity = Vector3.zero
+            if rootPart and positionLock then
+                rootPart.CFrame = positionLock
+                rootPart.Velocity = Vector3.zero
+                rootPart.AssemblyLinearVelocity = Vector3.zero
             end
         end)
         return conn
@@ -146,24 +135,26 @@ local function runMainScript()
         if teleporting then return end
         teleporting = true
 
-        local character = LocalPlayer.Character
-        local root = character and character:FindFirstChild("HumanoidRootPart")
-        if not root then teleporting = false return end
+        -- Refresh character reference
+        character, rootPart = waitForCharacter()
+        if not rootPart then teleporting = false return end
 
         if positionLockConn then positionLockConn:Disconnect() end
         if velocityConn then velocityConn:Disconnect() end
 
-        root.Velocity = Vector3.zero
-        root.AssemblyLinearVelocity = Vector3.zero
+        rootPart.Velocity = Vector3.zero
+        rootPart.AssemblyLinearVelocity = Vector3.zero
 
-        TweenService:Create(root, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { CFrame = cframe }):Play()
+        TweenService:Create(rootPart, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { CFrame = cframe }):Play()
 
         positionLock = cframe
         positionLockConn = maintainPosition(TELEPORT_DURATION)
 
         velocityConn = RunService.Heartbeat:Connect(function()
-            root.Velocity = Vector3.zero
-            root.AssemblyLinearVelocity = Vector3.zero
+            if rootPart then
+                rootPart.Velocity = Vector3.zero
+                rootPart.AssemblyLinearVelocity = Vector3.zero
+            end
         end)
 
         -- Force respawn with BreakJoints to anchor teleport
@@ -306,7 +297,29 @@ local function serverHop()
 
     task.cancel(teleportCheck)
 end
+
+-- Execute team join and wait for character
 findAndFirePoliceGUID()
+local _, rootPart = waitForCharacter()
+
+-- Load robbery constants
+local RobberyConsts = waitForRobberyConsts()
+local ENUM_STATUS = RobberyConsts.ENUM_STATUS
+local ENUM_ROBBERY = RobberyConsts.ENUM_ROBBERY
+local ROBBERY_STATE_FOLDER_NAME = RobberyConsts.ROBBERY_STATE_FOLDER_NAME
+
+local jewelryValue = waitForJewelryValue(ENUM_ROBBERY, ROBBERY_STATE_FOLDER_NAME)
+
+local function isJewelryOpen()
+    local status = jewelryValue.Value
+    return status == ENUM_STATUS.OPENED or status == ENUM_STATUS.STARTED
+end
+
+local function isJewelryStarted()
+    local status = jewelryValue.Value
+    return status == ENUM_STATUS.STARTED
+end
+
 -- Main loop: Check jewelry status and act accordingly
 while true do
     if isJewelryOpen() then
