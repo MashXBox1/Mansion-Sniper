@@ -98,14 +98,15 @@ end
 
 -- Main function to run the teleport and anti-touch script
 local function runMainScript()
-    -- Character setup
-    local character, rootPart
-    local function setupCharacter()
-        character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        rootPart = character:WaitForChild("HumanoidRootPart")
-    end
+    -- Character setup with proper waiting
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local rootPart = character:WaitForChild("HumanoidRootPart")
     
-    setupCharacter()
+    -- Reconnect handler for respawns
+    LocalPlayer.CharacterAdded:Connect(function(newChar)
+        character = newChar
+        rootPart = newChar:WaitForChild("HumanoidRootPart")
+    end)
 
     -- Safe teleport logic
     local TELEPORT_DURATION = 5
@@ -122,7 +123,7 @@ local function runMainScript()
                 conn:Disconnect()
                 return
             end
-            local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local root = character and character:FindFirstChild("HumanoidRootPart")
             if root and positionLock then
                 root.CFrame = positionLock
                 root.Velocity = Vector3.zero
@@ -136,29 +137,37 @@ local function runMainScript()
         if teleporting then return end
         teleporting = true
 
-        local character = LocalPlayer.Character
-        local root = character and character:FindFirstChild("HumanoidRootPart")
-        if not root then teleporting = false return end
+        -- Ensure we have valid character and root part
+        if not character or not character.Parent then
+            character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        end
+        if not rootPart or not rootPart.Parent then
+            rootPart = character:WaitForChild("HumanoidRootPart")
+        end
 
         if positionLockConn then positionLockConn:Disconnect() end
         if velocityConn then velocityConn:Disconnect() end
 
-        root.Velocity = Vector3.zero
-        root.AssemblyLinearVelocity = Vector3.zero
+        rootPart.Velocity = Vector3.zero
+        rootPart.AssemblyLinearVelocity = Vector3.zero
 
-        TweenService:Create(root, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { CFrame = cframe }):Play()
+        TweenService:Create(rootPart, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { CFrame = cframe }):Play()
 
         positionLock = cframe
         positionLockConn = maintainPosition(TELEPORT_DURATION)
 
         velocityConn = RunService.Heartbeat:Connect(function()
-            root.Velocity = Vector3.zero
-            root.AssemblyLinearVelocity = Vector3.zero
+            if rootPart and rootPart.Parent then
+                rootPart.Velocity = Vector3.zero
+                rootPart.AssemblyLinearVelocity = Vector3.zero
+            end
         end)
 
         -- Force respawn with BreakJoints to anchor teleport
         delay(0.2, function()
-            if character then character:BreakJoints() end
+            if character and character.Parent then
+                character:BreakJoints()
+            end
         end)
 
         delay(TELEPORT_DURATION, function()
