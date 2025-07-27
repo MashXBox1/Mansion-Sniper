@@ -122,9 +122,9 @@ local function teleportUntilAllCriminalHRPsLoaded()
     -- Optimized position generator
     local function getScanPosition()
         local newPos = Vector3.new(
-            math.random(-5500, 5500),
+            math.random((-2092, 3128),
             SCAN_HEIGHT,
-            math.random(-5500, 5500)
+            math.random(-5780, 2442)
         )
         lastPosition = newPos
         return newPos
