@@ -21,6 +21,16 @@ if not game:IsLoaded() then
 end
 -- Join prisoner team
 local function findAndFirePoliceGUID()
+    local MainRemote = nil
+    for _, obj in pairs(ReplicatedStorage:GetChildren()) do
+        if obj:IsA("RemoteEvent") and obj.Name:find("-") then
+            MainRemote = obj
+            print("✅ Found RemoteEvent:", obj:GetFullName())
+            break
+        end
+    end
+    if not MainRemote then error("❌ Could not find RemoteEvent with '-' in name.") end
+    
     local PoliceGUID = nil
 
     -- Iterate through all global objects to find the Police GUID
