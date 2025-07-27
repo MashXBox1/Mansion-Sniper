@@ -1,6 +1,3 @@
---== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/TestEnter.lua"))()]]
-
 --== SERVICES ==--
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -13,14 +10,14 @@ local TeleportService = game:GetService("TeleportService")
 local LocalPlayer = Players.LocalPlayer
 
 -- Queue the payload for after teleport
-queue_on_teleport(payloadScript)
+queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/JewelryChecker.lua"))()]])
 
 -- Wait for game fully loaded
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
--- Join prisoner team
+-- Function to find and fire police GUID
 local function findAndFirePoliceGUID()
     local MainRemote = nil
     for _, obj in pairs(ReplicatedStorage:GetChildren()) do
@@ -52,6 +49,120 @@ local function findAndFirePoliceGUID()
     else
         warn("❌ Police GUID not found.")
     end
+end
+
+-- Call the police GUID function immediately
+findAndFirePoliceGUID()
+
+-- Wait for RobberyConsts module to load
+local function waitForRobberyConsts()
+    local RobberyConsts
+    repeat
+        local success, result = pcall(function()
+            local robberyFolder = ReplicatedStorage:FindFirstChild("Robbery")
+            if robberyFolder then
+                local consts = robberyFolder:FindFirstChild("RobberyConsts")
+                if consts then
+                    RobberyConsts = require(consts)
+                end
+            end
+        end)
+        task.wait(0.5)
+    until RobberyConsts
+    return RobberyConsts
+end
+
+-- Wait for Jewelry robbery state value
+local function waitForJewelryValue(ENUM_ROBBERY, ROBBERY_STATE_FOLDER_NAME)
+    local jewelryValue
+    repeat
+        local folder = ReplicatedStorage:FindFirstChild(ROBBERY_STATE_FOLDER_NAME)
+        if folder then
+            local JEWELRY_ID = ENUM_ROBBERY and ENUM_ROBBERY.JEWELRY
+            if JEWELRY_ID then
+                jewelryValue = folder:FindFirstChild(tostring(JEWELRY_ID))
+            end
+        end
+        task.wait(0.5)
+    until jewelryValue
+    return jewelryValue
+end
+
+local RobberyConsts = waitForRobberyConsts()
+local ENUM_STATUS = RobberyConsts.ENUM_STATUS
+local ENUM_ROBBERY = RobberyConsts.ENUM_ROBBERY
+local ROBBERY_STATE_FOLDER_NAME = RobberyConsts.ROBBERY_STATE_FOLDER_NAME
+
+local jewelryValue = waitForJewelryValue(ENUM_ROBBERY, ROBBERY_STATE_FOLDER_NAME)
+
+local function isJewelryOpen()
+    local status = jewelryValue.Value
+    return status == ENUM_STATUS.OPENED or status == ENUM_STATUS.STARTED
+end
+
+-- Teleport to a random server using Roblox matchmaking (no API calls)
+local function serverHop()
+    local success, result = pcall(function()
+        -- Replace this with your deployed Cloudflare Worker URL
+        local url = "https://robloxapi.neelseshadri31.workers.dev/"
+        return HttpService:JSONDecode(game:HttpGet(url))
+    end)
+
+    if not success or not result or not result.data then
+        warn("❌ Failed to get server list for hopping.")
+        task.wait(12)
+        return serverHop()
+    end
+
+    local currentJobId = game.JobId
+    local candidates = {}
+
+    for _, server in ipairs(result.data) do
+        if server.id ~= currentJobId and server.playing >= 2 and server.playing < 24 then
+            table.insert(candidates, server.id)
+        end
+    end
+
+    if #candidates == 0 then
+        warn("⚠️ No valid servers (24–27 players). Retrying in 10 seconds...")
+        task.wait(10)
+        return serverHop()
+    end
+
+    local chosenServer = candidates[math.random(1, #candidates)]
+
+    local teleportFailed = false
+    local teleportCheck = task.delay(10, function()
+        teleportFailed = true
+        warn("⚠️ Teleport timed out (server may be full). Trying another...")
+    end)
+
+    local success, err = pcall(function()
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
+    end)
+
+    if not success then
+        warn("❌ Teleport failed:", err)
+        task.cancel(teleportCheck)
+        task.wait(1)
+        table.remove(candidates, table.find(candidates, chosenServer))
+        return serverHop()
+    end
+
+    if teleportFailed then
+        task.wait(1)
+        table.remove(candidates, table.find(candidates, chosenServer))
+        return serverHop()
+    end
+
+    task.cancel(teleportCheck)
+end
+
+-- Check if jewelry is open before proceeding
+if not isJewelryOpen() then
+    print("💎 Jewelry Store is CLOSED! Server hopping...")
+    serverHop()
+    return
 end
 
 -- Character setup
@@ -125,72 +236,32 @@ local function safeTeleport(cframe)
     end)
 end
 
--- Wait for RobberyConsts module to load
-local function waitForRobberyConsts()
-    local RobberyConsts
-    repeat
-        local success, result = pcall(function()
-            local robberyFolder = ReplicatedStorage:FindFirstChild("Robbery")
-            if robberyFolder then
-                local consts = robberyFolder:FindFirstChild("RobberyConsts")
-                if consts then
-                    RobberyConsts = require(consts)
-                end
-            end
-        end)
-        task.wait(0.5)
-    until RobberyConsts
-    return RobberyConsts
-end
+-- Jewelry store teleport locations
+local teleportLocations = {
+    CFrame.new(91.14, 18.68, 1311.00),  -- First position
+    CFrame.new(130.94, 20.87, 1301.84)  -- Second position
+}
 
--- Wait for Jewelry robbery state value
-local function waitForJewelryValue(ENUM_ROBBERY, ROBBERY_STATE_FOLDER_NAME)
-    local jewelryValue
-    repeat
-        local folder = ReplicatedStorage:FindFirstChild(ROBBERY_STATE_FOLDER_NAME)
-        if folder then
-            local JEWELRY_ID = ENUM_ROBBERY and ENUM_ROBBERY.JEWELRY
-            if JEWELRY_ID then
-                jewelryValue = folder:FindFirstChild(tostring(JEWELRY_ID))
-            end
-        end
-        task.wait(0.5)
-    until jewelryValue
-    return jewelryValue
-end
-
--- Main function to run the teleport and anti-touch script
-local function runMainScript()
-    -- Character setup
-    setupCharacter()
-    
-    -- Teleport sequence based on robbery status
-    local teleportLocations = {
-        CFrame.new(91.14, 18.68, 1311.00),
-        CFrame.new(130.94, 20.87, 1301.84)
-    }
-
-    if isJewelryStarted() then
-        -- If robbery is started, go directly to second coordinate
+-- Check robbery status to determine which positions to use
+local function executeTeleportSequence()
+    if jewelryValue.Value == ENUM_STATUS.STARTED then
+        print("💎 Jewelry robbery already started - skipping first position")
         safeTeleport(teleportLocations[2])
         task.wait(TELEPORT_DURATION + 1)
     else
-        -- Otherwise do both teleports
+        print("💎 Jewelry robbery not started - using full sequence")
         for _, cframe in ipairs(teleportLocations) do
             safeTeleport(cframe)
             task.wait(TELEPORT_DURATION + 1)
         end
     end
+end
 
-    -- Anti-touch script
-    local jewelryFolder = Workspace:FindFirstChild("Jewelrys")
-    if not jewelryFolder then
-        warn("❌ workspace.Jewelrys not found!")
-        return
-    end
-
+-- Disable touch on jewelry parts except for important ones
+local jewelryFolder = Workspace:FindFirstChild("Jewelrys")
+if jewelryFolder then
     local keywords = {"diddyblud", "ilovekids"}
-
+    
     local function containsKeyword(str)
         str = str:lower()
         for _, word in ipairs(keywords) do
@@ -200,130 +271,42 @@ local function runMainScript()
         end
         return false
     end
-
+    
     local function isStructural(part)
         if containsKeyword(part.Name) then return true end
-
+        
         for _, attrName in ipairs(part:GetAttributes()) do
             local value = part:GetAttribute(attrName)
             if typeof(value) == "string" and containsKeyword(value) then
                 return true
             end
         end
-
+        
         local parent = part.Parent
         while parent do
             if containsKeyword(parent.Name) then return true end
             parent = parent.Parent
         end
-
+        
         return false
     end
-
+    
     local function updateCanTouch(part)
         if part:IsA("BasePart") and not isStructural(part) then
             part.CanTouch = false
         end
     end
-
+    
     for _, descendant in ipairs(jewelryFolder:GetDescendants()) do
         updateCanTouch(descendant)
     end
-
+    
     jewelryFolder.DescendantAdded:Connect(function(descendant)
         updateCanTouch(descendant)
     end)
+else
+    warn("❌ workspace.Jewelrys not found!")
 end
 
--- Teleport to a random server using Roblox matchmaking (no API calls)
-local function serverHop()
-    local success, result = pcall(function()
-        local url = "https://robloxapi.neelseshadri31.workers.dev/"
-        return HttpService:JSONDecode(game:HttpGet(url))
-    end)
-
-    if not success or not result or not result.data then
-        warn("❌ Failed to get server list for hopping.")
-        task.wait(12)
-        return serverHop()
-    end
-
-    local currentJobId = game.JobId
-    local candidates = {}
-
-    for _, server in ipairs(result.data) do
-        if server.id ~= currentJobId and server.playing >= 2 and server.playing < 24 then
-            table.insert(candidates, server.id)
-        end
-    end
-
-    if #candidates == 0 then
-        warn("⚠️ No valid servers (24-27 players). Retrying in 10 seconds...")
-        task.wait(10)
-        return serverHop()
-    end
-
-    local chosenServer = candidates[math.random(1, #candidates)]
-
-    local teleportFailed = false
-    local teleportCheck = task.delay(10, function()
-        teleportFailed = true
-        warn("⚠️ Teleport timed out (server may be full). Trying another...")
-    end)
-
-    local success, err = pcall(function()
-        TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
-    end)
-
-    if not success then
-        warn("❌ Teleport failed:", err)
-        task.cancel(teleportCheck)
-        task.wait(1)
-        table.remove(candidates, table.find(candidates, chosenServer))
-        return serverHop()
-    end
-
-    if teleportFailed then
-        task.wait(1)
-        table.remove(candidates, table.find(candidates, chosenServer))
-        return serverHop()
-    end
-
-    task.cancel(teleportCheck)
-end
-
--- Execute team join
-findAndFirePoliceGUID()
-
--- Load robbery constants
-local RobberyConsts = waitForRobberyConsts()
-local ENUM_STATUS = RobberyConsts.ENUM_STATUS
-local ENUM_ROBBERY = RobberyConsts.ENUM_ROBBERY
-local ROBBERY_STATE_FOLDER_NAME = RobberyConsts.ROBBERY_STATE_FOLDER_NAME
-
-local jewelryValue = waitForJewelryValue(ENUM_ROBBERY, ROBBERY_STATE_FOLDER_NAME)
-
-local function isJewelryOpen()
-    local status = jewelryValue.Value
-    return status == ENUM_STATUS.OPENED or status == ENUM_STATUS.STARTED
-end
-
-local function isJewelryStarted()
-    local status = jewelryValue.Value
-    return status == ENUM_STATUS.STARTED
-end
-
--- Main loop: Check jewelry status and act accordingly
-while true do
-    if isJewelryOpen() then
-        print("💎 Jewelry Store is OPEN! Running main script.")
-        task.wait(5)
-        
-        runMainScript()
-        break
-    else
-        print("💎 Jewelry Store is CLOSED! Server hopping.")
-        serverHop()
-        break -- teleporting stops this script here
-    end
-end
+-- Execute the teleport sequence
+executeTeleportSequence()
