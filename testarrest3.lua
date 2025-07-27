@@ -91,108 +91,92 @@ local function alternativeSendMessage(message)
 end
 
 -- Services
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local lastPosition = nil
-
 local function teleportUntilAllCriminalHRPsLoaded()
-    -- Criminal check function with detailed reporting
+    -- Services
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    
+    -- Configuration
+    local SCAN_WAIT = 0.05  -- Faster scanning
+    local MIN_DISTANCE = 500 -- Minimum distance between scan points
+    local lastPosition = nil
+    
+    -- Wait for local character
+    repeat task.wait() until LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    
+    -- Criminal check function
     local function getMissingCriminals()
         local missing = {}
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= LocalPlayer and player.Team and player.Team.Name == "Criminal" then
                 local char = player.Character
                 if not char or not char:FindFirstChild("HumanoidRootPart") then
-                    table.insert(missing, {
-                        name = player.Name,
-                        userId = player.UserId
-                    })
+                    table.insert(missing, player.Name)
                 end
             end
         end
         return missing
     end
 
-    -- Improved random position generator with wider coverage
-    local function getNewScanPosition()
-        local newPosition
+    -- Optimized position generator
+    local function getScanPosition()
+        local newPos
         repeat
-            local x = math.random(-5500, 5500)  -- Wider coverage
-            local z = math.random(-5500, 5500)
-            newPosition = Vector3.new(x, 100, z)  -- Higher altitude to avoid obstacles
-        until not lastPosition or (newPosition - lastPosition).Magnitude >= 500
-        lastPosition = newPosition
-        return newPosition
+            newPos = Vector3.new(
+                math.random(-5500, 5500),
+                100,  -- Higher altitude to avoid obstacles
+                math.random(-5500, 5500)
+            )
+        until not lastPosition or (newPos - lastPosition).Magnitude >= MIN_DISTANCE
+        lastPosition = newPos
+        return newPos
     end
 
-    -- Main scanning function
-    local function performScan()
-        local myChar = LocalPlayer.Character
-        if not myChar then return false end
-
-        local hrp = myChar:FindFirstChild("HumanoidRootPart")
-        if not hrp then return false end
-
-        local humanoid = myChar:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.PlatformStand = true
-            humanoid.AutoRotate = false
-        end
-
-        -- Teleport to new scan position
-        hrp.CFrame = CFrame.new(getNewScanPosition())
-        return true
+    -- Enable scanning mode
+    local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.PlatformStand = true
+        humanoid.AutoRotate = false
     end
 
+    print("🚨 Beginning Criminal HRP scan (will run until all found)")
+    
     -- Main scan loop
     local scanCount = 0
     local startTime = os.time()
-    
-    print("🔍 Beginning Criminal HRP scan...")
     
     while true do
         scanCount += 1
         local missing = getMissingCriminals()
         
+        -- Exit condition
         if #missing == 0 then
-            print("✅ SUCCESS: All Criminal HRPs loaded!")
+            print("✅ ALL CRIMINAL HRPs FOUND! Total scans:", scanCount)
             break
         end
 
-        -- Status update every 5 scans
-        if scanCount % 5 == 0 then
+        -- Status updates
+        if scanCount % 10 == 0 then
             local elapsed = os.time() - startTime
             print(string.format(
-                "🔄 Scan %d | %d sec elapsed | Missing %d criminals%s",
+                "🔍 Scan %d | %ds elapsed | Missing %d: %s",
                 scanCount,
                 elapsed,
                 #missing,
-                #missing > 0 and ": "..table.concat(
-                    table.create(#missing, function(i) return missing[i].name end),
-                    ", "
-                ) or ""
-            ))
+                table.concat(missing, ", ")
+            )
         end
 
-        -- Perform scan and small delay
-        if performScan() then
-            task.wait(0.1)  -- Reduced wait time for faster scanning
-        else
-            task.wait(1)  -- Longer wait if character issues
-        end
+        -- Perform scan
+        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(getScanPosition())
+        task.wait(SCAN_WAIT)
     end
 
     -- Cleanup
-    local myChar = LocalPlayer.Character
-    if myChar then
-        local humanoid = myChar:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.PlatformStand = false
-            humanoid.AutoRotate = true
-        end
+    if humanoid then
+        humanoid.PlatformStand = false
+        humanoid.AutoRotate = true
     end
-    
-    print("🚀 All Criminal targets acquired! Proceeding...")
 end
 
 -- Run indefinitely until all criminals are found
@@ -347,10 +331,7 @@ if PoliceGUID then
 end
 task.wait(1)
 
-while true do
-    teleportUntilAllCriminalHRPsLoaded()
-    task.wait(0.1)  -- Small delay before rechecking
-end
+teleportUntilAllCriminalHRPsLoaded()
 
 local function shutdownAllFunctionality()
     -- Disconnect all connections
