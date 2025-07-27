@@ -601,7 +601,7 @@ local function serverHop()
     local chosenServer = candidates[math.random(1, #candidates)]
 
     local teleportFailed = false
-    local teleportCheck = task.delay(10, function()
+    local teleportCheck = task.delay(2, function()
         teleportFailed = true
         warn("⚠️ Teleport timed out (server may be full). Trying another...")
     end)
@@ -658,7 +658,7 @@ end
 -- Wait exactly 360 seconds from server time
 local function wait360Seconds()
     local startTime = getServerTime()
-    local endTime = startTime + 360
+    local endTime = startTime + 300
     
     local connection
     connection = RunService.Heartbeat:Connect(function()
