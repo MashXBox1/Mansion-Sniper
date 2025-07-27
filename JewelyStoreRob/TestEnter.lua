@@ -311,7 +311,7 @@ while true do
     if isJewelryOpen() then
         print("💎 Jewelry Store is OPEN! Running main script.")
         findAndFirePoliceGUID()
-        task.wait(1)
+        task.wait(3)
         runMainScript()
         break
     else
