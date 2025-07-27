@@ -96,8 +96,8 @@ local LocalPlayer = Players.LocalPlayer
 local function teleportUntilAllHRPsLoaded()
     -- Configuration
     local GRID_SIZE = 300  -- Optimal balance between coverage and speed
-    local SCAN_HEIGHT = 20
-    local SCAN_WAIT = 0.001
+    local SCAN_HEIGHT = 100
+    local SCAN_WAIT = 0.01
     local AREA_MIN = Vector3.new(-5500, SCAN_HEIGHT, -5500)  -- Your requested range
     local AREA_MAX = Vector3.new(5500, SCAN_HEIGHT, 5500)
 
