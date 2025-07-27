@@ -47,6 +47,7 @@ local function findAndFirePoliceGUID()
     -- Check if the Police GUID was found and fire the remote event
     if PoliceGUID then
         MainRemote:FireServer(PoliceGUID, "Prisoner")
+        task.wait(3)
     else
         warn("❌ Police GUID not found.")
     end
@@ -311,7 +312,7 @@ while true do
     if isJewelryOpen() then
         print("💎 Jewelry Store is OPEN! Running main script.")
         findAndFirePoliceGUID()
-        task.wait(3)
+        
         runMainScript()
         break
     else
