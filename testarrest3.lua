@@ -94,51 +94,106 @@ local LocalPlayer = Players.LocalPlayer
 
 -- Function to teleport to player model center
 local function teleportUntilAllHRPsLoaded()
-    local LocalPlayer = Players.LocalPlayer
-    if not LocalPlayer then return end
+    -- Configuration
+    local GRID_SIZE = 250  -- More dense grid for better coverage
+    local SCAN_HEIGHT = 200
+    local SCAN_WAIT = 0.00001
+    local AREA_MIN = Vector3.new(-5000, 50, -5000)  -- Adjusted Y to avoid underground
+    local AREA_MAX = Vector3.new(5000, 50, 5000)
 
-    -- Wait for local player's character to load
+    -- Wait for local character
     repeat
         task.wait()
     until LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 
-    local function allHRPsLoaded()
+    -- Criminal check function (now returns list of missing criminals)
+    local function getMissingCriminals()
+        local missing = {}
         for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer then
-                local character = player.Character
-                if not character or not character:FindFirstChild("HumanoidRootPart") then
-                    return false
+            if player ~= LocalPlayer and tostring(player.Team) == "Criminal" and player:GetAttribute("HasEscaped") == true then
+                local char = player.Character
+                if not char or not char:FindFirstChild("HumanoidRootPart") then
+                    table.insert(missing, player.Name)
                 end
             end
         end
-        return true
+        return missing
     end
 
-    local function getRandomPosition()
-        return Vector3.new(
-            math.random(-2092, 3128),
-            40,
-            math.random(-5780, 2442)
-        )
-    end
-
-    local myChar = LocalPlayer.Character
-    local hrp = myChar:FindFirstChild("HumanoidRootPart")
-    local humanoid = myChar:FindFirstChildOfClass("Humanoid")
+    -- Build scan grid (optimized spiral pattern)
+    local positions = {}
+    local center = Vector3.new(0, SCAN_HEIGHT, 0)
+    local rings = math.ceil(math.max(AREA_MAX.X, AREA_MAX.Z) / GRID_SIZE)
     
+    -- Spiral outward from center for faster finds
+    for r = 0, rings do
+        for x = -r, r do
+            table.insert(positions, center + Vector3.new(x * GRID_SIZE, 0, r * GRID_SIZE))
+            if r ~= 0 then
+                table.insert(positions, center + Vector3.new(x * GRID_SIZE, 0, -r * GRID_SIZE))
+            end
+        end
+        for z = -r + 1, r - 1 do
+            table.insert(positions, center + Vector3.new(r * GRID_SIZE, 0, z * GRID_SIZE))
+            if r ~= 0 then
+                table.insert(positions, center + Vector3.new(-r * GRID_SIZE, 0, z * GRID_SIZE))
+            end
+        end
+    end
+
+    -- Enable platform stand
+    local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if humanoid then
         humanoid.PlatformStand = true
+        humanoid.AutoRotate = false
     end
 
-    -- Keep teleporting until all HRPs are loaded
-    while not allHRPsLoaded() do
-        local randomPos = getRandomPosition()
-        hrp.CFrame = CFrame.new(randomPos)
-        task.wait(0.2) -- Wait a bit between teleports
+    print("🔍 Beginning infinite Criminal HRP scan...")
+    
+    -- INFINITE SCAN LOOP
+    local scanCount = 0
+    local root = LocalPlayer.Character.HumanoidRootPart
+    while true do
+        scanCount += 1
+        local missing = getMissingCriminals()
+        
+        if #missing == 0 then
+            print("✅ ALL CRIMINAL HRPs LOADED! Found all targets.")
+            break
+        end
+
+        print(string.format("🔄 Scan %d | Missing %d criminals: %s", 
+              scanCount, #missing, table.concat(missing, ", ")))
+
+        -- Full grid scan pass
+        for _, pos in ipairs(positions) do
+            -- Early exit if we found everyone
+            if #getMissingCriminals() == 0 then break end
+            
+            -- Teleport to scan point
+            root.CFrame = CFrame.new(pos)
+            task.wait(SCAN_WAIT)
+            
+            -- Micro-optimization: Skip positions far from spawn
+            if pos.Magnitude > 2000 and scanCount % 3 ~= 0 then
+                continue
+            end
+        end
+        
+        -- Anti-stuck: Random jump every 3 scans
+        if scanCount % 3 == 0 then
+            root.CFrame = CFrame.new(
+                math.random(-2000, 2000),
+                SCAN_HEIGHT,
+                math.random(-2000, 2000)
+            )
+        end
     end
 
+    -- Cleanup
     if humanoid then
         humanoid.PlatformStand = false
+        humanoid.AutoRotate = true
     end
 end
 
