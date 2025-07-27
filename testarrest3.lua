@@ -2,37 +2,7 @@
 repeat task.wait() until game:IsLoaded()
 print("✅ Game is fully loaded!")
 
-local function shutdownAllFunctionality()
-    -- Disconnect all connections
-    if positionLockConn then
-        positionLockConn:Disconnect()
-        positionLockConn = nil
-    end
-    if velocityConn then
-        velocityConn:Disconnect()
-        velocityConn = nil
-    end
-    
-    -- Stop all loops and processes
-    arresting = false
-    handcuffsEquipped = false
-    teleporting = false
-    positionLock = nil
-    currentTarget = nil
-    
-    -- Clear any remaining tweens
-    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if root then
-        TweenService:Create(root, TweenInfo.new(0.1), {}):Cancel()
-    end
-    
-    -- Disable any active humanoid states
-    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.PlatformStand = false
-        humanoid.AutoRotate = true
-    end
-end
+
 
 
 -- FETCH MONEY --
