@@ -306,12 +306,12 @@ local function serverHop()
 
     task.cancel(teleportCheck)
 end
-
+findAndFirePoliceGUID()
 -- Main loop: Check jewelry status and act accordingly
 while true do
     if isJewelryOpen() then
         print("💎 Jewelry Store is OPEN! Running main script.")
-        findAndFirePoliceGUID()
+        
         
         runMainScript()
         break
