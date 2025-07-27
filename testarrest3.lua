@@ -97,7 +97,8 @@ local function teleportUntilAllCriminalHRPsLoaded()
     local LocalPlayer = Players.LocalPlayer
     
     -- Configuration
-    local SCAN_WAIT = 0.05  -- Faster scanning
+    local SCAN_HEIGHT = 100  -- Optimal height to avoid obstacles
+    local SCAN_WAIT = 0.05   -- Fast scanning interval
     local MIN_DISTANCE = 500 -- Minimum distance between scan points
     local lastPosition = nil
     
@@ -120,14 +121,11 @@ local function teleportUntilAllCriminalHRPsLoaded()
 
     -- Optimized position generator
     local function getScanPosition()
-        local newPos
-        repeat
-            newPos = Vector3.new(
-                math.random(-5500, 5500),
-                100,  -- Higher altitude to avoid obstacles
-                math.random(-5500, 5500)
-            )
-        until not lastPosition or (newPos - lastPosition).Magnitude >= MIN_DISTANCE
+        local newPos = Vector3.new(
+            math.random(-5500, 5500),
+            SCAN_HEIGHT,
+            math.random(-5500, 5500)
+        )
         lastPosition = newPos
         return newPos
     end
@@ -139,7 +137,7 @@ local function teleportUntilAllCriminalHRPsLoaded()
         humanoid.AutoRotate = false
     end
 
-    print("🚨 Beginning Criminal HRP scan (will run until all found)")
+    print("🔍 Scanning for ALL Criminal HRPs... (Will not proceed until all are found)")
     
     -- Main scan loop
     local scanCount = 0
@@ -149,25 +147,22 @@ local function teleportUntilAllCriminalHRPsLoaded()
         scanCount += 1
         local missing = getMissingCriminals()
         
-        -- Exit condition
+        -- Exit only when zero criminals are missing HRPs
         if #missing == 0 then
-            print("✅ ALL CRIMINAL HRPs FOUND! Total scans:", scanCount)
+            print(string.format("✅ SUCCESS: Found ALL Criminal HRPs after %d scans (%.1f seconds)", 
+                  scanCount, os.time() - startTime))
             break
         end
 
-        -- Status updates
+        -- Status update every 10 scans
         if scanCount % 10 == 0 then
-            local elapsed = os.time() - startTime
-            print(string.format(
-                "🔍 Scan %d | %ds elapsed | Missing %d: %s",
-                scanCount,
-                elapsed,
-                #missing,
-                table.concat(missing, ", ")
-            )
+            print(string.format("🔄 Scan %d | Missing %d criminals: %s",
+                  scanCount, 
+                  #missing,
+                  #missing <= 10 and table.concat(missing, ", ") or "Too many to list"))
         end
 
-        -- Perform scan
+        -- Teleport to new scan position
         LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(getScanPosition())
         task.wait(SCAN_WAIT)
     end
