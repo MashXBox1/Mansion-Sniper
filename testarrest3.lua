@@ -98,8 +98,8 @@ local function teleportUntilAllHRPsLoaded()
     local GRID_SIZE = 250  -- More dense grid for better coverage
     local SCAN_HEIGHT = 200
     local SCAN_WAIT = 0.00001
-    local AREA_MIN = Vector3.new(-5000, 50, -5000)  -- Adjusted Y to avoid underground
-    local AREA_MAX = Vector3.new(5000, 50, 5000)
+    local AREA_MIN = Vector3.new(-6000, 10, -6000)  -- Adjusted Y to avoid underground
+    local AREA_MAX = Vector3.new(6000, 10, 6000)
 
     -- Wait for local character
     repeat
