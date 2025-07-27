@@ -104,7 +104,7 @@ local function runMainScript()
         character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
         rootPart = character:WaitForChild("HumanoidRootPart")
     end
-    LocalPlayer.CharacterAdded:Connect(setupCharacter)
+    
     setupCharacter()
 
     -- Safe teleport logic
