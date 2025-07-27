@@ -54,18 +54,75 @@ local function findAndFirePoliceGUID()
     end
 end
 
--- Fixed character handling system
-local function waitForCharacter()
-    local character = LocalPlayer.Character
-    while not character or not character:FindFirstChild("HumanoidRootPart") do
-        if not character then
-            character = LocalPlayer.CharacterAdded:Wait()
-        else
-            character:WaitForChild("HumanoidRootPart")
+-- Character setup
+local character, rootPart
+local function setupCharacter()
+    character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    rootPart = character:WaitForChild("HumanoidRootPart")
+end
+LocalPlayer.CharacterAdded:Connect(setupCharacter)
+setupCharacter()
+
+-- Safe teleport logic
+local TELEPORT_DURATION = 5
+local teleporting = false
+local positionLock = nil
+local positionLockConn = nil
+local velocityConn = nil
+
+local function maintainPosition(duration)
+    local startTime = tick()
+    local conn
+    conn = RunService.Heartbeat:Connect(function()
+        if tick() - startTime > duration then
+            conn:Disconnect()
+            return
         end
-        task.wait()
-    end
-    return character, character:FindFirstChild("HumanoidRootPart")
+        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if root and positionLock then
+            root.CFrame = positionLock
+            root.Velocity = Vector3.zero
+            root.AssemblyLinearVelocity = Vector3.zero
+        end
+    end)
+    return conn
+end
+
+local function safeTeleport(cframe)
+    if teleporting then return end
+    teleporting = true
+
+    local character = LocalPlayer.Character
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    if not root then teleporting = false return end
+
+    if positionLockConn then positionLockConn:Disconnect() end
+    if velocityConn then velocityConn:Disconnect() end
+
+    root.Velocity = Vector3.zero
+    root.AssemblyLinearVelocity = Vector3.zero
+
+    TweenService:Create(root, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { CFrame = cframe }):Play()
+
+    positionLock = cframe
+    positionLockConn = maintainPosition(TELEPORT_DURATION)
+
+    velocityConn = RunService.Heartbeat:Connect(function()
+        root.Velocity = Vector3.zero
+        root.AssemblyLinearVelocity = Vector3.zero
+    end)
+
+    -- Force respawn with BreakJoints to anchor teleport
+    delay(0.2, function()
+        if character then character:BreakJoints() end
+    end)
+
+    delay(TELEPORT_DURATION, function()
+        if positionLockConn then positionLockConn:Disconnect() end
+        if velocityConn then velocityConn:Disconnect() end
+        positionLock = nil
+        teleporting = false
+    end)
 end
 
 -- Wait for RobberyConsts module to load
@@ -104,72 +161,9 @@ end
 
 -- Main function to run the teleport and anti-touch script
 local function runMainScript()
-    -- Wait for character and root part
-    local character, rootPart = waitForCharacter()
+    -- Character setup
+    setupCharacter()
     
-    -- Safe teleport logic
-    local TELEPORT_DURATION = 5
-    local teleporting = false
-    local positionLock = nil
-    local positionLockConn = nil
-    local velocityConn = nil
-
-    local function maintainPosition(duration)
-        local startTime = tick()
-        local conn
-        conn = RunService.Heartbeat:Connect(function()
-            if tick() - startTime > duration then
-                conn:Disconnect()
-                return
-            end
-            if rootPart and positionLock then
-                rootPart.CFrame = positionLock
-                rootPart.Velocity = Vector3.zero
-                rootPart.AssemblyLinearVelocity = Vector3.zero
-            end
-        end)
-        return conn
-    end
-
-    local function safeTeleport(cframe)
-        if teleporting then return end
-        teleporting = true
-
-        -- Refresh character reference
-        character, rootPart = waitForCharacter()
-        if not rootPart then teleporting = false return end
-
-        if positionLockConn then positionLockConn:Disconnect() end
-        if velocityConn then velocityConn:Disconnect() end
-
-        rootPart.Velocity = Vector3.zero
-        rootPart.AssemblyLinearVelocity = Vector3.zero
-
-        TweenService:Create(rootPart, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { CFrame = cframe }):Play()
-
-        positionLock = cframe
-        positionLockConn = maintainPosition(TELEPORT_DURATION)
-
-        velocityConn = RunService.Heartbeat:Connect(function()
-            if rootPart then
-                rootPart.Velocity = Vector3.zero
-                rootPart.AssemblyLinearVelocity = Vector3.zero
-            end
-        end)
-
-        -- Force respawn with BreakJoints to anchor teleport
-        delay(0.2, function()
-            if character then character:BreakJoints() end
-        end)
-
-        delay(TELEPORT_DURATION, function()
-            if positionLockConn then positionLockConn:Disconnect() end
-            if velocityConn then velocityConn:Disconnect() end
-            positionLock = nil
-            teleporting = false
-        end)
-    end
-
     -- Teleport sequence based on robbery status
     local teleportLocations = {
         CFrame.new(91.14, 18.68, 1311.00),
@@ -298,9 +292,8 @@ local function serverHop()
     task.cancel(teleportCheck)
 end
 
--- Execute team join and wait for character
+-- Execute team join
 findAndFirePoliceGUID()
-local _, rootPart = waitForCharacter()
 
 -- Load robbery constants
 local RobberyConsts = waitForRobberyConsts()
