@@ -80,8 +80,16 @@ end
 
 --== SAFE TELEPORT / MAIN ==--
 local function runMainScript()
-    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local rootPart = character:WaitForChild("HumanoidRootPart")
+    local function waitForCharacter()
+        local char = LocalPlayer.Character
+        if not char or not char.Parent then
+            char = LocalPlayer.CharacterAdded:Wait()
+        end
+        local hrp = char:FindFirstChild("HumanoidRootPart") or char:WaitForChild("HumanoidRootPart")
+        return char, hrp
+    end
+
+    local character, rootPart = waitForCharacter()
 
     LocalPlayer.CharacterAdded:Connect(function(newChar)
         character = newChar
@@ -109,8 +117,7 @@ local function runMainScript()
         if teleporting then return end
         teleporting = true
 
-        character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        rootPart = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("HumanoidRootPart")
+        character, rootPart = waitForCharacter()
 
         if positionLockConn then positionLockConn:Disconnect() end
         if velocityConn then velocityConn:Disconnect() end
@@ -130,11 +137,8 @@ local function runMainScript()
         end)
 
         delay(0.2, function()
-            character = LocalPlayer.Character
-            if character then
-                pcall(function()
-                    character:BreakJoints()
-                end)
+            if character and character.Parent then
+                pcall(function() character:BreakJoints() end)
             end
         end)
 
