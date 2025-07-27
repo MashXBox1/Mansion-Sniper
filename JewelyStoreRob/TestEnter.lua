@@ -19,18 +19,27 @@ queue_on_teleport(payloadScript)
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
--- Join prisoner team
-local function findAndFirePoliceGUID()
-    local MainRemote = nil
-    for _, obj in pairs(ReplicatedStorage:GetChildren()) do
-        if obj:IsA("RemoteEvent") and obj.Name:find("-") then
-            MainRemote = obj
-            print("✅ Found RemoteEvent:", obj:GetFullName())
-            break
+
+-- Function to wait for MainRemote
+local function waitForMainRemote()
+    local MainRemote
+    repeat
+        for _, obj in pairs(ReplicatedStorage:GetChildren()) do
+            if obj:IsA("RemoteEvent") and obj.Name:find("-") then
+                MainRemote = obj
+                print("✅ Found RemoteEvent:", obj:GetFullName())
+                break
+            end
         end
-    end
-    if not MainRemote then error("❌ Could not find RemoteEvent with '-' in name.") end
-    
+        if not MainRemote then
+            task.wait(0.5)
+        end
+    until MainRemote
+    return MainRemote
+end
+
+-- Join prisoner team
+local function findAndFirePoliceGUID(MainRemote)
     local PoliceGUID = nil
 
     -- Iterate through all global objects to find the Police GUID
@@ -47,13 +56,11 @@ local function findAndFirePoliceGUID()
     -- Check if the Police GUID was found and fire the remote event
     if PoliceGUID then
         MainRemote:FireServer(PoliceGUID, "Prisoner")
-        task.wait(3)
+        task.wait(1)
     else
         warn("❌ Police GUID not found.")
     end
 end
-
--- Call the function to execute the logic
 
 -- Wait for RobberyConsts module to load
 local function waitForRobberyConsts()
@@ -87,23 +94,6 @@ local function waitForJewelryValue(ENUM_ROBBERY, ROBBERY_STATE_FOLDER_NAME)
         task.wait(0.5)
     until jewelryValue
     return jewelryValue
-end
-
-local RobberyConsts = waitForRobberyConsts()
-local ENUM_STATUS = RobberyConsts.ENUM_STATUS
-local ENUM_ROBBERY = RobberyConsts.ENUM_ROBBERY
-local ROBBERY_STATE_FOLDER_NAME = RobberyConsts.ROBBERY_STATE_FOLDER_NAME
-
-local jewelryValue = waitForJewelryValue(ENUM_ROBBERY, ROBBERY_STATE_FOLDER_NAME)
-
-local function isJewelryOpen()
-    local status = jewelryValue.Value
-    return status == ENUM_STATUS.OPENED or status == ENUM_STATUS.STARTED
-end
-
-local function isJewelryStarted()
-    local status = jewelryValue.Value
-    return status == ENUM_STATUS.STARTED
 end
 
 -- Main function to run the teleport and anti-touch script
@@ -306,13 +296,32 @@ local function serverHop()
 
     task.cancel(teleportCheck)
 end
-findAndFirePoliceGUID()
+
+-- Main execution flow
+local MainRemote = waitForMainRemote()
+findAndFirePoliceGUID(MainRemote)
+
+local RobberyConsts = waitForRobberyConsts()
+local ENUM_STATUS = RobberyConsts.ENUM_STATUS
+local ENUM_ROBBERY = RobberyConsts.ENUM_ROBBERY
+local ROBBERY_STATE_FOLDER_NAME = RobberyConsts.ROBBERY_STATE_FOLDER_NAME
+
+local jewelryValue = waitForJewelryValue(ENUM_ROBBERY, ROBBERY_STATE_FOLDER_NAME)
+
+local function isJewelryOpen()
+    local status = jewelryValue.Value
+    return status == ENUM_STATUS.OPENED or status == ENUM_STATUS.STARTED
+end
+
+local function isJewelryStarted()
+    local status = jewelryValue.Value
+    return status == ENUM_STATUS.STARTED
+end
+
 -- Main loop: Check jewelry status and act accordingly
 while true do
     if isJewelryOpen() then
         print("💎 Jewelry Store is OPEN! Running main script.")
-        
-        
         runMainScript()
         break
     else
