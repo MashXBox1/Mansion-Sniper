@@ -10,7 +10,7 @@ local TeleportService = game:GetService("TeleportService")
 local LocalPlayer = Players.LocalPlayer
 
 -- Queue the payload for after teleport
-queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/JewelryChecker.lua"))()]])
+queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/TestEnter.lua"))()]])
 
 -- Wait for game fully loaded
 if not game:IsLoaded() then
