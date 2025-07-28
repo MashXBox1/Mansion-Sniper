@@ -133,6 +133,15 @@ local function killAllNPCs()
     end
 end
 
+-- Add NPC killer loop
+task.spawn(function()
+    while task.wait(2) do
+        killAllNPCs()
+    end
+end)
+
+
+
 local character, rootPart, camera
 local function setupCharacter()
     character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
