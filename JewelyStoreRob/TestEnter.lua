@@ -248,7 +248,7 @@ local function main()
 end
 
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/TestEnter.lua"))()]]
+
 
 --== SERVICES ==--
 
@@ -256,7 +256,7 @@ local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.c
 local LocalPlayer = Players.LocalPlayer
 
 -- Queue the payload for after teleport
-queue_on_teleport(payloadScript)
+
 
 -- Wait for game fully loaded
 if not game:IsLoaded() then
@@ -349,7 +349,8 @@ local function serverHop()
     local success, err = pcall(function()
         
         
-
+        local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/TestEnter.lua"))()]]
+        queue_on_teleport(payloadScript)
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
     end)
 
