@@ -370,7 +370,23 @@ local function serverHop()
     task.cancel(teleportCheck)
 end
 
+local function wait360Seconds()
+    local startTime = getServerTime()
+    local endTime = startTime + 200
+    
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        if os.time() >= endTime then
+            connection:Disconnect() -- Stop checking
+            serverHop()
+            
+            
+            
+        end
+    end)
+end
 
+wait360Seconds()
 
 
 -- Main loop: Keep checking and teleporting if closed
