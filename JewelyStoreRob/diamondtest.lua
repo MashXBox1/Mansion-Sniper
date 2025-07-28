@@ -8,6 +8,10 @@ local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local hrp = character:WaitForChild("HumanoidRootPart")
 
+-- Get Duffel Bag components
+local DuffelBagBinder = require(ReplicatedStorage.Game.DuffelBag.DuffelBagBinder)
+local DuffelBagConsts = require(ReplicatedStorage.Game.DuffelBag.DuffelBagConsts)
+
 -- Find the Diamond GUID and RemoteEvent
 local DiamondGUID = nil
 local foundRemote = nil
@@ -36,24 +40,6 @@ end
 
 if not foundRemote then
     error("❌ Could not find RemoteEvent with '-' in name directly under ReplicatedStorage.")
-end
-
--- Find Duffel Bag related objects
-local DuffelBagBinder = nil
-local DuffelBagConsts = {AMOUNT_VALUE_NAME = "Amount"}
-
-for _, obj in pairs(getgc(true)) do
-    if typeof(obj) == "table" then
-        if rawget(obj, "GetAll") and rawget(obj, "_class") and obj._class.Name == "DuffelBagBinder" then
-            DuffelBagBinder = obj
-        elseif rawget(obj, "AMOUNT_VALUE_NAME") then
-            DuffelBagConsts = obj
-        end
-    end
-end
-
-if not DuffelBagBinder then
-    error("❌ Could not find DuffelBagBinder.")
 end
 
 -- Degrees to radians helper
@@ -132,9 +118,26 @@ local function returnToStart(currentIndex)
     end
 end
 
--- Main execution (runs once)
+-- Main execution
 print("🚀 Starting path execution...")
+local scriptExecuted = false
+
+-- Bag monitoring task
+task.spawn(function()
+    while not scriptExecuted do
+        if checkBag() then
+            print("💰 Bag has 500+ cash!")
+            scriptExecuted = true
+            break
+        end
+        task.wait(0.5)
+    end
+end)
+
+-- Path execution
 for i, waypoint in ipairs(path) do
+    if scriptExecuted then break end
+    
     print("📍 Moving to position", i, "of", #path)
     teleportTo(waypoint.pos, waypoint.heading)
     
@@ -142,11 +145,11 @@ for i, waypoint in ipairs(path) do
     print("🔥 Firing events...")
     fireEvents()
     
-    -- Check bag after firing
-    if checkBag() then
-        print("💰 Bag has 500+ cash - returning to start!")
+    -- Check if we should exit
+    if scriptExecuted then
+        print("🔄 Returning to start...")
         returnToStart(i)
-        break  -- Exit the path completely
+        break
     else
         print("❌ Not enough cash - continuing to next waypoint")
         task.wait(1)  -- Wait before next waypoint
@@ -154,3 +157,5 @@ for i, waypoint in ipairs(path) do
 end
 
 print("✅ Script finished executing")
+
+loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/NavigateJstore.lua"))()
