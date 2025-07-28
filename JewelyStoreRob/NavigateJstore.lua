@@ -207,6 +207,6 @@ task.spawn(function()
     Humanoid.PlatformStand = false
 end)
 
-task.wait(35)
+task.wait(40)
 serverHop()
 
