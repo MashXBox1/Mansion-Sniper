@@ -145,7 +145,7 @@ task.spawn(function()
     Humanoid.PlatformStand = false
 end)
 local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/TestEnter.lua"))()]]
-
+queue_on_teleport(payloadScript)
 local function serverHop()
     local success, result = pcall(function()
         -- Replace this with your deployed Cloudflare Worker URL
