@@ -84,7 +84,7 @@ end
 
 -- Function to fire the RemoteEvent repeatedly
 local function fireEvents()
-    for i = 1, 20 do  -- Fire 20 times (adjust as needed)
+    for i = 1, 10 do  -- Fire 20 times (adjust as needed)
         foundRemote:FireServer(DiamondGUID)
         task.wait(0.2)  -- Fire every 0.2 seconds (adjust as needed)
     end
