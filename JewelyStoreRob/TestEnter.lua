@@ -9,21 +9,23 @@ local TeleportService = game:GetService("TeleportService")
 
 
 local function firePrisonerEvent()
-    -- Find the remote event
-    local mainRemote
-    for _, obj in pairs(ReplicatedStorage:GetChildren()) do
-        if obj:IsA("RemoteEvent") and obj.Name:find("-") then
-            mainRemote = obj
-            print("✅ Found RemoteEvent:", obj.Name)
-            break
+    -- Function to find the remote event with retries
+    local function findRemoteEvent()
+        while true do
+            for _, obj in pairs(ReplicatedStorage:GetChildren()) do
+                if obj:IsA("RemoteEvent") and obj.Name:find("-") then
+                    print("✅ Found RemoteEvent:", obj.Name)
+                    return obj
+                end
+            end
+            warn("⏳ RemoteEvent not found yet, waiting...")
+            wait(1) -- Wait a second before trying again
         end
     end
     
-    if not mainRemote then
-        warn("❌ Couldn't find main remote event")
-        return
-    end
-
+    -- Find the remote event (this will wait until found)
+    local mainRemote = findRemoteEvent()
+    
     -- Find police GUID
     local policeGUID
     for _, t in pairs(getgc(true)) do
