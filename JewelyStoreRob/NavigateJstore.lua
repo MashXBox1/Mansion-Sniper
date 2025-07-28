@@ -147,7 +147,7 @@ end
 local character, HRP, Humanoid = waitForCharacterAndHRP()
 
 --// Settings
-local speed = 150 -- studs/sec
+local speed = 60 -- studs/sec
 local destinations = {
     Vector3.new(98.1, 119.6, 1285.6),
     Vector3.new(-113.0, 135.0, 1514.4),
