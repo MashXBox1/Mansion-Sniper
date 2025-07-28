@@ -382,6 +382,8 @@ while true do
         flyUp()
         task.wait(4)
         main()
+        task.wait(3)
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/diamondtest.lua"))()
         break
     else
         serverHop()
