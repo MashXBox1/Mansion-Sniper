@@ -132,6 +132,85 @@ local function serverHop()
 end
 
 
+task.wait(2)
+--// Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+--// Setup
+local LocalPlayer = Players.LocalPlayer
+local function waitForCharacterAndHRP()
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local hrp = character:WaitForChild("HumanoidRootPart")
+    local humanoid = character:WaitForChild("Humanoid")
+    return character, hrp, humanoid
+end
+
+local character, HRP, Humanoid = waitForCharacterAndHRP()
+
+--// Body movers
+local function applyFlightForces()
+    local bv = Instance.new("BodyVelocity")
+    bv.Name = "FlightVelocity"
+    bv.Velocity = Vector3.zero
+    bv.MaxForce = Vector3.new(1, 1, 1) * math.huge
+    bv.P = 10000
+    bv.Parent = HRP
+
+    local bg = Instance.new("BodyGyro")
+    bg.Name = "FlightGyro"
+    bg.MaxTorque = Vector3.new(1, 1, 1) * math.huge
+    bg.P = 10000
+    bg.CFrame = HRP.CFrame
+    bg.Parent = HRP
+
+    return bv, bg
+end
+
+--// Flight logic
+local speed = 150 -- studs/sec
+local function flyTo(target, bv, bg)
+    while true do
+        local dt = RunService.Heartbeat:Wait()
+        local current = HRP.Position
+        local direction = target - current
+        local distance = direction.Magnitude
+        if distance < 5 then break end
+
+        local unit = direction.Unit
+        bv.Velocity = unit * speed
+        bg.CFrame = CFrame.new(Vector3.zero, unit)
+    end
+end
+
+--// Flight path
+task.spawn(function()
+    Humanoid.PlatformStand = true
+    local bv, bg = applyFlightForces()
+
+    local pos1 = Vector3.new(96.4, 118.4, 1284.7)
+    local pos1_high = Vector3.new(96.4, 318.4, 1284.7)
+    local pos2_high = Vector3.new(-250.7, 318.4, 1614.2)
+    local pos2_final = Vector3.new(-250.7, 16.5, 1614.2)
+
+    flyTo(pos1, bv, bg)
+    task.wait(0.5)
+
+    flyTo(pos1_high, bv, bg)
+    task.wait(0.5)
+
+    flyTo(pos2_high, bv, bg)
+    task.wait(0.5)
+
+    flyTo(pos2_final, bv, bg)
+    task.wait(0.5)
+
+    bv:Destroy()
+    bg:Destroy()
+    Humanoid.PlatformStand = false
+end)
+
+
 task.wait(40)
 serverHop()
 
