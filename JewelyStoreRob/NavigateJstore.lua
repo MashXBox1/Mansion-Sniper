@@ -211,6 +211,6 @@ task.spawn(function()
 end)
 
 
-task.wait(30)
+task.wait(50)
 serverHop()
 
