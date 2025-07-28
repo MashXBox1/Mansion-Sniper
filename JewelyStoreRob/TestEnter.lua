@@ -1,7 +1,4 @@
---== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/TestEnter.lua"))()]]
-
---== SERVICES ==--
+-- Services (initializers remain outside)
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
@@ -10,59 +7,202 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 
+
+local function firePrisonerEvent()
+    -- Find the remote event
+    local mainRemote
+    for _, obj in pairs(ReplicatedStorage:GetChildren()) do
+        if obj:IsA("RemoteEvent") and obj.Name:find("-") then
+            mainRemote = obj
+            print("✅ Found RemoteEvent:", obj.Name)
+            break
+        end
+    end
+    
+    if not mainRemote then
+        warn("❌ Couldn't find main remote event")
+        return
+    end
+
+    -- Find police GUID
+    local policeGUID
+    for _, t in pairs(getgc(true)) do
+        if typeof(t) == "table" and not getmetatable(t) then
+            if t["mto4108g"] and type(t["mto4108g"]) == "string" and t["mto4108g"]:sub(1,1) == "!" then
+                policeGUID = t["mto4108g"]
+                print("✅ Found Police GUID")
+                break
+            end
+        end
+    end
+
+    -- Fire the event
+    if policeGUID and mainRemote then
+        mainRemote:FireServer(policeGUID, "Prisoner")
+        print("🔫 Fired prisoner event")
+    else
+        warn("❌ Missing components for prisoner event")
+    end
+end
+
+
+-- Main function containing all logic
+local function main()
+    local LocalPlayer = Players.LocalPlayer
+    
+    -- Character setup
+    local character, rootPart
+    local function setupCharacter()
+        character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        rootPart = character:WaitForChild("HumanoidRootPart")
+    end
+    LocalPlayer.CharacterAdded:Connect(setupCharacter)
+    setupCharacter()
+
+    -- Safe teleport system
+    local TELEPORT_DURATION = 5
+    local teleporting = false
+    local positionLock = nil
+    local positionLockConn = nil
+    local velocityConn = nil
+
+    local function maintainPosition(duration)
+        local startTime = tick()
+        local conn
+        conn = RunService.Heartbeat:Connect(function()
+            if tick() - startTime > duration then
+                conn:Disconnect()
+                return
+            end
+            local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if root and positionLock then
+                root.CFrame = positionLock
+                root.Velocity = Vector3.zero
+                root.AssemblyLinearVelocity = Vector3.zero
+            end
+        end)
+        return conn
+    end
+
+    local function safeTeleport(cframe)
+        if teleporting then return end
+        teleporting = true
+
+        local character = LocalPlayer.Character
+        local root = character and character:FindFirstChild("HumanoidRootPart")
+        if not root then teleporting = false return end
+
+        if positionLockConn then positionLockConn:Disconnect() end
+        if velocityConn then velocityConn:Disconnect() end
+
+        root.Velocity = Vector3.zero
+        root.AssemblyLinearVelocity = Vector3.zero
+
+        TweenService:Create(root, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { CFrame = cframe }):Play()
+
+        positionLock = cframe
+        positionLockConn = maintainPosition(TELEPORT_DURATION)
+
+        velocityConn = RunService.Heartbeat:Connect(function()
+            root.Velocity = Vector3.zero
+            root.AssemblyLinearVelocity = Vector3.zero
+        end)
+
+        -- Force respawn with BreakJoints to anchor teleport
+        delay(0.2, function()
+            if character then character:BreakJoints() end
+        end)
+
+        delay(TELEPORT_DURATION, function()
+            if positionLockConn then positionLockConn:Disconnect() end
+            if velocityConn then velocityConn:Disconnect() end
+            positionLock = nil
+            teleporting = false
+        end)
+    end
+
+    -- Execute teleport sequence
+    local teleportLocations = {
+        CFrame.new(91.14, 18.68, 1311.00),
+        CFrame.new(130.94, 20.87, 1301.84)
+    }
+
+    for _, cframe in ipairs(teleportLocations) do
+        safeTeleport(cframe)
+        task.wait(TELEPORT_DURATION + 1)
+    end
+
+    -- Jewelry system
+    local jewelryFolder = Workspace:FindFirstChild("Jewelrys")
+    if not jewelryFolder then
+        warn("❌ workspace.Jewelrys not found!")
+        return
+    end
+
+    local keywords = {"diddyblud", "ilovekids"}
+
+    local function containsKeyword(str)
+        str = str:lower()
+        for _, word in ipairs(keywords) do
+            if str:find(word) then
+                return true
+            end
+        end
+        return false
+    end
+
+    local function isStructural(part)
+        if containsKeyword(part.Name) then return true end
+
+        for _, attrName in ipairs(part:GetAttributes()) do
+            local value = part:GetAttribute(attrName)
+            if typeof(value) == "string" and containsKeyword(value) then
+                return true
+            end
+        end
+
+        local parent = part.Parent
+        while parent do
+            if containsKeyword(parent.Name) then return true end
+            parent = parent.Parent
+        end
+
+        return false
+    end
+
+    local function updateCanTouch(part)
+        if part:IsA("BasePart") and not isStructural(part) then
+            part.CanTouch = false
+        end
+    end
+
+    -- Initialize jewelry system
+    for _, descendant in ipairs(jewelryFolder:GetDescendants()) do
+        updateCanTouch(descendant)
+    end
+
+    jewelryFolder.DescendantAdded:Connect(function(descendant)
+        updateCanTouch(descendant)
+    end)
+end
+
+--== CONFIG: Replace this with whatever you want to run in the new server ==--
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/TestEnter.lua"))()]]
+
+--== SERVICES ==--
+
+
 local LocalPlayer = Players.LocalPlayer
 
---== QUEUE ON TELEPORT ==--
+-- Queue the payload for after teleport
 queue_on_teleport(payloadScript)
 
---== WAIT FOR GAME LOADED ==--
+-- Wait for game fully loaded
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
---== FIRE POLICE GUID LOGIC ==--
-local function findAndFirePoliceGUID()
-    local MainRemote = nil
-
-    -- 🔁 Keep checking until RemoteEvent is found
-    while not MainRemote do
-        for _, obj in pairs(ReplicatedStorage:GetChildren()) do
-            if obj:IsA("RemoteEvent") and obj.Name:find("-") then
-                MainRemote = obj
-                print("✅ Found RemoteEvent:", obj:GetFullName())
-                break
-            end
-        end
-        if not MainRemote then
-            task.wait(0.5)
-        end
-    end
-
-    -- 🔎 Now find the Police GUID
-    local PoliceGUID = nil
-    for _, t in pairs(getgc(true)) do
-        if typeof(t) == "table" and not getmetatable(t) then
-            if t["mto4108g"] and type(t["mto4108g"]) == "string" and t["mto4108g"]:sub(1, 1) == "!" then
-                PoliceGUID = t["mto4108g"]
-                print("✅ Police GUID found:", PoliceGUID)
-                break
-            end
-        end
-    end
-
-    -- 🚨 Fire the GUID if found
-    if PoliceGUID then
-        MainRemote:FireServer(PoliceGUID, "Prisoner")
-        task.wait(3)
-    else
-        warn("❌ Police GUID not found.")
-    end
-end
-
-
-findAndFirePoliceGUID()
-
---== LOAD ROBBERY CONSTS ==--
+-- Wait for RobberyConsts module to load
 local function waitForRobberyConsts()
     local RobberyConsts
     repeat
@@ -80,6 +220,7 @@ local function waitForRobberyConsts()
     return RobberyConsts
 end
 
+-- Wait for Jewelry robbery state value
 local function waitForJewelryValue(ENUM_ROBBERY, ROBBERY_STATE_FOLDER_NAME)
     local jewelryValue
     repeat
@@ -99,6 +240,7 @@ local RobberyConsts = waitForRobberyConsts()
 local ENUM_STATUS = RobberyConsts.ENUM_STATUS
 local ENUM_ROBBERY = RobberyConsts.ENUM_ROBBERY
 local ROBBERY_STATE_FOLDER_NAME = RobberyConsts.ROBBERY_STATE_FOLDER_NAME
+
 local jewelryValue = waitForJewelryValue(ENUM_ROBBERY, ROBBERY_STATE_FOLDER_NAME)
 
 local function isJewelryOpen()
@@ -106,9 +248,10 @@ local function isJewelryOpen()
     return status == ENUM_STATUS.OPENED or status == ENUM_STATUS.STARTED
 end
 
---== SERVER HOP LOGIC ==--
+-- Teleport to a random server using Roblox matchmaking (no API calls)
 local function serverHop()
     local success, result = pcall(function()
+        -- Replace this with your deployed Cloudflare Worker URL
         local url = "https://robloxapi.neelseshadri31.workers.dev/"
         return HttpService:JSONDecode(game:HttpGet(url))
     end)
@@ -143,12 +286,21 @@ local function serverHop()
     end)
 
     local success, err = pcall(function()
+        
+        
+
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
     end)
 
-    if not success or teleportFailed then
+    if not success then
         warn("❌ Teleport failed:", err)
         task.cancel(teleportCheck)
+        task.wait(1)
+        table.remove(candidates, table.find(candidates, chosenServer))
+        return serverHop()
+    end
+
+    if teleportFailed then
         task.wait(1)
         table.remove(candidates, table.find(candidates, chosenServer))
         return serverHop()
@@ -157,129 +309,22 @@ local function serverHop()
     task.cancel(teleportCheck)
 end
 
---== IF CLOSED, HOP ==--
-if not isJewelryOpen() then
-    serverHop()
-    return
-end
 
---== SETUP CHARACTER ==--
-local character, rootPart
-local function setupCharacter()
-    character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    rootPart = character:WaitForChild("HumanoidRootPart")
-end
-LocalPlayer.CharacterAdded:Connect(setupCharacter)
-setupCharacter()
 
---== SAFE TELEPORT ==--
-local TELEPORT_DURATION = 5
-local teleporting = false
-local positionLock = nil
-local positionLockConn = nil
-local velocityConn = nil
 
-local function maintainPosition(duration)
-    local startTime = tick()
-    local conn
-    conn = RunService.Heartbeat:Connect(function()
-        if tick() - startTime > duration then conn:Disconnect() return end
-        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if root and positionLock then
-            root.CFrame = positionLock
-            root.Velocity = Vector3.zero
-            root.AssemblyLinearVelocity = Vector3.zero
-        end
-    end)
-    return conn
-end
-
-local function safeTeleport(cframe)
-    if teleporting then return end
-    teleporting = true
-
-    local character = LocalPlayer.Character
-    local root = character and character:FindFirstChild("HumanoidRootPart")
-    if not root then teleporting = false return end
-
-    if positionLockConn then positionLockConn:Disconnect() end
-    if velocityConn then velocityConn:Disconnect() end
-
-    root.Velocity = Vector3.zero
-    root.AssemblyLinearVelocity = Vector3.zero
-    TweenService:Create(root, TweenInfo.new(0.3, Enum.EasingStyle.Quad), { CFrame = cframe }):Play()
-
-    positionLock = cframe
-    positionLockConn = maintainPosition(TELEPORT_DURATION)
-    velocityConn = RunService.Heartbeat:Connect(function()
-        root.Velocity = Vector3.zero
-        root.AssemblyLinearVelocity = Vector3.zero
-    end)
-
-    delay(0.2, function()
-        if character then character:BreakJoints() end
-    end)
-
-    delay(TELEPORT_DURATION, function()
-        if positionLockConn then positionLockConn:Disconnect() end
-        if velocityConn then velocityConn:Disconnect() end
-        positionLock = nil
-        teleporting = false
-    end)
-end
-
---== JEWELRY TELEPORT SEQUENCE ==--
-local teleportLocations = {
-    CFrame.new(91.14, 18.68, 1311.00),
-    CFrame.new(130.94, 20.87, 1301.84)
-}
-
-local skipFirst = jewelryValue.Value == ENUM_STATUS.STARTED
-for i, cframe in ipairs(teleportLocations) do
-    if not skipFirst or i ~= 1 then
-        safeTeleport(cframe)
-        task.wait(TELEPORT_DURATION + 1)
+-- Main loop: Keep checking and teleporting if closed
+while true do
+    if isJewelryOpen() then
+        print("💎 Jewelry Store is OPEN! Staying in this server.")
+        firePrisonerEvent()
+        task.wait(5)
+        main()
+        break
+    else
+        serverHop()
+        break -- teleporting stops this script here
     end
 end
 
---== TOUCH DISABLER FOR NON-STRUCTURES ==--
-local jewelryFolder = Workspace:FindFirstChild("Jewelrys")
-if jewelryFolder then
-    local keywords = {"diddyblud", "ilovekids"}
 
-    local function containsKeyword(str)
-        str = str:lower()
-        for _, word in ipairs(keywords) do
-            if str:find(word) then return true end
-        end
-        return false
-    end
 
-    local function isStructural(part)
-        if containsKeyword(part.Name) then return true end
-        for _, attr in ipairs(part:GetAttributes()) do
-            local val = part:GetAttribute(attr)
-            if typeof(val) == "string" and containsKeyword(val) then return true end
-        end
-        local parent = part.Parent
-        while parent do
-            if containsKeyword(parent.Name) then return true end
-            parent = parent.Parent
-        end
-        return false
-    end
-
-    local function updateCanTouch(part)
-        if part:IsA("BasePart") and not isStructural(part) then
-            part.CanTouch = false
-        end
-    end
-
-    for _, d in ipairs(jewelryFolder:GetDescendants()) do
-        updateCanTouch(d)
-    end
-
-    jewelryFolder.DescendantAdded:Connect(updateCanTouch)
-else
-    warn("❌ workspace.Jewelrys not found!")
-end
