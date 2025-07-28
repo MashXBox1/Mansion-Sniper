@@ -144,6 +144,7 @@ task.spawn(function()
     bg:Destroy()
     Humanoid.PlatformStand = false
 end)
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/TestEnter.lua"))()]]
 
 local function serverHop()
     local success, result = pcall(function()
