@@ -22,23 +22,23 @@ end
 
 --== FIRE POLICE GUID LOGIC ==--
 local function findAndFirePoliceGUID()
-    -- Find the RemoteEvent first
     local MainRemote = nil
-    for _, obj in pairs(ReplicatedStorage:GetChildren()) do
-        if obj:IsA("RemoteEvent") and obj.Name:find("-") then
-            MainRemote = obj
-            print("✅ Found RemoteEvent:", obj:GetFullName())
-            break
+
+    -- 🔁 Keep checking until RemoteEvent is found
+    while not MainRemote do
+        for _, obj in pairs(ReplicatedStorage:GetChildren()) do
+            if obj:IsA("RemoteEvent") and obj.Name:find("-") then
+                MainRemote = obj
+                print("✅ Found RemoteEvent:", obj:GetFullName())
+                break
+            end
+        end
+        if not MainRemote then
+            task.wait(0.5)
         end
     end
 
-    -- Only continue if RemoteEvent was found
-    if not MainRemote then
-        warn("❌ Could not find RemoteEvent with '-' in name.")
-        return
-    end
-
-    -- Now find the Police GUID
+    -- 🔎 Now find the Police GUID
     local PoliceGUID = nil
     for _, t in pairs(getgc(true)) do
         if typeof(t) == "table" and not getmetatable(t) then
@@ -50,7 +50,7 @@ local function findAndFirePoliceGUID()
         end
     end
 
-    -- Fire the event if GUID was found
+    -- 🚨 Fire the GUID if found
     if PoliceGUID then
         MainRemote:FireServer(PoliceGUID, "Prisoner")
         task.wait(3)
@@ -58,6 +58,7 @@ local function findAndFirePoliceGUID()
         warn("❌ Police GUID not found.")
     end
 end
+
 
 findAndFirePoliceGUID()
 
