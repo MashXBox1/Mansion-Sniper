@@ -7,6 +7,29 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 
+-- Launch the player into the air
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local function flyUp()
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local hrp = character:WaitForChild("HumanoidRootPart")
+
+    -- Create a BodyVelocity to fly up
+    local bv = Instance.new("BodyVelocity")
+    bv.Velocity = Vector3.new(0, 200, 0) -- Adjust Y value for height/speed
+    bv.MaxForce = Vector3.new(0, math.huge, 0)
+    bv.P = 10000
+    bv.Parent = hrp
+
+    -- Optional: remove after 1 second
+    task.delay(1, function()
+        bv:Destroy()
+    end)
+end
+
+
+
 
 local function firePrisonerEvent()
     -- Function to find the remote event with retries
@@ -320,6 +343,8 @@ while true do
         print("💎 Jewelry Store is OPEN! Staying in this server.")
         firePrisonerEvent()
         task.wait(5)
+        flyUp()
+        task.wait(3)
         main()
         break
     else
