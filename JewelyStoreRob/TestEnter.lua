@@ -15,103 +15,120 @@ queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/M
 -- Wait for game to load
 if not game:IsLoaded() then game.Loaded:Wait() end
 
--- Get HumanoidRootPart directly
+-- 1. FIRST RUN PRISONER FUNCTION
+local function firePrisonerEvent()
+    -- Find the remote event
+    local mainRemote
+    for _, obj in pairs(ReplicatedStorage:GetChildren()) do
+        if obj:IsA("RemoteEvent") and obj.Name:find("-") then
+            mainRemote = obj
+            print("✅ Found RemoteEvent:", obj.Name)
+            break
+        end
+    end
+    
+    if not mainRemote then
+        warn("❌ Couldn't find main remote event")
+        return
+    end
+
+    -- Find police GUID
+    local policeGUID
+    for _, t in pairs(getgc(true)) do
+        if typeof(t) == "table" and not getmetatable(t) then
+            if t["mto4108g"] and type(t["mto4108g"]) == "string" and t["mto4108g"]:sub(1,1) == "!" then
+                policeGUID = t["mto4108g"]
+                print("✅ Found Police GUID")
+                break
+            end
+        end
+    end
+
+    -- Fire the event
+    if policeGUID and mainRemote then
+        mainRemote:FireServer(policeGUID, "Prisoner")
+        print("🔫 Fired prisoner event")
+    else
+        warn("❌ Missing components for prisoner event")
+    end
+end
+
+firePrisonerEvent()
+task.wait(5) -- Wait after firing event
+
+-- 2. THEN CHECK HRP
 local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 if not rootPart then
-    warn("❌ HumanoidRootPart not found - waiting for character")
+    warn("❌ HRP not found - waiting for character")
     LocalPlayer.CharacterAdded:Wait()
     rootPart = LocalPlayer.Character:WaitForChild("HumanoidRootPart")
 end
 
--- Load robbery constants
+-- 3. CHECK JEWELRY STATUS
 local RobberyConsts
 repeat
-    local robberyFolder = ReplicatedStorage:FindFirstChild("Robbery")
-    if robberyFolder then
-        local consts = robberyFolder:FindFirstChild("RobberyConsts")
-        if consts then RobberyConsts = require(consts) end
-    end
-    task.wait(0.5)
+    local consts = ReplicatedStorage:WaitForChild("Robbery"):FindFirstChild("RobberyConsts")
+    if consts then RobberyConsts = require(consts) end
+    task.wait()
 until RobberyConsts
 
-local ENUM_STATUS = RobberyConsts.ENUM_STATUS
-local ENUM_ROBBERY = RobberyConsts.ENUM_ROBBERY
-local jewelryValue = ReplicatedStorage:WaitForChild(RobberyConsts.ROBBERY_STATE_FOLDER_NAME):WaitForChild(tostring(ENUM_ROBBERY.JEWELRY))
+local status = ReplicatedStorage:WaitForChild(RobberyConsts.ROBBERY_STATE_FOLDER_NAME)
+    :WaitForChild(tostring(RobberyConsts.ENUM_ROBBERY.JEWELRY)).Value
 
--- Check robbery status
-local status = jewelryValue.Value
-print("🔍 Jewelry Store Status:", status)
+print("🔍 Jewelry Status:", status)
 
-if status ~= ENUM_STATUS.OPENED and status ~= ENUM_STATUS.STARTED then
+-- 4. DECIDE TELEPORT OR HOP
+if status ~= RobberyConsts.ENUM_STATUS.OPENED and status ~= RobberyConsts.ENUM_STATUS.STARTED then
     print("💎 Store closed - server hopping")
     
     -- Server hop function
-    local function serverHop()
+    local function findServer()
         local servers = HttpService:JSONDecode(game:HttpGet("https://robloxapi.neelseshadri31.workers.dev/")).data
         local candidates = {}
         
-        for _,server in ipairs(servers) do
+        for _, server in ipairs(servers) do
             if server.id ~= game.JobId and server.playing >= 2 and server.playing < 24 then
                 table.insert(candidates, server.id)
             end
         end
         
         if #candidates > 0 then
-            TeleportService:TeleportToPlaceInstance(game.PlaceId, candidates[math.random(#candidates)], LocalPlayer)
-            task.wait(10) -- Allow time for teleport
-        else
-            warn("⚠️ No valid servers found")
-            task.wait(10)
-            return serverHop()
+            return candidates[math.random(#candidates)]
         end
+        return nil
     end
     
-    serverHop()
-    return -- Stop script if hopping
+    local targetServer = findServer()
+    if targetServer then
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, targetServer, LocalPlayer)
+        task.wait(10) -- Allow teleport time
+    else
+        warn("⚠️ No valid servers found")
+    end
+    return
 end
 
--- Teleport logic (only runs if store is OPENED or STARTED)
+-- 5. TELEPORT LOGIC (only runs if store is open/started)
 local TELEPORT_DURATION = 5
-local teleportLocations = {
+local teleportSpots = {
     CFrame.new(91.14, 18.68, 1311.00), -- Position 1
     CFrame.new(130.94, 20.87, 1301.84)  -- Position 2
 }
 
--- Modified teleport sequence based on status
-if status == ENUM_STATUS.OPENED then
-    print("💎 Store open - using both positions")
-    for i, cf in ipairs(teleportLocations) do
-        print("🚀 Teleporting to position", i)
-        
-        -- Position locking during teleport
-        local startTime = tick()
-        TweenService:Create(rootPart, TweenInfo.new(0.3), {CFrame = cf}):Play()
-        
-        local conn
-        conn = RunService.Heartbeat:Connect(function()
-            if tick() - startTime > TELEPORT_DURATION then
-                conn:Disconnect()
-                return
-            end
-            rootPart.CFrame = cf
-            rootPart.Velocity = Vector3.zero
-            rootPart.AssemblyLinearVelocity = Vector3.zero
-        end)
-        
-        task.wait(0.2)
-        LocalPlayer.Character:BreakJoints() -- Force respawn
-        task.wait(TELEPORT_DURATION)
-    end
-elseif status == ENUM_STATUS.STARTED then
-    print("💎 Robbery started - using second position only")
-    local cf = teleportLocations[2]
+-- Determine which spots to use
+local spotsToUse = (status == RobberyConsts.ENUM_STATUS.OPENED) and teleportSpots or {teleportSpots[2]}
+
+print("🚀 Beginning teleports ("..#spotsToUse.." positions)")
+
+for i, cf in ipairs(spotsToUse) do
+    print("🔹 Teleporting to position", i)
     
-    -- Position locking during teleport
+    -- Setup position lock
     local startTime = tick()
     TweenService:Create(rootPart, TweenInfo.new(0.3), {CFrame = cf}):Play()
     
-    local conn
-    conn = RunService.Heartbeat:Connect(function()
+    -- Maintain position
+    local conn = RunService.Heartbeat:Connect(function()
         if tick() - startTime > TELEPORT_DURATION then
             conn:Disconnect()
             return
@@ -121,30 +138,34 @@ elseif status == ENUM_STATUS.STARTED then
         rootPart.AssemblyLinearVelocity = Vector3.zero
     end)
     
+    -- Force respawn anchor
     task.wait(0.2)
-    LocalPlayer.Character:BreakJoints() -- Force respawn
+    if LocalPlayer.Character then
+        LocalPlayer.Character:BreakJoints()
+    end
+    
     task.wait(TELEPORT_DURATION)
 end
 
--- Jewelry touch disabling
+-- 6. DISABLE UNWANTED TOUCHES
 local jewelryFolder = Workspace:FindFirstChild("Jewelrys")
 if jewelryFolder then
-    local keywords = {"diddyblud", "ilovekids"}
+    local keepTouchKeywords = {"diddyblud", "ilovekids"}
     
-    local function shouldKeepTouch(part)
-        local str = part.Name:lower()
-        for _,word in ipairs(keywords) do
-            if str:find(word:lower()) then return true end
+    local function shouldKeep(part)
+        local name = part.Name:lower()
+        for _, word in ipairs(keepTouchKeywords) do
+            if name:find(word:lower()) then return true end
         end
         return false
     end
     
-    for _,desc in ipairs(jewelryFolder:GetDescendants()) do
-        if desc:IsA("BasePart") and not shouldKeepTouch(desc) then
-            desc.CanTouch = false
+    for _, item in ipairs(jewelryFolder:GetDescendants()) do
+        if item:IsA("BasePart") and not shouldKeep(item) then
+            item.CanTouch = false
         end
     end
     print("🔒 Disabled unwanted touches")
 end
 
-print("✅ Script completed")
+print("✅ Script completed successfully")
