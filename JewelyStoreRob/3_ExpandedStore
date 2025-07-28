@@ -10,7 +10,7 @@ local RootPart = Character:WaitForChild("HumanoidRootPart")
 local Humanoid = Character:WaitForChild("Humanoid")
 
 --// Configuration
-local SPEED = 60 -- studs per second
+local SPEED = 30 -- studs per second
 local WAYPOINTS = {
 	Vector3.new(115.38, 18.70, 1341.09),
 	Vector3.new(107.90, 18.70, 1342.74),
