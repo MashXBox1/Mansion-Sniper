@@ -7,6 +7,42 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 
+
+
+
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Function that waits for both character and HRP
+local function waitForCharacterAndHRP()
+    local character, hrp
+
+    -- Wait for the character to load
+    repeat
+        character = LocalPlayer.Character
+        if not character then
+            LocalPlayer.CharacterAdded:Wait()
+        end
+        task.wait()
+    until character and character:IsDescendantOf(game)
+
+    -- Wait for HRP
+    repeat
+        hrp = character:FindFirstChild("HumanoidRootPart")
+        if not hrp then
+            character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        end
+        task.wait()
+    until hrp
+
+    return character, hrp
+end
+
+-- Example: halt script until character + HRP found
+local character, hrp = waitForCharacterAndHRP()
+print("Character and HRP ready:", character, hrp)
+
 -- Launch the player into the air
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -342,9 +378,9 @@ while true do
     if isJewelryOpen() then
         print("💎 Jewelry Store is OPEN! Staying in this server.")
         firePrisonerEvent()
-        task.wait(5)
+        waitForCharacterAndHRP()
         flyUp()
-        task.wait(3)
+        task.wait(4)
         main()
         break
     else
@@ -352,6 +388,5 @@ while true do
         break -- teleporting stops this script here
     end
 end
-
 
 
