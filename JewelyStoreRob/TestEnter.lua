@@ -384,8 +384,8 @@ while true do
         main()
         task.wait(3)
         loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/diamondtest.lua"))()
-        task.wait(10)
-        serverHop()
+        
+        
         break
     else
         serverHop()
