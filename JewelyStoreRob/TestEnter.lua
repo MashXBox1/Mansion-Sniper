@@ -8,7 +8,7 @@ local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 
 
-
+task.wait(5)
 
 
 local Players = game:GetService("Players")
