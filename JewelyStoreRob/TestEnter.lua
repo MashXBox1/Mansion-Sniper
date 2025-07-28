@@ -370,6 +370,18 @@ local function serverHop()
     task.cancel(teleportCheck)
 end
 
+-- Fetch server time (via a RemoteFunction)
+local function getServerTime()
+    local timeFetch = ReplicatedStorage:FindFirstChild("GetServerTime")
+    if timeFetch and timeFetch:IsA("RemoteFunction") then
+        return timeFetch:InvokeServer()
+    else
+        
+        return os.time()
+    end
+end
+
+-- Wait exactly 360 seconds from server time
 local function wait360Seconds()
     local startTime = getServerTime()
     local endTime = startTime + 200
