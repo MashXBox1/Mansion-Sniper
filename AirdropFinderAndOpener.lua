@@ -140,8 +140,6 @@ task.spawn(function()
     end
 end)
 
-
-
 local character, rootPart, camera
 local function setupCharacter()
     character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -201,7 +199,7 @@ local function serverHop()
     local currentJobId = game.JobId
     local function tryHop()
         local success, result = pcall(function()
-            return HttpService:JSONDecode(game:HttpGet("https://robloxapi.neelseshadri31.workers.dev/"))
+            return HttpService:JSONDecode(game:HttpGet(("https://games.roblox.com/v1/games/%d/servers/Public?limit=100"):format(game.PlaceId)))
         end)
         if not success or not result or not result.data then
             warn("❌ Failed to get server list for hopping.")
