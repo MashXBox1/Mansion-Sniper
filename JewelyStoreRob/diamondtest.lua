@@ -38,6 +38,24 @@ if not foundRemote then
     error("❌ Could not find RemoteEvent with '-' in name directly under ReplicatedStorage.")
 end
 
+-- Find Duffel Bag related objects
+local DuffelBagBinder = nil
+local DuffelBagConsts = {AMOUNT_VALUE_NAME = "Amount"}
+
+for _, obj in pairs(getgc(true)) do
+    if typeof(obj) == "table" then
+        if rawget(obj, "GetAll") and rawget(obj, "_class") and obj._class.Name == "DuffelBagBinder" then
+            DuffelBagBinder = obj
+        elseif rawget(obj, "AMOUNT_VALUE_NAME") then
+            DuffelBagConsts = obj
+        end
+    end
+end
+
+if not DuffelBagBinder then
+    error("❌ Could not find DuffelBagBinder.")
+end
+
 -- Degrees to radians helper
 local function degToRad(deg)
     return math.rad(deg)
@@ -48,7 +66,7 @@ local function invertAngle(deg)
     return (deg + 180) % 360
 end
 
--- Raw path data from your log
+-- Raw path data
 local rawPath = {
     {pos = Vector3.new(130.9, 20.8, 1301.9), heading = 274.7},
     {pos = Vector3.new(133.3, 21.3, 1313.4), heading = 281.6},
@@ -82,27 +100,57 @@ local function teleportTo(position, headingDeg)
     hrp.CFrame = CFrame.new(position) * rotation
 end
 
+-- Function to check if bag has 500 or more cash
+local function checkBag()
+    for _, duffelBag in pairs(DuffelBagBinder:GetAll()) do
+        if duffelBag:GetOwner() == player then
+            local bagObj = duffelBag._obj
+            local amountVal = bagObj:FindFirstChild(DuffelBagConsts.AMOUNT_VALUE_NAME)
+            
+            if amountVal and amountVal.Value >= 500 then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 -- Function to fire the RemoteEvent repeatedly
 local function fireEvents()
-    for i = 1, 10 do  -- Fire 20 times (adjust as needed)
+    for i = 1, 10 do  -- Fire 10 times
         foundRemote:FireServer(DiamondGUID)
-        task.wait(0.2)  -- Fire every 0.2 seconds (adjust as needed)
+        task.wait(0.2)  -- Fire every 0.2 seconds
     end
 end
 
--- Main loop
-while true do
-    -- Forward path
-    for _, waypoint in ipairs(path) do
-        teleportTo(waypoint.pos, waypoint.heading)
-        fireEvents()
-        task.wait(1)  -- Wait 1 second after firing before moving to next waypoint
-    end
-
-    -- Reverse path
-    for i = #path, 1, -1 do
+-- Function to go back to first coordinate following reverse path
+local function returnToStart(currentIndex)
+    print("↩️ Returning to start from position", currentIndex)
+    for i = currentIndex - 1, 1, -1 do
         teleportTo(path[i].pos, path[i].heading)
-        fireEvents()
-        task.wait(1)  -- Wait 1 second after firing before moving to next waypoint
+        task.wait(0.5)  -- Small delay between waypoints when returning
     end
 end
+
+-- Main execution (runs once)
+print("🚀 Starting path execution...")
+for i, waypoint in ipairs(path) do
+    print("📍 Moving to position", i, "of", #path)
+    teleportTo(waypoint.pos, waypoint.heading)
+    
+    -- Fire events at this position
+    print("🔥 Firing events...")
+    fireEvents()
+    
+    -- Check bag after firing
+    if checkBag() then
+        print("💰 Bag has 500+ cash - returning to start!")
+        returnToStart(i)
+        break  -- Exit the path completely
+    else
+        print("❌ Not enough cash - continuing to next waypoint")
+        task.wait(1)  -- Wait before next waypoint
+    end
+end
+
+print("✅ Script finished executing")
