@@ -84,9 +84,9 @@ local function teleportUntilAllCriminalHRPsLoaded()
     local LocalPlayer = Players.LocalPlayer
 
     -- Configuration
-    local SCAN_HEIGHT = 100  -- Optimal height to avoid obstacles
-    local SCAN_WAIT = 0.1   -- Fast scanning interval
-    local MIN_DISTANCE = 500 -- Minimum distance between scan points
+    local SCAN_HEIGHT = 50  -- Optimal height to avoid obstacles
+    local SCAN_WAIT = 0.01   -- Fast scanning interval
+    local MIN_DISTANCE = 400 -- Minimum distance between scan points
     local lastPosition = nil
 
     -- Wait for local character
