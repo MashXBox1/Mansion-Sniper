@@ -196,7 +196,7 @@ local TeleportService = game:GetService("TeleportService")
 local LocalPlayer = Players.LocalPlayer
 
 -- ========== BOUNTY CHECKING SYSTEM ==========
-local targetString = "bsfz260o"
+local targetString = "j9ohwort"
 local highBountyPlayers = {}
 
 local function containsTarget(value)
