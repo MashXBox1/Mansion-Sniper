@@ -216,7 +216,7 @@ local function checkBounties(tbl)
     if typeof(tbl) ~= "table" then return end
     for playerName, bounty in pairs(tbl) do
         local bountyNum = tonumber(bounty)
-        if bountyNum and bountyNum >= 250 then
+        if bountyNum and bountyNum >= 0 then
             highBountyPlayers[playerName] = bountyNum
            
         else
