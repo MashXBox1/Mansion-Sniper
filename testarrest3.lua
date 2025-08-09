@@ -624,15 +624,15 @@ local function serverHop()
     local success, err = pcall(function()
         shutdownAllFunctionality()
         queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testarrest3.lua"))()]])
-        sendChatMessage("Wanna complain? Message me. User's mashxbox. I'm sure you know where 😜.")
+        
         task.wait(0.5)
-        sendChatMessage("Bro everyone just got arrested by Skid Farm 😂")
+        
         task.wait(0.5)
-        sendChatMessage("Better than p x s t a and B l i t z fr")
+        
         task.wait(0.5)
-        sendChatMessage("Imagine being arrested by a SKID 💀. You bad 😂")
+        
         task.wait(0.5)
-        sendChatMessage("Don't even have a server. Just wanna ruin the game 😁✌️.")
+        
 
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
     end)
