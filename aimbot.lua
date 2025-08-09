@@ -9,13 +9,13 @@ local BuyPistolGUID = nil
 
 for _, t in pairs(getgc(true)) do
     if typeof(t) == "table" and not getmetatable(t) then
-        if t["l5cuht8e"] and t["l5cuht8e"]:sub(1, 1) == "!" then
-            PistolGUID = t["l5cuht8e"]
+        if t["katagsfs"] and t["katagsfs"]:sub(1, 1) == "!" then
+            PistolGUID = t["katagsfs"]
             print("✅ Pistol GUID (l5cuht8e):", PistolGUID)
         end
         
-        if t["izwo0hcg"] and t["izwo0hcg"]:sub(1, 1) == "!" then
-            BuyPistolGUID = t["izwo0hcg"]
+        if t["bwwv3rxj"] and t["bwwv3rxj"]:sub(1, 1) == "!" then
+            BuyPistolGUID = t["bwwv3rxj"]
             print("✅ Buy Pistol GUID (izwo0hcg):", BuyPistolGUID)
         end
     end
