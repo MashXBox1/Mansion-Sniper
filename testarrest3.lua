@@ -296,20 +296,20 @@ local PoliceGUID, EjectGUID, DamageGUID, ArrestGUID
 
 for _, t in pairs(getgc(true)) do
     if typeof(t) == "table" and not getmetatable(t) then
-        if t["mto4108g"] and t["mto4108g"]:sub(1,1) == "!" then
-            PoliceGUID = t["mto4108g"]
+        if t["lnu8qihc"] and t["lnu8qihc"]:sub(1,1) == "!" then
+            PoliceGUID = t["lnu8qihc"]
             
         end
-        if t["bi6lm6ja"] and t["bi6lm6ja"]:sub(1, 1) == "!" then
-            EjectGUID = t["bi6lm6ja"]
+        if t["ylg0eika"] and t["ylg0eika"]:sub(1, 1) == "!" then
+            EjectGUID = t["ylg0eika"]
             
         end
-        if t["vum9h1ez"] and t["vum9h1ez"]:sub(1, 1) == "!" then
-            DamageGUID = t["vum9h1ez"]
+        if t["f3s6bozq"] and t["f3s6bozq"]:sub(1, 1) == "!" then
+            DamageGUID = t["f3s6bozq"]
             
         end
-        if t["xuv9rqpj"] and t["xuv9rqpj"]:sub(1, 1) == "!" then
-            ArrestGUID = t["xuv9rqpj"]
+        if t["nprdjtwg"] and t["nprdjtwg"]:sub(1, 1) == "!" then
+            ArrestGUID = t["nprdjtwg"]
             
         end
     end
