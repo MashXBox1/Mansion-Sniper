@@ -9,7 +9,7 @@ local LocalPlayer = Players.LocalPlayer
 
 --== CONFIG: Script to run after teleport ==--
 local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/Cargoplanechecker.lua"))()]]
-queue_on_teleport(payloadScript)
+
 
 -- Wait for game to fully load
 if not game:IsLoaded() then
