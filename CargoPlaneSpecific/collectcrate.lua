@@ -49,7 +49,14 @@ end
 
 -- 🔘 Call the function with your target's name
 
+arrestTarget("Crate1")
+arrestTarget("Crate2")
+arrestTarget("Crate3")
+arrestTarget("Crate4")
 arrestTarget("Crate5")
+arrestTarget("Crate6")
+arrestTarget("Crate7")
+
 
 task.wait(0.5)
 
