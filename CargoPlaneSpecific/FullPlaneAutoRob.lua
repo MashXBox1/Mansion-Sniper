@@ -487,7 +487,7 @@ local function firePrisonerEvent()
     end
 end
 
-
+firePrisonerEvent()
 
 
 
