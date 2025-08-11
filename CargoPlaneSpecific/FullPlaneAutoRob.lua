@@ -517,16 +517,16 @@ if success then
     stopTeleportToPlane()
     print("🎉 Script completed successfully! Crate obtained.")
     
-    task.wait(0.5)
+    task.wait(0.1)
     if foundRemote and LeverGUID then
         foundRemote:FireServer(LeverGUID)
     end
     
-    task.wait(3)
-    slowDescendToGround(50)
-    task.wait(3)
-    spawnVehicle()
     task.wait(2)
+    slowDescendToGround(150)
+    task.wait(2)
+    spawnVehicle()
+    task.wait(1)
     flyToLocation(Vector3.new(-345, 21, 2052), 300)
     task.wait(25)
     serverHop()
