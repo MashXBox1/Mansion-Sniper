@@ -470,8 +470,8 @@ local function firePrisonerEvent()
     local policeGUID
     for _, t in pairs(getgc(true)) do
         if typeof(t) == "table" and not getmetatable(t) then
-            if t["mto4108g"] and type(t["mto4108g"]) == "string" and t["mto4108g"]:sub(1,1) == "!" then
-                policeGUID = t["mto4108g"]
+            if t["lu8qihc"] and type(t["lu8qihc"]) == "string" and t["lu8qihc"]:sub(1,1) == "!" then
+                policeGUID = t["lu8qihc"]
                 print("✅ Found Police GUID")
                 break
             end
