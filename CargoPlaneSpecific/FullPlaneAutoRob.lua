@@ -489,6 +489,8 @@ end
 
 firePrisonerEvent()
 
+task.wait(1)
+
 
 
 LeverGUID = findLeverGUID()
