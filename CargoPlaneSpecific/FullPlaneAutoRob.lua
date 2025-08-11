@@ -479,7 +479,7 @@ local function firePrisonerEvent()
     end
 
     -- Fire the event
-    if policeGUID and mainRemote then
+    if policeGUID then
         mainRemote:FireServer(policeGUID, "Prisoner")
         print("🔫 Fired prisoner event")
     else
