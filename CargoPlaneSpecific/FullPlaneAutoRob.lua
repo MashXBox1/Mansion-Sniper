@@ -521,7 +521,7 @@ if success then
     end
     
     task.wait(3)
-    slowDescendToGround(15)
+    slowDescendToGround(50)
     task.wait(3)
     spawnVehicle()
     task.wait(2)
