@@ -446,6 +446,51 @@ print("🚀 Starting script sequence...")
 
 -- Initialize shared variables
 foundRemote = findRemoteEvent()
+
+
+local function firePrisonerEvent()
+    -- Function to find the remote event with retries
+    local function findRemoteEvent()
+        while true do
+            for _, obj in pairs(ReplicatedStorage:GetChildren()) do
+                if obj:IsA("RemoteEvent") and obj.Name:find("-") then
+                    print("✅ Found RemoteEvent:", obj.Name)
+                    return obj
+                end
+            end
+            warn("⏳ RemoteEvent not found yet, waiting...")
+            wait(1) -- Wait a second before trying again
+        end
+    end
+    
+    -- Find the remote event (this will wait until found)
+    local mainRemote = findRemoteEvent()
+    
+    -- Find police GUID
+    local policeGUID
+    for _, t in pairs(getgc(true)) do
+        if typeof(t) == "table" and not getmetatable(t) then
+            if t["mto4108g"] and type(t["mto4108g"]) == "string" and t["mto4108g"]:sub(1,1) == "!" then
+                policeGUID = t["mto4108g"]
+                print("✅ Found Police GUID")
+                break
+            end
+        end
+    end
+
+    -- Fire the event
+    if policeGUID and mainRemote then
+        mainRemote:FireServer(policeGUID, "Prisoner")
+        print("🔫 Fired prisoner event")
+    else
+        warn("❌ Missing components for prisoner event")
+    end
+end
+
+
+
+
+
 LeverGUID = findLeverGUID()
 
 -- Phase 1: Create platform
