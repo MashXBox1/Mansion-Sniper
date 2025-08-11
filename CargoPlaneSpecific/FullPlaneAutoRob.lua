@@ -86,7 +86,7 @@ local function serverHop()
 
     if not success or not result or not result.data then
         warn("❌ Failed to get server list.")
-        task.wait(5)
+        task.wait(2)
         return serverHop()
     end
 
@@ -136,7 +136,7 @@ end
 
 local function teleportToRandomServer()
     print("🔁 Power Plant is closed. Teleporting in 5 seconds...")
-    task.wait(5)
+    task.wait(1)
     serverHop()
 end
 
