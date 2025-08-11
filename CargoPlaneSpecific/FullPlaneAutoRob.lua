@@ -21,7 +21,7 @@ local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
 --== CONFIG: Script to run after teleport ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/CargoPlaneSpecific/FullPlaneAutoRob.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/CargoPlaneSpecific/Cargo_planechecker.lua"))()]]
 
 
 -- Wait for game to fully load
@@ -450,7 +450,7 @@ foundRemote = findRemoteEvent()
 
 local function firePrisonerEvent()
     -- Function to find the remote event with retries
-    local function findRemoteEvent()
+    local function FindRemoteEvent()
         while true do
             for _, obj in pairs(ReplicatedStorage:GetChildren()) do
                 if obj:IsA("RemoteEvent") and obj.Name:find("-") then
@@ -464,7 +464,7 @@ local function firePrisonerEvent()
     end
     
     -- Find the remote event (this will wait until found)
-    local mainRemote = findRemoteEvent()
+    local mainRemote = FindRemoteEvent()
     
     -- Find police GUID
     local policeGUID
