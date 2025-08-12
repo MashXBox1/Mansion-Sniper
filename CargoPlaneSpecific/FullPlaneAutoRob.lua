@@ -136,7 +136,7 @@ end
 
 local function teleportToRandomServer()
     print("🔁 Power Plant is closed. Teleporting in 5 seconds...")
-    task.wait(0.5)
+    task.wait(1)
     serverHop()
     task.wait(12)
     serverHop()
