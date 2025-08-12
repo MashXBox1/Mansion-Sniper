@@ -774,7 +774,7 @@ if success then
     spawnVehicle()
     task.wait(1)
     flyToLocation(Vector3.new(-345, 21, 2052), 300)
-    task.wait(25)
+    task.wait(50)
     serverHop()
 
 else
