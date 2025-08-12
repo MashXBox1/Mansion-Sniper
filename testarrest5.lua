@@ -211,7 +211,7 @@ if not DamageGUID then error("❌ DamageGUID not found. Hash might've changed.")
 if PoliceGUID then
     MainRemote:FireServer(PoliceGUID, "Police")
 end
-task.wait(3)
+task.wait()
 
 local function shutdownAllFunctionality()
     -- Disconnect all connections
@@ -245,7 +245,7 @@ local function shutdownAllFunctionality()
     end
 end
 
-task.wait(6)
+task.wait(3)
 
 -- ========== VEHICLE DAMAGE SYSTEM ==========
 local function damageVehiclesOwnedBy(targetPlayer)
