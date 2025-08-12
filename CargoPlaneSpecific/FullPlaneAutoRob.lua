@@ -584,7 +584,7 @@ local BulletEmitterModule = require(ReplicatedStorage.Game.ItemSystem.BulletEmit
 -- Utility: Get closest criminal
 local function getClosestCriminal(originPosition)
     local closestPlayer = nil
-    local shortestDistance = 100
+    local shortestDistance = math.huge
 
     for _, player in pairs(Players:GetPlayers()) do
         if player == Players.LocalPlayer then continue end
