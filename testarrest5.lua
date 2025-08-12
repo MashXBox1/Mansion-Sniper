@@ -109,7 +109,7 @@ local function checkBounties(tbl)
     if typeof(tbl) ~= "table" then return end
     for playerName, bounty in pairs(tbl) do
         local bountyNum = tonumber(bounty)
-        if bountyNum and bountyNum >= 0 then
+        if bountyNum and bountyNum >= 500 then
             highBountyPlayers[playerName] = bountyNum
         else
             highBountyPlayers[playerName] = nil
@@ -303,6 +303,18 @@ local hasReachedTarget = false
 local handcuffsEquipped = false
 local arresting = false
 
+local function getPlayerPosition(player)
+    local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
+    if not humanoid then return nil end
+    
+    local positionValue = humanoid:FindFirstChild("HumanoidUnloadServerPosition")
+    if positionValue and positionValue:IsA("Vector3Value") then
+        return positionValue.Value
+    end
+    
+    return nil
+end
+
 local function getValidCriminalTarget()
     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not myRoot then return nil end
@@ -312,16 +324,12 @@ local function getValidCriminalTarget()
 
     local nearestPlayer, shortestDistance = nil, math.huge
     for _, player in ipairs(criminals) do
-        local char = player.Character
-        if char then
-            local humanoid = char:FindFirstChildOfClass("Humanoid")
-            if humanoid and humanoid:GetAttribute("HumanoidUnloadServerPosition") then
-                local position = humanoid:GetAttribute("HumanoidUnloadServerPosition")
-                local dist = (myRoot.Position - position).Magnitude
-                if dist < shortestDistance then
-                    shortestDistance = dist
-                    nearestPlayer = player
-                end
+        local position = getPlayerPosition(player)
+        if position then
+            local dist = (myRoot.Position - position).Magnitude
+            if dist < shortestDistance then
+                shortestDistance = dist
+                nearestPlayer = player
             end
         end
     end
@@ -391,13 +399,9 @@ local function teleportToCriminal()
     local targetPlayer = getValidCriminalTarget()
     if not targetPlayer then return nil end
 
-    local char = targetPlayer.Character
-    if not char then return nil end
+    local position = getPlayerPosition(targetPlayer)
+    if not position then return nil end
 
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if not humanoid or not humanoid:GetAttribute("HumanoidUnloadServerPosition") then return nil end
-
-    local position = humanoid:GetAttribute("HumanoidUnloadServerPosition")
     local offset = Vector3.new(math.random(-1, 1), 1.5, math.random(-3, -2))
     local cframe = CFrame.new(position + offset)
 
@@ -435,11 +439,8 @@ local function setupJointTeleport(targetPlayer)
 
     local parts = character:GetChildren()
     local conn = RunService.Heartbeat:Connect(function()
-        local targetChar = targetPlayer.Character
-        if not targetChar then return end
-        local humanoid = targetChar:FindFirstChildOfClass("Humanoid")
-        if not humanoid or not humanoid:GetAttribute("HumanoidUnloadServerPosition") then return end
-        local targetPos = humanoid:GetAttribute("HumanoidUnloadServerPosition")
+        local targetPos = getPlayerPosition(targetPlayer)
+        if not targetPos then return end
         for _, part in pairs(parts) do
             if part:IsA("BasePart") then
                 local offset = part.Position - character.PrimaryPart.Position
@@ -553,6 +554,39 @@ end
 
 wait360Seconds()
 
+-- ========== PLAYER TRACKING GUI ==========
+local screenGui = Instance.new("ScreenGui")
+screenGui.ResetOnSpawn = false
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 350, 0, 400)
+frame.Position = UDim2.new(0.5, -175, 0.5, -200) -- centered
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+frame.BorderSizePixel = 0
+frame.BackgroundTransparency = 0.1
+frame.Parent = screenGui
+
+local uiPadding = Instance.new("UIPadding")
+uiPadding.PaddingTop = UDim.new(0, 8)
+uiPadding.PaddingBottom = UDim.new(0, 8)
+uiPadding.PaddingLeft = UDim.new(0, 8)
+uiPadding.PaddingRight = UDim.new(0, 8)
+uiPadding.Parent = frame
+
+local uiList = Instance.new("UIListLayout")
+uiList.Parent = frame
+uiList.SortOrder = Enum.SortOrder.LayoutOrder
+uiList.Padding = UDim.new(0, 6)
+
+-- Store labels for each player
+local playerLabels = {}
+
+-- Function to format a Vector3 nicely
+local function formatVector3(vec)
+    return string.format("X: %.1f  Y: %.1f  Z: %.1f", vec.X, vec.Y, vec.Z)
+end
+
 -- ========== MAIN LOOP ==========
 task.spawn(function()
     while true do
@@ -582,7 +616,7 @@ task.spawn(function()
 
             local myChar = LocalPlayer.Character
             local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-            local targetHumanoid = currentTarget.Character:FindFirstChildOfClass("Humanoid")
+            local targetPos = getPlayerPosition(currentTarget)
             local humanoid = myChar and myChar:FindFirstChildOfClass("Humanoid")
 
             if humanoid and humanoid.Health < 50 then
@@ -590,13 +624,12 @@ task.spawn(function()
                 break
             end
 
-            if myRoot and targetHumanoid and targetHumanoid:GetAttribute("HumanoidUnloadServerPosition") and hasReachedTarget and currentTarget:GetAttribute("HasEscaped") == true and (tick() - lastReachCheck) > 6 then
+            if myRoot and targetPos and hasReachedTarget and currentTarget:GetAttribute("HasEscaped") == true and (tick() - lastReachCheck) > 6 then
                 arresting = false
                 break
             end
 
-            if myRoot and targetHumanoid and targetHumanoid:GetAttribute("HumanoidUnloadServerPosition") then
-                local targetPos = targetHumanoid:GetAttribute("HumanoidUnloadServerPosition")
+            if myRoot and targetPos then
                 local dist = (myRoot.Position - (targetPos + Vector3.new(0, 3, 0))).Magnitude
 
                 if not handcuffsEquipped and dist <= 5 then
