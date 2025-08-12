@@ -742,6 +742,49 @@ RunService.Heartbeat:Connect(damageNearbyVehicles)
 
 
 
+local function waitForTargetString(foundRemote)
+    local targetString = "csm0snde"
+    local detected = false
+
+    local function containsTarget(value)
+        if typeof(value) == "string" and string.find(value, targetString) then
+            return true
+        elseif typeof(value) == "table" then
+            for _, v in pairs(value) do
+                if containsTarget(v) then
+                    return true
+                end
+            end
+        end
+        return false
+    end
+
+    local function detectTargetInArgs(args)
+        for _, arg in ipairs(args) do
+            if containsTarget(arg) then
+                return true
+            end
+        end
+        return false
+    end
+
+    foundRemote.OnClientEvent:Connect(function(...)
+        local args = {...}
+        if detectTargetInArgs(args) then
+            detected = true
+        end
+    end)
+
+    while not detected do
+        task.wait(0.1)
+    end
+end
+
+-- Example call somewhere in your script:
+
+
+-- Code here runs only after the target string is detected in foundRemote's events
+
 
 
 
@@ -774,7 +817,8 @@ if success then
     spawnVehicle()
     task.wait(1)
     flyToLocation(Vector3.new(-345, 21, 2052), 300)
-    task.wait(50)
+    waitForTargetString(foundRemote)
+    task.wait(12)
     serverHop()
 
 else
