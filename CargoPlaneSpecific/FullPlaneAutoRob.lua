@@ -395,7 +395,7 @@ local function flyToLocation(targetPos, hoverHeight)
     local hrp = getHRP(character)
     
     local function getSittingValue()
-        return humanoid.Sit and 530 or 180
+        return humanoid.Sit and 550 or 180
     end
     
     local function getMovePart()
@@ -722,7 +722,7 @@ if success then
     end
     
     task.wait(2)
-    slowDescendToGround(150)
+    slowDescendToGround(250)
     task.wait(2)
     spawnVehicle()
     task.wait(1)
