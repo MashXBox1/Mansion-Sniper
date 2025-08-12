@@ -555,37 +555,7 @@ end
 wait360Seconds()
 
 -- ========== PLAYER TRACKING GUI ==========
-local screenGui = Instance.new("ScreenGui")
-screenGui.ResetOnSpawn = false
-screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 350, 0, 400)
-frame.Position = UDim2.new(0.5, -175, 0.5, -200) -- centered
-frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-frame.BorderSizePixel = 0
-frame.BackgroundTransparency = 0.1
-frame.Parent = screenGui
-
-local uiPadding = Instance.new("UIPadding")
-uiPadding.PaddingTop = UDim.new(0, 8)
-uiPadding.PaddingBottom = UDim.new(0, 8)
-uiPadding.PaddingLeft = UDim.new(0, 8)
-uiPadding.PaddingRight = UDim.new(0, 8)
-uiPadding.Parent = frame
-
-local uiList = Instance.new("UIListLayout")
-uiList.Parent = frame
-uiList.SortOrder = Enum.SortOrder.LayoutOrder
-uiList.Padding = UDim.new(0, 6)
-
--- Store labels for each player
-local playerLabels = {}
-
--- Function to format a Vector3 nicely
-local function formatVector3(vec)
-    return string.format("X: %.1f  Y: %.1f  Z: %.1f", vec.X, vec.Y, vec.Z)
-end
 
 -- ========== MAIN LOOP ==========
 task.spawn(function()
