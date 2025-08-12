@@ -12,7 +12,7 @@ if player then
 
     -- Function to check and kick if money > 3000
     local function checkMoney()
-        if money.Value >= 900000 then
+        if money.Value >= 100000 then
             player:Kick("Money exceeded 700000 (Detected: " .. money.Value .. ")")
         end
     end
