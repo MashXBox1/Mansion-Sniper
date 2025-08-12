@@ -690,7 +690,54 @@ spawn(function()
 end)
 
 
+local DamageGUID
 
+for _, t in pairs(getgc(true)) do
+    if typeof(t) == "table" and not getmetatable(t) then
+        if t["f3s6bozq"] and t["f3s6bozq"]:sub(1, 1) == "!" then
+            DamageGUID = t["f3s6bozq"]
+        end
+    end
+end
+
+
+-- Services
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+
+-- Player
+local LocalPlayer = Players.LocalPlayer
+
+-- Config
+local DAMAGE_RADIUS = 100 -- studs
+local VEHICLE_FOLDER_PREFIX = "_VehicleState_" -- only target vehicles with this folder
+-- MainRemote and DamageGUID must already be defined elsewhere in your script
+
+-- Damage function
+local function damageNearbyVehicles()
+    pcall(function()
+        local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not myRoot or not Workspace:FindFirstChild("Vehicles") then return end
+
+        for _, vehicle in pairs(Workspace.Vehicles:GetChildren()) do
+            if vehicle:IsA("Model") and vehicle:FindFirstChildWhichIsA("Folder") then
+                for _, folder in pairs(vehicle:GetChildren()) do
+                    if folder:IsA("Folder") and folder.Name:find(VEHICLE_FOLDER_PREFIX) == 1 then
+                        local base = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
+                        if base and (myRoot.Position - base.Position).Magnitude <= DAMAGE_RADIUS then
+                            foundRemote:FireServer(DamageGUID, vehicle, "Sniper")
+                        end
+                        break
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- Run on Heartbeat
+RunService.Heartbeat:Connect(damageNearbyVehicles)
 
 
 
