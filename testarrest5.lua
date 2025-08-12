@@ -257,7 +257,7 @@ local function damageVehiclesOwnedBy(targetPlayer)
         for _, vehicle in pairs(Workspace.Vehicles:GetChildren()) do
             if vehicle:IsA("Model") and vehicle:FindFirstChild(targetFolderName) then
                 local base = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
-                if base and (myRoot.Position - base.Position).Magnitude <= 15 then
+                if base and (myRoot.Position - base.Position).Magnitude <= 20 then
                     MainRemote:FireServer(DamageGUID, vehicle, "Sniper")
                     if EjectGUID and vehicle:GetAttribute("VehicleHasDriver") == true then
                         MainRemote:FireServer(EjectGUID, vehicle)
@@ -273,7 +273,7 @@ local function damageVehiclesOwnedBy(targetPlayer)
                     local base = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
                     if base then
                         local dist = (myRoot.Position - base.Position).Magnitude
-                        if dist < 10 and dist < shortestDistance then
+                        if dist < 20 and dist < shortestDistance then
                             shortestDistance = dist
                             closestVehicle = vehicle
                         end
