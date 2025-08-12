@@ -497,7 +497,10 @@ LeverGUID = findLeverGUID()
 
 -- Phase 1: Create platform
 createPlatform()
-task.wait(3)
+
+repeat
+    task.wait()
+until LocalPlayer.Team and LocalPlayer.Team.Name == "Criminal"
 
 -- Phase 2: Start continuous teleport to plane
 startTeleportToPlane()
