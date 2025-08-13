@@ -646,6 +646,38 @@ RunService.Heartbeat:Connect(function(dt)
     end
 end)
 
+local hooked = {}
+
+-- Function to hook into a RemoteEvent once
+local function hookRemote(remote)
+    if remote:IsA("RemoteEvent") and not hooked[remote] then
+        hooked[remote] = true
+        remote.OnClientEvent:Connect(function(...)
+            local args = {...}
+            for _, arg in ipairs(args) do
+                if tostring(arg):find("wxblhyww") then
+                    print("---- Match found ----")
+                    print("RemoteEvent:", remote:GetFullName())
+                    print("Arguments:", unpack(args))
+                    task.wait(10)
+                    serverHop()
+                    break
+                end
+            end
+        end)
+    end
+end
+
+-- Hook all existing RemoteEvents
+for _, obj in ipairs(game:GetDescendants()) do
+    hookRemote(obj)
+end
+
+-- Hook any new RemoteEvents that appear
+game.DescendantAdded:Connect(function(obj)
+    hookRemote(obj)
+end)
+
 
 
 
