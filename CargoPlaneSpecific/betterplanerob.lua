@@ -6,6 +6,17 @@ local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 
 
+
+
+
+local function getServerTime()
+    local timeFetch = ReplicatedStorage:FindFirstChild("GetServerTime")
+    if timeFetch and timeFetch:IsA("RemoteFunction") then
+        return timeFetch:InvokeServer()
+    else
+        return os.time()
+    end
+end
 -- Wait exactly 360 seconds from server time
 local function wait360Seconds()
     local startTime = getServerTime()
@@ -634,14 +645,7 @@ RunService.Heartbeat:Connect(function(dt)
     end
 end)
 
-local function getServerTime()
-    local timeFetch = ReplicatedStorage:FindFirstChild("GetServerTime")
-    if timeFetch and timeFetch:IsA("RemoteFunction") then
-        return timeFetch:InvokeServer()
-    else
-        return os.time()
-    end
-end
+
 
 
 
