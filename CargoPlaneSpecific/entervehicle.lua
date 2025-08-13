@@ -1,3 +1,7 @@
+task.wait(3)
+
+
+
 -- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -118,7 +122,7 @@ end
 print("🚀 Teleported to " .. targetVehicle.Name .. "'s Seat.")
 humanoid.PlatformStand = false
 
-task.wait(0.2)
+task.wait(0.3)
 
 -- 3️⃣ Fire hijackGUID
 if hijackGUID and mainRemote then
