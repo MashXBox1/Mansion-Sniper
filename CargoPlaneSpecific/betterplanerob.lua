@@ -162,7 +162,7 @@ end
 --== Fallback to server hop when robbery closed ==--
 local function teleportToRandomServer()
     print("🔁 Power Plant is closed. Teleporting in 5 seconds...")
-    task.wait(3)
+    task.wait(5)
     serverHop()
     
     
