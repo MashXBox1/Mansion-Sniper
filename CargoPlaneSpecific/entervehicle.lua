@@ -1,6 +1,4 @@
-task.wait(3)
-
--- Services --
+-- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -81,6 +79,11 @@ local function getNearestVehicle(vehicleName)
             continue
         end
 
+        -- Skip if vehicle has "Locked" attribute set to true
+        if vehicle:GetAttribute("Locked") == true then
+            continue
+        end
+
         if vehicle.Name == vehicleName and vehicle:FindFirstChild("Seat") then
             local distance = (rootPart.Position - vehicle.Seat.Position).Magnitude
             if distance < shortestDistance then
@@ -108,7 +111,7 @@ local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local rootPart = character:WaitForChild("HumanoidRootPart")
 local humanoid = character:FindFirstChildOfClass("Humanoid")
 
-rootPart.CFrame = targetVehicle.Seat.CFrame + Vector3.new(0, 3, 0)
+rootPart.CFrame = targetVehicle.Seat.CFrame + Vector3.new(0, 2, 0)
 if humanoid then
     humanoid.PlatformStand = true
 end
@@ -125,7 +128,7 @@ else
     warn("❌ Missing hijackGUID")
 end
 
-task.wait(0.5)
+task.wait(0.5) -- changed from 0.2 to 0.5
 
 -- 4️⃣ Fire enterGUID with Seat
 if enterGUID and mainRemote then
