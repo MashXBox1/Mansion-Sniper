@@ -108,7 +108,7 @@ local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local rootPart = character:WaitForChild("HumanoidRootPart")
 local humanoid = character:FindFirstChildOfClass("Humanoid")
 
-rootPart.CFrame = targetVehicle.Seat.CFrame
+rootPart.CFrame = targetVehicle.Seat.CFrame + Vector3.new(0, 3, 0)
 if humanoid then
     humanoid.PlatformStand = true
 end
