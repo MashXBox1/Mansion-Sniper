@@ -610,5 +610,4 @@ end)
 
 
 
-task.wait(10)
-serverHop()
+
