@@ -1,7 +1,5 @@
 task.wait(3)
 
-
-
 -- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -110,6 +108,12 @@ if not targetVehicle or not targetVehicle:FindFirstChild("Seat") then
     return
 end
 
+-- Lock the vehicle if it isn't already
+if targetVehicle:GetAttribute("Locked") ~= true then
+    targetVehicle:SetAttribute("Locked", true)
+    print("🔒 Set Locked = true for " .. targetVehicle.Name)
+end
+
 -- Teleport player to Seat
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local rootPart = character:WaitForChild("HumanoidRootPart")
@@ -122,7 +126,7 @@ end
 print("🚀 Teleported to " .. targetVehicle.Name .. "'s Seat.")
 humanoid.PlatformStand = false
 
-task.wait(0.3)
+task.wait(0.2)
 
 -- 3️⃣ Fire hijackGUID
 if hijackGUID and mainRemote then
