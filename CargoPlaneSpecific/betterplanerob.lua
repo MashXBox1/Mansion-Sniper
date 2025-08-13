@@ -10,29 +10,7 @@ local RunService = game:GetService("RunService")
 
 
 
-local function getServerTime()
-    local timeFetch = ReplicatedStorage:FindFirstChild("GetServerTime")
-    if timeFetch and timeFetch:IsA("RemoteFunction") then
-        return timeFetch:InvokeServer()
-    else
-        return os.time()
-    end
-end
--- Wait exactly 360 seconds from server time
-local function wait360Seconds()
-    local startTime = getServerTime()
-    local endTime = startTime + 300
 
-    local connection
-    connection = RunService.Heartbeat:Connect(function()
-        if os.time() >= endTime then
-            connection:Disconnect() -- Stop checking
-            serverHop()
-        end
-    end)
-end
-
-wait360Seconds()
 
 
 
@@ -657,34 +635,3 @@ RunService.Heartbeat:Connect(function(dt)
     end
 end)
 
-local hooked = {}
-
--- Function to hook into a RemoteEvent once
-local function hookRemote(remote)
-    if remote:IsA("RemoteEvent") and not hooked[remote] then
-        hooked[remote] = true
-        remote.OnClientEvent:Connect(function(...)
-            local args = {...}
-            for _, arg in ipairs(args) do
-                if tostring(arg):find("wxblhyww") then
-                    print("---- Match found ----")
-                    print("RemoteEvent:", remote:GetFullName())
-                    print("Arguments:", unpack(args))
-                    task.wait(10)
-                    serverHop()
-                    break
-                end
-            end
-        end)
-    end
-end
-
--- Hook all existing RemoteEvents
-for _, obj in ipairs(game:GetDescendants()) do
-    hookRemote(obj)
-end
-
--- Hook any new RemoteEvents that appear
-game.DescendantAdded:Connect(function(obj)
-    hookRemote(obj)
-end)
