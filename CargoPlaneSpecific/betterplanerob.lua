@@ -342,7 +342,7 @@ local humanoid = character:WaitForChild("Humanoid")
 local hrp = character:WaitForChild("HumanoidRootPart")
 
 -- Flight settings
-local flySpeed = 600 -- studs per second
+local flySpeed = 600 -- studs per second (constant speed)
 local hoverAbovePlane = 10 -- how many studs above the plane to hover
 local startHeight = 750 -- studs to initially go up before heading toward plane
 
@@ -389,7 +389,7 @@ local function getValidCargoPlane()
     return nil
 end
 
--- Crate functions (from provided script)
+-- Crate functions
 local function findRemoteEvent()
     for _, obj in pairs(ReplicatedStorage:GetChildren()) do
         if obj:IsA("RemoteEvent") and obj.Name:find("-") then
@@ -465,39 +465,48 @@ end
 -- Flight phases
 local phase = "ascend"
 local planePart = nil
-local initialYPosition = nil
+local initialPosition = nil
 
-local flightConnection = RunService.Heartbeat:Connect(function(dt)
-    if crateOpened then
-        flightConnection:Disconnect()
-        return
-    end
+RunService.Heartbeat:Connect(function(dt)
+    if crateOpened then return end
 
     local part = getMovePart()
     
-    -- Set initial Y position when we first start
-    if not initialYPosition then
-        initialYPosition = part.Position.Y
+    -- Set initial position when we first start
+    if not initialPosition then
+        initialPosition = part.Position
     end
 
-    -- Stop physics fighting our movement
+    -- Cancel physics forces
     part.AssemblyLinearVelocity = Vector3.zero
     part.AssemblyAngularVelocity = Vector3.zero
 
     if phase == "ascend" then
-        -- Go straight up to startHeight studs above our initial position
-        local targetY = initialYPosition + startHeight
-        local currentY = part.Position.Y
+        -- Target position is straight up from start
+        local targetPos = Vector3.new(
+            initialPosition.X,
+            initialPosition.Y + startHeight,
+            initialPosition.Z
+        )
         
-        if currentY >= targetY - 5 then -- Close enough to target
+        -- Calculate vertical movement
+        local currentPos = part.Position
+        local deltaY = targetPos.Y - currentPos.Y
+        
+        if math.abs(deltaY) < 1 then
             phase = "findPlane"
             return
         end
         
-        -- Move upward
-        local step = math.min(flySpeed * dt, math.abs(targetY - currentY))
-        local newPos = part.Position + Vector3.new(0, step, 0)
-        part.CFrame = CFrame.new(newPos, newPos + part.CFrame.LookVector)
+        -- Move vertically at constant speed
+        local moveStep = math.min(flySpeed * dt, math.abs(deltaY))
+        local newPos = Vector3.new(
+            currentPos.X,
+            currentPos.Y + (deltaY > 0 and moveStep or -moveStep),
+            currentPos.Z
+        )
+        
+        part.CFrame = CFrame.new(newPos)
 
     elseif phase == "findPlane" then
         -- Try to find a valid plane
@@ -505,36 +514,40 @@ local flightConnection = RunService.Heartbeat:Connect(function(dt)
         if planePart then
             phase = "flyToPlane"
         else
-            -- If no valid plane found, just hover in place
-            local hoverPos = Vector3.new(part.Position.X, initialYPosition + startHeight, part.Position.Z)
-            part.CFrame = CFrame.new(hoverPos, hoverPos + part.CFrame.LookVector)
+            -- Hover in place while waiting for plane
+            local hoverPos = Vector3.new(
+                initialPosition.X,
+                initialPosition.Y + startHeight,
+                initialPosition.Z
+            )
+            part.CFrame = CFrame.new(hoverPos)
             return
         end
 
     elseif phase == "flyToPlane" then
         if not planePart or not planePart.Parent or planePart.Position.Y <= 0 then
-            -- If plane becomes invalid, go back to findPlane phase
             phase = "findPlane"
             return
         end
 
         -- Target position is above the plane
         local targetPos = Vector3.new(
-            planePart.Position.X, 
-            planePart.Position.Y + hoverAbovePlane, 
+            planePart.Position.X,
+            planePart.Position.Y + hoverAbovePlane,
             planePart.Position.Z
         )
         
-        -- Only move horizontally (X/Z) while maintaining our height
         local currentPos = part.Position
-        local horizontalDelta = Vector3.new(
-            targetPos.X - currentPos.X,
-            0,
-            targetPos.Z - currentPos.Z
-        )
-        local horizontalDist = horizontalDelta.Magnitude
+        local direction = (targetPos - currentPos).Unit
+        local distance = (targetPos - currentPos).Magnitude
+        
+        -- Move at constant speed toward target
+        local moveStep = math.min(flySpeed * dt, distance)
+        local newPos = currentPos + (direction * moveStep)
+        
+        part.CFrame = CFrame.new(newPos)
 
-        if horizontalDist <= 5 then -- Close enough to target
+        if distance <= 5 then
             phase = "followPlane"
             -- Start crate checking after a short delay
             task.delay(crateCheckDelay, function()
@@ -542,42 +555,25 @@ local flightConnection = RunService.Heartbeat:Connect(function(dt)
                     crateOpened = openAllCrates()
                 end
             end)
-            return
         end
-
-        -- Move horizontally toward the plane
-        local moveDir = horizontalDelta.Unit
-        local step = math.min(flySpeed * dt, horizontalDist)
-        local newPos = Vector3.new(
-            currentPos.X + moveDir.X * step,
-            initialYPosition + startHeight, -- Maintain our height
-            currentPos.Z + moveDir.Z * step
-        )
-        
-        part.CFrame = CFrame.new(newPos, targetPos)
 
     elseif phase == "followPlane" then
-        if crateOpened then
-            flightConnection:Disconnect()
-            return
-        end
+        if crateOpened then return end
 
         if not planePart or not planePart.Parent or planePart.Position.Y <= 0 then
-            -- If plane becomes invalid, go back to findPlane phase
             phase = "findPlane"
             return
         end
 
         -- Stay exactly hoverAbovePlane studs above the plane
         local targetPos = Vector3.new(
-            planePart.Position.X, 
-            planePart.Position.Y + hoverAbovePlane, 
+            planePart.Position.X,
+            planePart.Position.Y + hoverAbovePlane,
             planePart.Position.Z
         )
-        part.CFrame = CFrame.new(targetPos, targetPos + planePart.CFrame.LookVector)
+        part.CFrame = CFrame.new(targetPos)
     end
 end)
-
 
 
 
