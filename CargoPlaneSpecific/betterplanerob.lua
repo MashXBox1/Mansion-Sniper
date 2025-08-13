@@ -5,6 +5,32 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 
+
+-- Wait exactly 360 seconds from server time
+local function wait360Seconds()
+    local startTime = getServerTime()
+    local endTime = startTime + 300
+
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        if os.time() >= endTime then
+            connection:Disconnect() -- Stop checking
+            serverHop()
+        end
+    end)
+end
+
+wait360Seconds()
+
+
+
+
+
+
+
+
+
+
 local LocalPlayer = Players.LocalPlayer
 
 --== CONFIG: Script to run after teleport ==--
@@ -607,6 +633,15 @@ RunService.Heartbeat:Connect(function(dt)
         phase = "done"
     end
 end)
+
+local function getServerTime()
+    local timeFetch = ReplicatedStorage:FindFirstChild("GetServerTime")
+    if timeFetch and timeFetch:IsA("RemoteFunction") then
+        return timeFetch:InvokeServer()
+    else
+        return os.time()
+    end
+end
 
 
 
