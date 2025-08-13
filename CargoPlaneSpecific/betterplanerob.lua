@@ -330,7 +330,12 @@ end
 
 task.wait(2)
 
---// Services
+
+
+
+
+
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -342,17 +347,17 @@ local humanoid = character:WaitForChild("Humanoid")
 local hrp = character:WaitForChild("HumanoidRootPart")
 
 -- Flight settings
-local flySpeed = 600 -- studs per second (constant speed)
-local hoverAbovePlane = 10 -- how many studs above the plane to hover
-local startHeight = 750 -- studs to initially go up before heading toward plane
+local flySpeed = 600
+local hoverAbovePlane = 10
+local startHeight = 750
 
 -- Crate settings
 local CratePickupGUID = nil
 local foundRemote = nil
-local crateCheckDelay = 0.5 -- seconds to wait after flight before checking crates
+local crateCheckDelay = 0.5
 local crateOpened = false
 
--- Detect part to move (vehicle or player)
+-- Helper to get the part to move
 local function getMovePart()
     local seat = humanoid.SeatPart
     if seat and seat:IsA("BasePart") then
@@ -365,31 +370,26 @@ local function getMovePart()
     return hrp
 end
 
--- Get CargoPlane reference (only returns planes above ground level)
+-- Plane detection
 local function getValidCargoPlane()
-    local plane = Workspace:FindFirstChild("Plane")
-    if not plane then return nil end
-
-    local planeNames = {"CargoPlane", "Cargo Plane", "PlaneBody", "MainPlane"}
-    for _, name in ipairs(planeNames) do
-        local cargoPlane = plane:FindFirstChild(name)
-        if cargoPlane then
-            local planePart
-            if cargoPlane:IsA("Model") then
-                planePart = cargoPlane.PrimaryPart or cargoPlane:FindFirstChildWhichIsA("BasePart")
-            elseif cargoPlane:IsA("BasePart") then
-                planePart = cargoPlane
-            end
-            
-            if planePart and planePart.Position.Y > 0 then
-                return planePart
+    for _, obj in ipairs(Workspace:GetChildren()) do
+        if obj:IsA("Model") then
+            if obj:FindFirstChild("PrimaryPart") then
+                if obj.Name:lower():find("plane") then
+                    return obj.PrimaryPart
+                end
+            else
+                local part = obj:FindFirstChildWhichIsA("BasePart")
+                if part and obj.Name:lower():find("plane") then
+                    return part
+                end
             end
         end
     end
     return nil
 end
 
--- Crate functions (from provided script)
+-- Crate functions
 local function findRemoteEvent()
     for _, obj in pairs(ReplicatedStorage:GetChildren()) do
         if obj:IsA("RemoteEvent") and obj.Name:find("-") then
@@ -406,7 +406,7 @@ end
 local function findCrateGUID()
     for _, t in pairs(getgc(true)) do
         if typeof(t) == "table" and not getmetatable(t) then
-            if t["plk2ufp6"] and t["plk2ufp6"]:sub(1, 1) == "!" then
+            if t["plk2ufp6"] and t["plk2ufp6"]:sub(1,1) == "!" then
                 return t["plk2ufp6"]
             end
         end
@@ -439,133 +439,116 @@ local function openAllCrates()
     end
 
     print("⌛ Attempting to open crates...")
-    local crateNames = {"Crate1", "Crate2", "Crate3", "Crate4", "Crate5", "Crate6", "Crate7"}
-    
+    local crateNames = {"Crate1","Crate2","Crate3","Crate4","Crate5","Crate6","Crate7"}
+
     while not hasCrate() do
         if not isPlayerCriminal() then
             print("⌛ Waiting to become Criminal...")
             task.wait(1)
-            continue
-        end
-        
-        for _, crateName in ipairs(crateNames) do
-            foundRemote:FireServer(CratePickupGUID, crateName)
-            task.wait(0.1)
-            
-            if hasCrate() then
-                print("✅ Successfully acquired crate!")
-                return true
+        else
+            for _, crateName in ipairs(crateNames) do
+                foundRemote:FireServer(CratePickupGUID, crateName)
+                task.wait(0.1)
+                if hasCrate() then
+                    print("✅ Successfully acquired crate!")
+                    return true
+                end
             end
+            task.wait(0.5)
         end
-        task.wait(0.5)
     end
     return false
 end
 
--- Flight phases
+-- Flight Phases
 local phase = "ascend"
 local planePart = nil
-local initialYPosition = nil
 
-local flightConnection = RunService.Heartbeat:Connect(function(dt)
+local flightConnection
+flightConnection = RunService.Heartbeat:Connect(function(dt)
     if crateOpened then
         flightConnection:Disconnect()
         return
     end
 
     local part = getMovePart()
-    
-    -- Set initial Y position when we first start
-    if not initialYPosition then
-        initialYPosition = part.Position.Y
-    end
-
-    -- Stop physics fighting our movement
     part.AssemblyLinearVelocity = Vector3.zero
     part.AssemblyAngularVelocity = Vector3.zero
 
     if phase == "ascend" then
-        -- Go straight up to startHeight studs above our initial position
-        local targetY = initialYPosition + startHeight
-        local currentY = part.Position.Y
-        
-        if currentY >= targetY - 5 then -- Close enough to target
+        local targetY = hrp.Position.Y + startHeight
+        local currentPos = part.Position
+        local deltaY = targetY - currentPos.Y
+        if math.abs(deltaY) <= 2 then
             phase = "findPlane"
             return
         end
-        
-        -- Move upward at constant speed
-        local step = flySpeed * dt
-        local newPos = part.Position + Vector3.new(0, math.min(step, targetY - currentY), 0)
-        part.CFrame = CFrame.new(newPos)
+        local stepY = math.clamp(flySpeed * dt, 0, math.abs(deltaY))
+        part.CFrame = CFrame.new(currentPos + Vector3.new(0, stepY * math.sign(deltaY), 0), currentPos + Vector3.new(0, stepY * math.sign(deltaY), 0) + part.CFrame.LookVector)
 
     elseif phase == "findPlane" then
-        -- Try to find a valid plane
         planePart = getValidCargoPlane()
         if planePart then
             phase = "flyToPlane"
-        else
-            -- If no valid plane found, just hover in place
-            local hoverPos = Vector3.new(part.Position.X, initialYPosition + startHeight, part.Position.Z)
-            part.CFrame = CFrame.new(hoverPos)
-            return
         end
 
     elseif phase == "flyToPlane" then
-        if not planePart or not planePart.Parent or planePart.Position.Y <= 0 then
-            -- If plane becomes invalid, go back to findPlane phase
+        if not planePart or not planePart.Parent then
             phase = "findPlane"
             return
         end
 
-        -- Target position is above the plane
-        local targetPos = Vector3.new(
-            planePart.Position.X, 
-            planePart.Position.Y + hoverAbovePlane, 
-            planePart.Position.Z
-        )
-        
+        local targetPos = planePart.Position + Vector3.new(0, hoverAbovePlane, 0)
         local currentPos = part.Position
-        local direction = (targetPos - currentPos).Unit
-        local distance = (targetPos - currentPos).Magnitude
-        
-        -- Move at constant speed toward target
-        local moveStep = math.min(flySpeed * dt, distance)
-        local newPos = currentPos + (direction * moveStep)
-        
-        part.CFrame = CFrame.new(newPos)
+        local direction = targetPos - currentPos
+        local distance = direction.Magnitude
 
-        if distance <= 5 then -- Close enough to target
+        if distance <= 2 then
             phase = "followPlane"
-            -- Start crate checking after a short delay
             task.delay(crateCheckDelay, function()
                 if not crateOpened then
                     crateOpened = openAllCrates()
                 end
             end)
-        end
-
-    elseif phase == "followPlane" then
-        if crateOpened then
-            flightConnection:Disconnect()
             return
         end
 
-        if not planePart or not planePart.Parent or planePart.Position.Y <= 0 then
-            -- If plane becomes invalid, go back to findPlane phase
+        local moveStep = math.min(flySpeed * dt, distance)
+        local newPos = currentPos + direction.Unit * moveStep
+        part.CFrame = CFrame.new(newPos, targetPos)
+
+    elseif phase == "followPlane" then
+        if not planePart or not planePart.Parent then
             phase = "findPlane"
             return
         end
-
-        -- Stay exactly hoverAbovePlane studs above the plane
-        local targetPos = Vector3.new(
-            planePart.Position.X, 
-            planePart.Position.Y + hoverAbovePlane, 
-            planePart.Position.Z
-        )
-        part.CFrame = CFrame.new(targetPos)
+        local targetPos = planePart.Position + Vector3.new(0, hoverAbovePlane, 0)
+        local currentPos = part.Position
+        local delta = targetPos - currentPos
+        local distance = delta.Magnitude
+        if distance > 0.5 then
+            local step = math.min(flySpeed * dt, distance)
+            local newPos = currentPos + delta.Unit * step
+            part.CFrame = CFrame.new(newPos, planePart.Position)
+        else
+            part.CFrame = CFrame.new(targetPos, planePart.Position)
+        end
     end
 end)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 task.wait(3)
 
