@@ -53,6 +53,7 @@ local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.c
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
+task.wait(3)
 
 -- Wait for RobberyConsts module to load
 local function waitForRobberyConsts()
