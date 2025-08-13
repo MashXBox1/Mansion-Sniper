@@ -124,8 +124,11 @@ end
 --== Fallback to server hop when robbery closed ==--
 local function teleportToRandomServer()
     print("🔁 Power Plant is closed. Teleporting in 5 seconds...")
-    task.wait(5)
+    task.wait(1)
     serverHop()
+    task.wait(12)
+    serverHop()
+    
 end
 
 --== Main loop ==--
@@ -286,6 +289,8 @@ if enterGUID and mainRemote then
 else
     warn("❌ Missing enterGUID")
 end
+
+task.wait(2)
 
 --// Services
 local Players = game:GetService("Players")
@@ -535,6 +540,8 @@ local flightConnection = RunService.Heartbeat:Connect(function(dt)
     end
 end)
 
+task.wait(3)
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
@@ -600,3 +607,4 @@ RunService.Heartbeat:Connect(function(dt)
         phase = "done"
     end
 end)
+
