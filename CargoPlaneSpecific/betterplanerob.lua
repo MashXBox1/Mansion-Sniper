@@ -320,8 +320,9 @@ local humanoid = character:WaitForChild("Humanoid")
 local hrp = character:WaitForChild("HumanoidRootPart")
 
 -- Flight settings
-local hoverHeight = 300 -- how high above target Y to fly
-local flySpeed = 530 -- studs per second (same as your working example)
+local flySpeed = 600 -- studs per second
+local hoverAbovePlane = 10 -- how many studs above the plane to hover
+local startHeight = 750 -- studs to initially go up before heading toward plane
 
 -- Crate settings
 local CratePickupGUID = nil
@@ -329,7 +330,18 @@ local foundRemote = nil
 local crateCheckDelay = 0.5 -- seconds to wait after flight before checking crates
 local crateOpened = false
 
--- Detect if we're in a vehicle or on foot
+-- Create flight control objects
+local bodyVelocity = Instance.new("BodyVelocity")
+bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+bodyVelocity.P = 10000
+
+local bodyGyro = Instance.new("BodyGyro")
+bodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+bodyGyro.P = 10000
+bodyGyro.D = 100
+
+-- Detect part to move (vehicle or player)
 local function getMovePart()
     local seat = humanoid.SeatPart
     if seat and seat:IsA("BasePart") then
@@ -343,7 +355,7 @@ local function getMovePart()
 end
 
 -- Get CargoPlane reference (only returns planes above ground level)
-local function getPlanePosition()
+local function getValidCargoPlane()
     local plane = Workspace:FindFirstChild("Plane")
     if not plane then return nil end
 
@@ -359,14 +371,14 @@ local function getPlanePosition()
             end
             
             if planePart and planePart.Position.Y > 0 then
-                return planePart.Position
+                return planePart
             end
         end
     end
     return nil
 end
 
--- Crate functions (same as before)
+-- Crate functions
 local function findRemoteEvent()
     for _, obj in pairs(ReplicatedStorage:GetChildren()) do
         if obj:IsA("RemoteEvent") and obj.Name:find("-") then
@@ -439,39 +451,93 @@ local function openAllCrates()
     return false
 end
 
--- Phase control (identical structure to your working example)
-local phase = "flyHorizontal"
+-- Flight phases
+local phase = "ascend"
+local planePart = nil
+local initialPosition = nil
 
-RunService.Heartbeat:Connect(function(dt)
-    if crateOpened then return end
+-- Attach flight controls to character
+humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+bodyVelocity.Parent = hrp
+bodyGyro.Parent = hrp
 
-    local part = getMovePart()
-    local planePos = getPlanePosition()
-    
-    if not planePos then
-        -- If no plane found, just hover in place
-        part.AssemblyLinearVelocity = Vector3.zero
-        part.AssemblyAngularVelocity = Vector3.zero
+local flightConnection = RunService.Heartbeat:Connect(function(dt)
+    if crateOpened then
+        flightConnection:Disconnect()
+        bodyVelocity:Destroy()
+        bodyGyro:Destroy()
+        humanoid:ChangeState(Enum.HumanoidStateType.Running)
         return
     end
 
-    -- Cancel gravity/forces
-    part.AssemblyLinearVelocity = Vector3.zero
-    part.AssemblyAngularVelocity = Vector3.zero
+    local part = getMovePart()
+    
+    -- Set initial position when we first start
+    if not initialPosition then
+        initialPosition = part.Position
+    end
 
-    if phase == "flyHorizontal" then
-        local currentPos = part.Position
-        -- Lock to plane Y + hoverHeight
-        local targetHoverPos = Vector3.new(planePos.X, planePos.Y + hoverHeight, planePos.Z)
+    if phase == "ascend" then
+        -- Target position is straight up from start
+        local targetPos = Vector3.new(
+            initialPosition.X,
+            initialPosition.Y + startHeight,
+            initialPosition.Z
+        )
+        
+        -- Face upward and move straight up
+        bodyGyro.CFrame = CFrame.new(part.Position, targetPos)
+        
+        -- Calculate direction and distance
+        local direction = (targetPos - part.Position).Unit
+        local distance = (targetPos - part.Position).Magnitude
+        
+        if distance < 1 then
+            phase = "findPlane"
+            return
+        end
+        
+        -- Move at constant speed
+        bodyVelocity.Velocity = direction * flySpeed
 
-        -- Only move horizontally (X/Z)
-        local deltaXZ = Vector3.new(targetHoverPos.X - currentPos.X, 0, targetHoverPos.Z - currentPos.Z)
-        local distXZ = deltaXZ.Magnitude
+    elseif phase == "findPlane" then
+        -- Try to find a valid plane
+        planePart = getValidCargoPlane()
+        if planePart then
+            phase = "flyToPlane"
+        else
+            -- Hover in place while waiting for plane
+            local hoverPos = Vector3.new(
+                part.Position.X,
+                initialPosition.Y + startHeight,
+                part.Position.Z
+            )
+            bodyGyro.CFrame = CFrame.new(part.Position, hoverPos)
+            bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        end
 
-        if distXZ < 1 then
-            -- Snap to hover spot above plane
-            part.CFrame = CFrame.new(targetHoverPos, targetHoverPos + part.CFrame.LookVector)
-            phase = "dropDown"
+    elseif phase == "flyToPlane" then
+        if not planePart or not planePart.Parent or planePart.Position.Y <= 0 then
+            phase = "findPlane"
+            return
+        end
+
+        -- Target position is above the plane
+        local targetPos = Vector3.new(
+            planePart.Position.X,
+            planePart.Position.Y + hoverAbovePlane,
+            planePart.Position.Z
+        )
+        
+        -- Face toward the plane
+        bodyGyro.CFrame = CFrame.new(part.Position, targetPos)
+        
+        -- Calculate direction and distance
+        local direction = (targetPos - part.Position).Unit
+        local distance = (targetPos - part.Position).Magnitude
+        
+        if distance <= 5 then
+            phase = "followPlane"
             -- Start crate checking after a short delay
             task.delay(crateCheckDelay, function()
                 if not crateOpened then
@@ -480,20 +546,48 @@ RunService.Heartbeat:Connect(function(dt)
             end)
             return
         end
+        
+        -- Move at constant speed
+        bodyVelocity.Velocity = direction * flySpeed
 
-        local moveStep = math.min(flySpeed * dt, distXZ)
-        local moveDir = deltaXZ.Unit
-        local newPos = currentPos + Vector3.new(moveDir.X * moveStep, 0, moveDir.Z * moveStep)
+    elseif phase == "followPlane" then
+        if crateOpened then return end
 
-        -- Keep fixed height while flying (plane height + hoverHeight)
-        newPos = Vector3.new(newPos.X, planePos.Y + hoverHeight, newPos.Z)
-        part.CFrame = CFrame.new(newPos, newPos + part.CFrame.LookVector)
+        if not planePart or not planePart.Parent or planePart.Position.Y <= 0 then
+            phase = "findPlane"
+            return
+        end
 
-    elseif phase == "dropDown" then
-        -- Instantly snap to plane coordinates (but at ground level)
-        part.CFrame = CFrame.new(Vector3.new(planePos.X, planePos.Y, planePos.Z), planePos + part.CFrame.LookVector)
-        phase = "done"
+        -- Stay exactly hoverAbovePlane studs above the plane
+        local targetPos = Vector3.new(
+            planePart.Position.X,
+            planePart.Position.Y + hoverAbovePlane,
+            planePart.Position.Z
+        )
+        
+        -- Match plane's orientation
+        bodyGyro.CFrame = planePart.CFrame
+        bodyVelocity.Velocity = planePart.AssemblyLinearVelocity or Vector3.new(0, 0, 0)
     end
+end)
+
+-- Cleanup when character dies
+player.CharacterAdded:Connect(function(newCharacter)
+    character = newCharacter
+    humanoid = character:WaitForChild("Humanoid")
+    hrp = character:WaitForChild("HumanoidRootPart")
+    
+    humanoid.Died:Connect(function()
+        if flightConnection then
+            flightConnection:Disconnect()
+        end
+        if bodyVelocity then
+            bodyVelocity:Destroy()
+        end
+        if bodyGyro then
+            bodyGyro:Destroy()
+        end
+    end)
 end)
 
 
