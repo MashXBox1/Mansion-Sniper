@@ -342,7 +342,7 @@ local humanoid = character:WaitForChild("Humanoid")
 local hrp = character:WaitForChild("HumanoidRootPart")
 
 -- Flight settings
-local flySpeed = 600 -- studs per second
+local flySpeed = 600 -- studs per second (constant speed)
 local hoverAbovePlane = 10 -- how many studs above the plane to hover
 local startHeight = 750 -- studs to initially go up before heading toward plane
 
@@ -494,10 +494,10 @@ local flightConnection = RunService.Heartbeat:Connect(function(dt)
             return
         end
         
-        -- Move upward
-        local step = math.min(flySpeed * dt, math.abs(targetY - currentY))
-        local newPos = part.Position + Vector3.new(0, step, 0)
-        part.CFrame = CFrame.new(newPos, newPos + part.CFrame.LookVector)
+        -- Move upward at constant speed
+        local step = flySpeed * dt
+        local newPos = part.Position + Vector3.new(0, math.min(step, targetY - currentY), 0)
+        part.CFrame = CFrame.new(newPos)
 
     elseif phase == "findPlane" then
         -- Try to find a valid plane
@@ -507,7 +507,7 @@ local flightConnection = RunService.Heartbeat:Connect(function(dt)
         else
             -- If no valid plane found, just hover in place
             local hoverPos = Vector3.new(part.Position.X, initialYPosition + startHeight, part.Position.Z)
-            part.CFrame = CFrame.new(hoverPos, hoverPos + part.CFrame.LookVector)
+            part.CFrame = CFrame.new(hoverPos)
             return
         end
 
@@ -525,16 +525,17 @@ local flightConnection = RunService.Heartbeat:Connect(function(dt)
             planePart.Position.Z
         )
         
-        -- Only move horizontally (X/Z) while maintaining our height
         local currentPos = part.Position
-        local horizontalDelta = Vector3.new(
-            targetPos.X - currentPos.X,
-            0,
-            targetPos.Z - currentPos.Z
-        )
-        local horizontalDist = horizontalDelta.Magnitude
+        local direction = (targetPos - currentPos).Unit
+        local distance = (targetPos - currentPos).Magnitude
+        
+        -- Move at constant speed toward target
+        local moveStep = math.min(flySpeed * dt, distance)
+        local newPos = currentPos + (direction * moveStep)
+        
+        part.CFrame = CFrame.new(newPos)
 
-        if horizontalDist <= 5 then -- Close enough to target
+        if distance <= 5 then -- Close enough to target
             phase = "followPlane"
             -- Start crate checking after a short delay
             task.delay(crateCheckDelay, function()
@@ -542,19 +543,7 @@ local flightConnection = RunService.Heartbeat:Connect(function(dt)
                     crateOpened = openAllCrates()
                 end
             end)
-            return
         end
-
-        -- Move horizontally toward the plane
-        local moveDir = horizontalDelta.Unit
-        local step = math.min(flySpeed * dt, horizontalDist)
-        local newPos = Vector3.new(
-            currentPos.X + moveDir.X * step,
-            initialYPosition + startHeight, -- Maintain our height
-            currentPos.Z + moveDir.Z * step
-        )
-        
-        part.CFrame = CFrame.new(newPos, targetPos)
 
     elseif phase == "followPlane" then
         if crateOpened then
@@ -574,7 +563,7 @@ local flightConnection = RunService.Heartbeat:Connect(function(dt)
             planePart.Position.Y + hoverAbovePlane, 
             planePart.Position.Z
         )
-        part.CFrame = CFrame.new(targetPos, targetPos + planePart.CFrame.LookVector)
+        part.CFrame = CFrame.new(targetPos)
     end
 end)
 
