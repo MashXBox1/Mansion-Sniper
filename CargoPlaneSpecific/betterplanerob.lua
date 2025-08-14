@@ -322,7 +322,7 @@ local hrp = character:WaitForChild("HumanoidRootPart")
 -- Flight settings
 local flySpeed = 600 -- studs per second
 local hoverAbovePlane = 10 -- how many studs above the plane to hover
-local startHeight = 750 -- studs to initially go up before heading toward plane
+local startHeight = 1000 -- studs to initially go up before heading toward plane
 
 -- Crate settings
 local CratePickupGUID = nil
