@@ -7,20 +7,6 @@ local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 local LocalPlayer = Players.LocalPlayer
 
 --== CONFIG: Script to run after teleport ==--
