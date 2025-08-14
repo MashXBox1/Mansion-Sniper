@@ -309,28 +309,12 @@ end
 task.wait(2)
 
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+-- Flight system for Cargo Plane (fixed speed version)
+local flySpeed = 600 -- Consistent speed in studs/second
+local hoverAbovePlane = 10 -- Studs above plane to hover
+local startHeight = 750 -- Initial ascent height
 
-local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
-local hrp = character:WaitForChild("HumanoidRootPart")
-
--- Flight settings
-local flySpeed = 600 -- studs per second
-local hoverAbovePlane = 10 -- how many studs above the plane to hover
-local startHeight = 1000 -- studs to initially go up before heading toward plane
-
--- Crate settings
-local CratePickupGUID = nil
-local foundRemote = nil
-local crateCheckDelay = 0.5 -- seconds to wait after flight before checking crates
-local crateOpened = false
-
--- Create flight control objects
+-- Improved flight control objects
 local bodyVelocity = Instance.new("BodyVelocity")
 bodyVelocity.Velocity = Vector3.new(0, 0, 0)
 bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
@@ -341,127 +325,33 @@ bodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
 bodyGyro.P = 10000
 bodyGyro.D = 100
 
--- Detect part to move (vehicle or player)
-local function getMovePart()
-    local seat = humanoid.SeatPart
-    if seat and seat:IsA("BasePart") then
-        local vehicle = seat:FindFirstAncestorOfClass("Model")
-        if vehicle and vehicle.PrimaryPart then
-            return vehicle.PrimaryPart
-        end
-        return seat
-    end
-    return hrp
-end
-
--- Get CargoPlane reference (only returns planes above ground level)
-local function getValidCargoPlane()
-    local plane = Workspace:FindFirstChild("Plane")
-    if not plane then return nil end
-
-    local planeNames = {"CargoPlane", "Cargo Plane", "PlaneBody", "MainPlane"}
-    for _, name in ipairs(planeNames) do
-        local cargoPlane = plane:FindFirstChild(name)
-        if cargoPlane then
-            local planePart
-            if cargoPlane:IsA("Model") then
-                planePart = cargoPlane.PrimaryPart or cargoPlane:FindFirstChildWhichIsA("BasePart")
-            elseif cargoPlane:IsA("BasePart") then
-                planePart = cargoPlane
-            end
-            
-            if planePart and planePart.Position.Y > 0 then
-                return planePart
-            end
-        end
-    end
-    return nil
-end
-
--- Crate functions
-local function findRemoteEvent()
-    for _, obj in pairs(ReplicatedStorage:GetChildren()) do
-        if obj:IsA("RemoteEvent") and obj.Name:find("-") then
-            return obj
-        end
-    end
-    return nil
-end
-
-local function isPlayerCriminal()
-    return player.Team and player.Team.Name == "Criminal"
-end
-
-local function findCrateGUID()
-    for _, t in pairs(getgc(true)) do
-        if typeof(t) == "table" and not getmetatable(t) then
-            if t["plk2ufp6"] and t["plk2ufp6"]:sub(1, 1) == "!" then
-                return t["plk2ufp6"]
-            end
-        end
-    end
-    return nil
-end
-
-local function hasCrate()
-    local folder = player:FindFirstChild("Folder")
-    return folder and folder:FindFirstChild("Crate") ~= nil
-end
-
-local function openAllCrates()
-    if not CratePickupGUID then
-        CratePickupGUID = findCrateGUID()
-        if not CratePickupGUID then
-            warn("❌ Could not find crate pickup GUID mapping.")
-            return false
-        end
-        print("✅ Found Crate GUID:", CratePickupGUID)
-    end
-
-    if not foundRemote then
-        foundRemote = findRemoteEvent()
-        if not foundRemote then
-            warn("❌ Could not find RemoteEvent with '-' in name.")
-            return false
-        end
-        print("✅ Found RemoteEvent:", foundRemote.Name)
-    end
-
-    print("⌛ Attempting to open crates...")
-    local crateNames = {"Crate1", "Crate2", "Crate3", "Crate4", "Crate5", "Crate6", "Crate7"}
-    
-    while not hasCrate() do
-        if not isPlayerCriminal() then
-            print("⌛ Waiting to become Criminal...")
-            task.wait(1)
-            continue
-        end
-        
-        for _, crateName in ipairs(crateNames) do
-            foundRemote:FireServer(CratePickupGUID, crateName)
-            task.wait(0.1)
-            
-            if hasCrate() then
-                print("✅ Successfully acquired crate!")
-                return true
-            end
-        end
-        task.wait(0.5)
-    end
-    return false
-end
-
--- Flight phases
-local phase = "ascend"
-local planePart = nil
-local initialPosition = nil
-
--- Attach flight controls to character
+-- Attach to character
 humanoid:ChangeState(Enum.HumanoidStateType.Physics)
 bodyVelocity.Parent = hrp
 bodyGyro.Parent = hrp
 
-local flightConnection = RunService.Heartbeat:Connect(function(dt)
+-- Flight phases
+local phase = "ascend"
+local planePart = nil
+local initialPosition = hrp.Position
+
+-- New function to calculate movement with consistent speed
+local function moveToPosition(currentPos, targetPos, speed)
+    local direction = (targetPos - currentPos).Unit
+    local distance = (targetPos - currentPos).Magnitude
+    
+    -- If we're close enough, snap to position
+    if distance < 5 then
+        return targetPos, true
+    end
+    
+    -- Calculate movement for this frame
+    local moveStep = math.min(speed * RunService.Heartbeat:Wait(), distance)
+    return currentPos + (direction * moveStep), false
+end
+
+-- Main flight loop
+local flightConnection = RunService.Heartbeat:Connect(function()
     if crateOpened then
         flightConnection:Disconnect()
         bodyVelocity:Destroy()
@@ -471,12 +361,8 @@ local flightConnection = RunService.Heartbeat:Connect(function(dt)
     end
 
     local part = getMovePart()
+    local currentPos = part.Position
     
-    -- Set initial position when we first start
-    if not initialPosition then
-        initialPosition = part.Position
-    end
-
     if phase == "ascend" then
         -- Target position is straight up from start
         local targetPos = Vector3.new(
@@ -485,20 +371,16 @@ local flightConnection = RunService.Heartbeat:Connect(function(dt)
             initialPosition.Z
         )
         
-        -- Face upward and move straight up
-        bodyGyro.CFrame = CFrame.new(part.Position, targetPos)
+        -- Face upward
+        bodyGyro.CFrame = CFrame.new(currentPos, targetPos)
         
-        -- Calculate direction and distance
-        local direction = (targetPos - part.Position).Unit
-        local distance = (targetPos - part.Position).Magnitude
+        -- Move with consistent speed
+        local newPos, reached = moveToPosition(currentPos, targetPos, flySpeed)
+        bodyVelocity.Velocity = (newPos - currentPos).Unit * flySpeed
         
-        if distance < 1 then
+        if reached then
             phase = "findPlane"
-            return
         end
-        
-        -- Move at constant speed
-        bodyVelocity.Velocity = direction * flySpeed
 
     elseif phase == "findPlane" then
         -- Try to find a valid plane
@@ -506,13 +388,7 @@ local flightConnection = RunService.Heartbeat:Connect(function(dt)
         if planePart then
             phase = "flyToPlane"
         else
-            -- Hover in place while waiting for plane
-            local hoverPos = Vector3.new(
-                part.Position.X,
-                initialPosition.Y + startHeight,
-                part.Position.Z
-            )
-            bodyGyro.CFrame = CFrame.new(part.Position, hoverPos)
+            -- Hover in place while waiting
             bodyVelocity.Velocity = Vector3.new(0, 0, 0)
         end
 
@@ -530,13 +406,13 @@ local flightConnection = RunService.Heartbeat:Connect(function(dt)
         )
         
         -- Face toward the plane
-        bodyGyro.CFrame = CFrame.new(part.Position, targetPos)
+        bodyGyro.CFrame = CFrame.new(currentPos, targetPos)
         
-        -- Calculate direction and distance
-        local direction = (targetPos - part.Position).Unit
-        local distance = (targetPos - part.Position).Magnitude
+        -- Move with consistent speed
+        local newPos, reached = moveToPosition(currentPos, targetPos, flySpeed)
+        bodyVelocity.Velocity = (newPos - currentPos).Unit * flySpeed
         
-        if distance <= 5 then
+        if reached then
             phase = "followPlane"
             -- Start crate checking after a short delay
             task.delay(crateCheckDelay, function()
@@ -544,16 +420,10 @@ local flightConnection = RunService.Heartbeat:Connect(function(dt)
                     crateOpened = openAllCrates()
                 end
             end)
-            return
         end
-        
-        -- Move at constant speed
-        bodyVelocity.Velocity = direction * flySpeed
 
     elseif phase == "followPlane" then
-        if crateOpened then return end
-
-        if not planePart or not planePart.Parent or planePart.Position.Y <= 0 then
+        if not planePart or not planePart.Parent then
             phase = "findPlane"
             return
         end
@@ -565,43 +435,11 @@ local flightConnection = RunService.Heartbeat:Connect(function(dt)
             planePart.Position.Z
         )
         
-        -- Match plane's orientation
+        -- Match plane's movement exactly
         bodyGyro.CFrame = planePart.CFrame
         bodyVelocity.Velocity = planePart.AssemblyLinearVelocity or Vector3.new(0, 0, 0)
     end
 end)
-
--- Cleanup when character dies
-player.CharacterAdded:Connect(function(newCharacter)
-    character = newCharacter
-    humanoid = character:WaitForChild("Humanoid")
-    hrp = character:WaitForChild("HumanoidRootPart")
-    
-    humanoid.Died:Connect(function()
-        if flightConnection then
-            flightConnection:Disconnect()
-        end
-        if bodyVelocity then
-            bodyVelocity:Destroy()
-        end
-        if bodyGyro then
-            bodyGyro:Destroy()
-        end
-    end)
-end)
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 task.wait(3)
 
