@@ -452,6 +452,59 @@ RunService.Heartbeat:Connect(function(dt)
     end
 end)
 
+local function hasCrate()
+    local folder = player:FindFirstChild("Folder")
+    return folder and folder:FindFirstChild("Crate") ~= nil
+end
+
+
+
+local function openAllCrates()
+    if not CratePickupGUID then
+        CratePickupGUID = findCrateGUID()
+        if not CratePickupGUID then
+            error("❌ Could not find crate pickup GUID mapping.")
+        end
+        print("✅ Found Crate GUID:", CratePickupGUID)
+    end
+
+    if not foundRemote then
+        foundRemote = findRemoteEvent()
+        if not foundRemote then
+            error("❌ Could not find RemoteEvent with '-' in name.")
+        end
+        print("✅ Found RemoteEvent:", foundRemote.Name)
+    end
+
+    print("⌛ Attempting to open crates...")
+    local crateNames = {"Crate1", "Crate2", "Crate3", "Crate4", "Crate5", "Crate6", "Crate7"}
+    
+    while not hasCrate() do
+        if not isPlayerCriminal() then
+            print("⌛ Waiting to become Criminal...")
+            task.wait(1)
+            continue
+        end
+        
+        for _, crateName in ipairs(crateNames) do
+            foundRemote:FireServer(CratePickupGUID, crateName)
+            task.wait(0.1)
+            
+            if hasCrate() then
+                print("✅ Successfully acquired crate!")
+                return true
+            end
+        end
+        task.wait(0.5)
+    end
+    return false
+end
+
+
+openAllCrates()
+
+
+
 
 
 task.wait(3)
