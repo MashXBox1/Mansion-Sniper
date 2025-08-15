@@ -70,7 +70,7 @@ local function serverHop()
     print("🌐 Power Plant closed, searching for new server...")
 
     local success, result = pcall(function()
-        local url = "https://robloxapi.neelseshadri31.workers.dev/  "
+        local url = "https://robloxapi.neelseshadri31.workers.dev/"
         return HttpService:JSONDecode(game:HttpGet(url))
     end)
 
