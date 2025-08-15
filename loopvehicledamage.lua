@@ -6,8 +6,8 @@ local Players = game:GetService("Players")
 local VehicleGUID = nil
 
 for _, t in pairs(getgc(true)) do
-    if typeof(t) == "table" and not getmetatable(t) and t["vum9h1ez"] and t["vum9h1ez"]:sub(1, 1) == "!" then
-        VehicleGUID = t["vum9h1ez"]
+    if typeof(t) == "table" and not getmetatable(t) and t["f3s6bozq"] and t["f3s6bozq"]:sub(1, 1) == "!" then
+        VehicleGUID = t["f3s6bozq"]
         print("✅ Vehicle GUID (vum9h1ez):", VehicleGUID)
         break
     end
