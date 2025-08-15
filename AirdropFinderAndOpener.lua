@@ -30,8 +30,8 @@ if not MainRemote then error("❌ Could not find RemoteEvent with '-' in name.")
 local PoliceGUID = nil
 for _, t in pairs(getgc(true)) do
     if typeof(t) == "table" and not getmetatable(t) then
-        if t["mto4108g"] and t["mto4108g"]:sub(1,1) == "!" then
-            PoliceGUID = t["mto4108g"]
+        if t["lnu8qihc"] and t["lnu8qihc"]:sub(1,1) == "!" then
+            PoliceGUID = t["lnu8qihc"]
             print("✅ Police GUID found:", PoliceGUID)
             break
         end
