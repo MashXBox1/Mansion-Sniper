@@ -196,36 +196,50 @@ end)
 
 
 -- MAIN LOOP
+-- [Previous code remains the same until the MAIN LOOP section...]
+
+-- MAIN LOOP
 task.spawn(function()
-    local scanCount = 0
-    local dropFound = false
+    while true do
+        local scanCount = 0
+        local dropFound = false
 
-    while scanCount < MAX_SCANS and not dropFound do
-        -- Check for drop
-        local drop = Workspace:FindFirstChild("Drop", true)
-        if drop then
-            if not drop:GetAttribute("BriefcaseLanded") then
-                repeat task.wait(1) until drop:GetAttribute("BriefcaseLanded")
+        while scanCount < MAX_SCANS and not dropFound do
+            -- Check for drop
+            local drop = Workspace:FindFirstChild("Drop", true)
+            if drop then
+                if not drop:GetAttribute("BriefcaseLanded") then
+                    repeat task.wait(1) until drop:GetAttribute("BriefcaseLanded")
+                end
+                
+                -- Store drop info and stop searching
+                currentDrop = drop
+                currentDropPos = getPrimaryPosition(drop)
+                searching = false
+                dropFound = true
+                
+                -- Move to drop (this will kill and respawn)
+                moveToDrop()
+                
+                -- Wait until drop disappears
+                repeat task.wait(1) until not Workspace:FindFirstChild("Drop", true)
+                
+                -- After drop disappears, reset and scan again
+                currentDrop = nil
+                currentDropPos = nil
+                searching = true
+                scanCount = 0
+                dropFound = false
+                break
+            else
+                scanCount += 1
+                startTour()
             end
-            
-            -- Store drop info and stop searching
-            currentDrop = drop
-            currentDropPos = getPrimaryPosition(drop)
-            searching = false
-            dropFound = true
-            
-            -- Move to drop (this will kill and respawn)
-            moveToDrop()
-            
-            break
-        else
-            scanCount += 1
-            startTour()
+            task.wait(0.1)
         end
-        task.wait(0.1)
-    end
 
-    if not dropFound then
-        serverHop()
+        if not dropFound then
+            serverHop()
+        end
     end
 end)
