@@ -272,7 +272,7 @@ end
 print("🚀 Teleported to " .. targetVehicle.Name .. "'s Seat.")
 humanoid.PlatformStand = false
 
-task.wait(0.2)
+task.wait(0.5)
 
 -- 3️⃣ Fire hijackGUID
 if hijackGUID and mainRemote then
