@@ -196,20 +196,44 @@ end)
 
 
 -- MAIN LOOP
--- [Previous code remains the same until the MAIN LOOP section...]
-
--- MAIN LOOP
 task.spawn(function()
     while true do
         local scanCount = 0
         local dropFound = false
 
         while scanCount < MAX_SCANS and not dropFound do
-            -- Check for drop
+            -- Check for any drop (landed or not)
             local drop = Workspace:FindFirstChild("Drop", true)
             if drop then
+                print("🔍 Found drop, waiting for landing...")
+                
+                -- Wait for drop to land if it hasn't already
                 if not drop:GetAttribute("BriefcaseLanded") then
-                    repeat task.wait(1) until drop:GetAttribute("BriefcaseLanded")
+                    print("🪂 Drop not landed yet, waiting...")
+                    local dropLanded = false
+                    
+                    -- Set up a connection to detect when it lands
+                    local landedConnection
+                    landedConnection = drop:GetAttributeChangedSignal("BriefcaseLanded"):Connect(function()
+                        if drop:GetAttribute("BriefcaseLanded") then
+                            dropLanded = true
+                            landedConnection:Disconnect()
+                        end
+                    end)
+                    
+                    -- Also check periodically in case the signal fails
+                    local startWait = os.clock()
+                    repeat
+                        task.wait(0.5)
+                        if drop:GetAttribute("BriefcaseLanded") then
+                            dropLanded = true
+                        end
+                    until dropLanded or os.clock() - startWait > 30 -- Timeout after 30 seconds
+                    
+                    if not dropLanded then
+                        warn("⏳ Drop never landed, skipping...")
+                        break
+                    end
                 end
                 
                 -- Store drop info and stop searching
@@ -218,11 +242,12 @@ task.spawn(function()
                 searching = false
                 dropFound = true
                 
-                -- Move to drop (this will kill and respawn)
+                print("🛬 Drop landed at:", currentDropPos)
                 moveToDrop()
                 
                 -- Wait until drop disappears
                 repeat task.wait(1) until not Workspace:FindFirstChild("Drop", true)
+                print("✅ Drop collected or disappeared")
                 
                 -- After drop disappears, reset and scan again
                 currentDrop = nil
@@ -233,6 +258,7 @@ task.spawn(function()
                 break
             else
                 scanCount += 1
+                print("🔭 Scanning for drops... ("..scanCount.."/"..MAX_SCANS..")")
                 startTour()
             end
             task.wait(0.1)
