@@ -202,7 +202,7 @@ local function firePrisonerEvent()
 end
 
 local hijackGUID, enterGUID, mainRemote = firePrisonerEvent()
-task.wait(0.5)
+task.wait(0.2)
 
 -- 2️⃣ Teleport to vehicle
 local VehiclesFolder = workspace:WaitForChild("Vehicles")
