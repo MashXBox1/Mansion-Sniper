@@ -12,7 +12,7 @@
 
 
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro6.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro7.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -759,16 +759,17 @@ foundRemote.OnClientEvent:Connect(function(firstArg, secondArg)
     local playerName = LocalPlayer.Name
     local displayName = LocalPlayer.DisplayName
 
-    -- Match exactly what the system sends for this player
-    local expected1 = playerName .. " just robbed a jewelry store for $500"
-    local expected2 = displayName .. " just robbed a jewelry store for $500"
+    -- Pattern to match both name variations and any number after the $
+    local pattern1 = "^" .. playerName .. " just robbed a jewelry store for %$%d+$"
+    local pattern2 = "^" .. displayName .. " just robbed a jewelry store for %$%d+$"
 
-    if secondArg == expected1 or secondArg == expected2 then
+    if string.match(secondArg, pattern1) or string.match(secondArg, pattern2) then
         print("🚨 Detected robbery message for local player!")
         task.wait(10)
         serverHop()
     end
 end)
+
 
 
 
