@@ -12,7 +12,7 @@
 
 
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro2.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro3.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -440,7 +440,7 @@ end
 
 -- Function to fire the RemoteEvent repeatedly
 local function fireEvents()
-    for i = 1, 4 do  -- Fire 10 times
+    for i = 1, 8 do  -- Fire 10 times
         foundRemote:FireServer(DiamondGUID)
         task.wait(0.2)  -- Fire every 0.2 seconds
     end
