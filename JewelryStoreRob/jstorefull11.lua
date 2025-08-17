@@ -12,7 +12,7 @@
 
 
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/jstorefull10.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/jstorefull11.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -347,7 +347,7 @@ end)
 
 -- Wait for the game to fully load
 
-repeat task.wait() until player.Team.Name == "Criminal"
+repeat task.wait() until Players.LocalPlayer.Team.Name == "Criminal"
 
 -- Services
 local Players = game:GetService("Players")
