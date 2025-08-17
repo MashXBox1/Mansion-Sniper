@@ -12,7 +12,7 @@
 
 
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/fulltestjstore.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/fulltestjstorefr.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -384,6 +384,9 @@ local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local hrp = character:WaitForChild("HumanoidRootPart")
 
+repeat task.wait() until player.Team.Name == "Criminal"
+
+
 -- Get Duffel Bag components
 local DuffelBagBinder = require(ReplicatedStorage.Game.DuffelBag.DuffelBagBinder)
 local DuffelBagConsts = require(ReplicatedStorage.Game.DuffelBag.DuffelBagConsts)
@@ -639,6 +642,10 @@ local function spawnVehicle()
     end
 end
 
+
+spawnVehicle()
+
+
 task.wait(1)
 
 
@@ -710,4 +717,3 @@ RunService.Heartbeat:Connect(function(dt)
         phase = "done"
     end
 end)
-
