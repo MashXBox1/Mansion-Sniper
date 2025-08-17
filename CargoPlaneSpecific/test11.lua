@@ -208,7 +208,7 @@ if not LocalPlayer.Character or not LocalPlayer.Character.Parent then
 end
 
 
-task.wait(0.2)
+task.wait(0.7)
 
 -- 2️⃣ Teleport to vehicle
 local VehiclesFolder = workspace:WaitForChild("Vehicles")
