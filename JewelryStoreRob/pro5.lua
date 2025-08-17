@@ -224,7 +224,7 @@ end
 
 
 
-
+task.wait(1)
 
 
 
@@ -232,19 +232,30 @@ end
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- Wait until the player is on the "Criminal" team
-repeat task.wait() until LocalPlayer.Team and LocalPlayer.Team.Name == "Criminal"
+-- Wait until team is Criminal
 
--- Teleport continuously for 3 seconds
-local duration = 3
-local startTime = tick()
 
-while tick() - startTime < duration do
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(130.94, 20.87, 1301.84)
+local function teleportCharacter(character)
+    local hrp = character:WaitForChild("HumanoidRootPart", 5)
+    if hrp then
+        hrp.CFrame = CFrame.new(130.94, 20.87, 1301.84)
     end
-    task.wait(0.1) -- keeps it smooth
 end
+
+-- First teleport
+if LocalPlayer.Character then
+    teleportCharacter(LocalPlayer.Character)
+    task.wait(0.5) -- slight delay before killing
+    LocalPlayer.Character:BreakJoints()
+end
+
+-- Teleport again after respawn
+LocalPlayer.CharacterAdded:Connect(function(char)
+    char:WaitForChild("HumanoidRootPart")
+    task.wait(0.7) -- give it a moment to load in
+    teleportCharacter(char)
+end)
+
 
 
 
@@ -315,10 +326,10 @@ jewelryFolder.DescendantAdded:Connect(function(descendant)
 end)
 
 
-task.wait(2)
+
 -- Wait for the game to fully load
 
-
+repeat task.wait() until LocalPlayer.Team and LocalPlayer.Team.Name == "Criminal"
 
 -- Services
 local Players = game:GetService("Players")
