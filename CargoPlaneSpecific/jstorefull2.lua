@@ -97,7 +97,7 @@ local function serverHop()
     local candidates = {}
 
     for _, server in ipairs(result.data) do
-        if server.id ~= currentJobId and server.playing >= 2 and server.playing < 20 then
+        if server.id ~= currentJobId and server.playing >= 2 and server.playing < 23 then
             table.insert(candidates, server.id)
         end
     end
