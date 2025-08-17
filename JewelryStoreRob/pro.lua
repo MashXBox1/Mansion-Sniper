@@ -12,7 +12,7 @@
 
 
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro7.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -257,7 +257,7 @@ end
 -- Teleport again after respawn
 LocalPlayer.CharacterAdded:Connect(function(char)
     char:WaitForChild("HumanoidRootPart")
-    task.wait(0.7) -- give it a moment to load in
+    task.wait(0.2) -- give it a moment to load in
     teleportCharacter(char)
 end)
 
