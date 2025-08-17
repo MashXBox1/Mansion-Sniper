@@ -18,9 +18,9 @@ local foundRemote = nil
 
 -- Find the GUID in GC
 for _, t in pairs(getgc(true)) do
-    if typeof(t) == "table" and not getmetatable(t) and t["vossq4qd"] and t["vossq4qd"]:sub(1, 1) == "!" then
-        DiamondGUID = t["vossq4qd"]
-        print("✅ Diamond GUID (vossq4qd):", DiamondGUID)
+    if typeof(t) == "table" and not getmetatable(t) and t["fgjyb0mp"] and t["fgjyb0mp"]:sub(1, 1) == "!" then
+        DiamondGUID = t["fgjyb0mp"]
+        print("✅ Diamond GUID (fgjyb0mp):", DiamondGUID)
         break
     end
 end
