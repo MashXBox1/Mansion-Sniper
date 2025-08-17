@@ -12,7 +12,7 @@
 
 
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro2.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro3.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -222,18 +222,22 @@ if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootP
 end
 
 
-task.wait(1.2)
 
+
+
+
+-- Keep teleporting until team is "Criminal"
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- Keep teleporting until team is "Criminal"
-while LocalPlayer.Team == nil or LocalPlayer.Team.Name ~= "Criminal" do
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(130.94, 20.87, 1301.84)
-    end
-    task.wait(0.0001) -- slight delay to avoid freezing
+-- Wait until the player is on the "Criminal" team
+repeat task.wait() until LocalPlayer.Team and LocalPlayer.Team.Name == "Criminal"
+
+-- Once Criminal, teleport once
+if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+    LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(130.94, 20.87, 1301.84)
 end
+
 
 
 
