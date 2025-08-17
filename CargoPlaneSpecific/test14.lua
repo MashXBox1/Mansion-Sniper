@@ -546,6 +546,34 @@ openAllCrates()
 
 task.wait(3)
 
+
+
+
+-- Hook into the found remote
+foundRemote.OnClientEvent:Connect(function(firstArg, secondArg)
+    if not firstArg or not secondArg then return end
+
+    local LocalPlayer = game:GetService("Players").LocalPlayer
+    local playerName = LocalPlayer.Name
+    local displayName = LocalPlayer.DisplayName
+
+    local expected1 = playerName .. " robbed the cargo plane for $4,000!"
+    local expected2 = displayName .. " robbed the cargo plane for $4,000!"
+
+    if secondArg == expected1 or secondArg == expected2 then
+        print("🚨 Detected robbery message for local player!")
+        task.wait(10)
+        serverHop()
+    end
+end)
+
+
+
+
+
+
+
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
