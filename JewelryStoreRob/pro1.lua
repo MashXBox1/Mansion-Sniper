@@ -12,7 +12,7 @@
 
 
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro1.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -221,6 +221,8 @@ if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootP
     LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(91.14, 18.68, 1311.00)
 end
 
+
+task.wait(0.7)
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
