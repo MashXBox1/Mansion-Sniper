@@ -12,7 +12,7 @@
 
 
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/jstorefull6.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/jstorefull7.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -509,7 +509,7 @@ task.spawn(function()
             scriptExecuted = true
             break
         end
-        task.wait(0.5)
+        task.wait(0.3)
     end
 end)
 
@@ -584,7 +584,7 @@ local function startContinuousTeleport()
 end
 
 
-task.wait(2)
+task.wait(1)
 
 
 -- Function to stop continuous teleportation
@@ -631,7 +631,7 @@ end
 -- Automatically execute the auto-toggle logic when the script runs
 autoToggleTeleport()
 
-task.wait(1)
+task.wait(0.7)
 
 -- Define the target position as a CFrame
 local targetPosition = CFrame.new(590, 25, -501)
@@ -741,7 +741,7 @@ end
 spawnVehicle()
 
 
-task.wait(1)
+task.wait(0.5)
 
 local foundRemote = nil
 
@@ -786,7 +786,7 @@ local hrp = character:WaitForChild("HumanoidRootPart")
 
 local hoverHeight = 500 -- how high above target Y to fly
 local targetPos = Vector3.new(-238, 18, 1615)
-local flySpeed = 700 -- studs per second
+local flySpeed = 730 -- studs per second
 
 -- Detect if we're in a vehicle or on foot
 local function getMovePart()
