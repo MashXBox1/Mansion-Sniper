@@ -12,7 +12,7 @@
 
 
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro5.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro6.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -150,6 +150,47 @@ while true do
         break -- teleporting stops this script here
     end
 end
+
+
+local function getServerTime()
+    local timeFetch = ReplicatedStorage:FindFirstChild("GetServerTime")
+    if timeFetch and timeFetch:IsA("RemoteFunction") then
+        return timeFetch:InvokeServer()
+    else
+        return os.time()
+    end
+end
+
+-- Wait exactly 360 seconds from server time
+local function wait360Seconds()
+    local startTime = getServerTime()
+    local endTime = startTime + 85
+
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        if os.time() >= endTime then
+            connection:Disconnect() -- Stop checking
+            serverHop()
+        end
+    end)
+end
+
+wait360Seconds()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 task.wait(3)
