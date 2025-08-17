@@ -12,7 +12,7 @@
 
 
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro1.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro2.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -440,20 +440,14 @@ end
 
 -- Function to fire the RemoteEvent repeatedly
 local function fireEvents()
-    for i = 1, 10 do  -- Fire 10 times
+    for i = 1, 4 do  -- Fire 10 times
         foundRemote:FireServer(DiamondGUID)
         task.wait(0.2)  -- Fire every 0.2 seconds
     end
 end
 
 -- Function to go back to first coordinate following reverse path
-local function returnToStart(currentIndex)
-    print("↩️ Returning to start from position", currentIndex)
-    for i = currentIndex - 1, 1, -1 do
-        teleportTo(path[i].pos, path[i].heading)
-        task.wait(0.5)  -- Small delay between waypoints when returning
-    end
-end
+
 
 -- Main execution
 print("🚀 Starting path execution...")
@@ -484,8 +478,8 @@ for i, waypoint in ipairs(path) do
     
     -- Check if we should exit
     if scriptExecuted then
-        print("🔄 Returning to start...")
-        returnToStart(i)
+        
+        
         break
     else
         print("❌ Not enough cash - continuing to next waypoint")
