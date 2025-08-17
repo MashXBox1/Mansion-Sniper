@@ -631,7 +631,7 @@ end
 -- Automatically execute the auto-toggle logic when the script runs
 autoToggleTeleport()
 
-task.wait(0.5)
+task.wait(1)
 
 -- Define the target position as a CFrame
 local targetPosition = CFrame.new(590, 25, -501)
