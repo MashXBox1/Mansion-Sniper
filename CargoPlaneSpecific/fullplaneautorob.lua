@@ -17,7 +17,7 @@ local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.c
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
-task.wait(3)
+task.wait(0.5)
 
 -- Wait for RobberyConsts module to load
 local function waitForRobberyConsts()
@@ -127,7 +127,7 @@ end
 --== Fallback to server hop when robbery closed ==--
 local function teleportToRandomServer()
     print("🔁 Power Plant is closed. Teleporting in 5 seconds...")
-    task.wait(1)
+    task.wait(4)
     serverHop()
     
     
