@@ -222,7 +222,7 @@ if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootP
 end
 
 
-task.wait(0.7)
+task.wait(1.2)
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
