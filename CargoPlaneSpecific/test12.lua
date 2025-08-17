@@ -10,7 +10,7 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
 --== CONFIG: Script to run after teleport ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/CargoPlaneSpecific/test12.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/CargoPlaneSpecific/test11.lua"))()]]
 
 
 -- Wait for game to fully load
@@ -129,6 +129,8 @@ local function teleportToRandomServer()
     print("🔁 Power Plant is closed. Teleporting in 5 seconds...")
     task.wait(1)
     serverHop()
+    
+    
 end
 
 --== Main loop ==--
@@ -144,26 +146,13 @@ end
 
 task.wait(3)
 
--- Wait for character to fully load before proceeding
-local function waitForCharacter()
-    if not LocalPlayer.Character or not LocalPlayer.Character.Parent then
-        LocalPlayer.CharacterAdded:Wait()
-    end
-    local character = LocalPlayer.Character
-    while not character:FindFirstChild("HumanoidRootPart") or not character:FindFirstChildOfClass("Humanoid") do
-        task.wait()
-    end
-    return character
-end
-
-local character = waitForCharacter()
-
 -- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
 
 -- 1️⃣ Fire prisoner event
 local function firePrisonerEvent()
@@ -214,6 +203,13 @@ end
 
 local hijackGUID, enterGUID, mainRemote = firePrisonerEvent()
 
+if not LocalPlayer.Character or not LocalPlayer.Character.Parent then
+    LocalPlayer.CharacterAdded:Wait()
+end
+
+
+task.wait(0.7)
+
 -- 2️⃣ Teleport to vehicle
 local VehiclesFolder = workspace:WaitForChild("Vehicles")
 
@@ -221,7 +217,7 @@ local function getNearestVehicle(vehicleName)
     local closestVehicle = nil
     local shortestDistance = math.huge
 
-    local character = LocalPlayer.Character
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local rootPart = character:WaitForChild("HumanoidRootPart")
 
     for _, vehicle in pairs(VehiclesFolder:GetChildren()) do
@@ -271,6 +267,7 @@ if targetVehicle:GetAttribute("Locked") ~= true then
 end
 
 -- Teleport player to Seat
+local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local rootPart = character:WaitForChild("HumanoidRootPart")
 local humanoid = character:FindFirstChildOfClass("Humanoid")
 
@@ -304,9 +301,12 @@ end
 task.wait(2)
 
 --// Services
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local hrp = character:WaitForChild("HumanoidRootPart")
 
@@ -463,6 +463,11 @@ local function hasCrate()
     return folder and folder:FindFirstChild("Crate") ~= nil
 end
 
+
+
+
+
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
@@ -476,6 +481,8 @@ for _, t in pairs(getgc(true)) do
             CratePickupGUID = t["plk2ufp6"]
             print("✅ Pistol GUID (plk2ufp6):", CratePickupGUID)
         end
+        
+        
     end
 end
 
@@ -494,6 +501,22 @@ for _, obj in pairs(ReplicatedStorage:GetChildren()) do
         break
     end
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 local function openAllCrates()
     if not CratePickupGUID then
@@ -516,6 +539,8 @@ local function openAllCrates()
     local crateNames = {"Crate1", "Crate2", "Crate3", "Crate4", "Crate5", "Crate6", "Crate7"}
     
     while not hasCrate() do
+        
+        
         for _, crateName in ipairs(crateNames) do
             foundRemote:FireServer(CratePickupGUID, crateName)
             task.wait(0.1)
@@ -532,12 +557,20 @@ local function openAllCrates()
     return false
 end
 
+
 openAllCrates()
+
+
+
+
 
 task.wait(3)
 
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local hrp = character:WaitForChild("HumanoidRootPart")
 
