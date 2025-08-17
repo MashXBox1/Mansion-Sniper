@@ -760,8 +760,8 @@ foundRemote.OnClientEvent:Connect(function(firstArg, secondArg)
     local playerName = LocalPlayer.Name
     local displayName = LocalPlayer.DisplayName
 
-    local expected1 = playerName .. " just robbed a jewelry store for $500"
-    local expected2 = displayName .. " just robbed a jewelry store for $500"
+    local expected1 = playerName .. "just robbed a jewelry store for $500"
+    local expected2 = displayName .. "just robbed a jewelry store for $500"
 
     if secondArg == expected1 or secondArg == expected2 then
         print("🚨 Detected robbery message for local player!")
