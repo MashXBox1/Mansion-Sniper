@@ -143,7 +143,7 @@ local function serverHop()
     local currentJobId = game.JobId
     local function tryHop()
         local success, result = pcall(function()
-            return HttpService:JSONDecode(game:HttpGet("https://robloxapi.neelseshadri31.workers.dev/"))
+            return HttpService:JSONDecode(game:HttpGet("https://robloxapi.robloxapipro.workers.dev/"))
         end)
         if not success or not result or not result.data then
             warn("❌ Failed to get server list for hopping.")
@@ -159,7 +159,7 @@ local function serverHop()
         end
         if #candidates == 0 then return false end
         local chosenServer = candidates[math.random(1, #candidates)]
-        queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/pro3.lua"))()]])
+        queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/pro4.lua"))()]])
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
         return true
     end
