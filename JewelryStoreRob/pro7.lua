@@ -12,7 +12,7 @@
 
 
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro6.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro7.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -180,7 +180,7 @@ local function firePrisonerEvent()
     local mainRemote = FindRemoteEvent()
     
     -- Find GUIDs
-    local policeGUID, enterGUID, hijackGUID
+    local policeGUID, enterGUID, hijackGUID, deathGUID
     for _, t in pairs(getgc(true)) do
         if typeof(t) == "table" and not getmetatable(t) then
             if t["lnu8qihc"] and type(t["lnu8qihc"]) == "string" and t["lnu8qihc"]:sub(1,1) == "!" then
@@ -195,6 +195,10 @@ local function firePrisonerEvent()
                 hijackGUID = t["muw6nit5"]
                 print("✅ Found hijackGUID")
             end
+            if t["p14s6fjq"] and type(t["p14s6fjq"]) == "string" and t["p14s6fjq"]:sub(1,1) == "!" then
+                deathGUID = t["p14s6fjq"]
+                print("✅ Found deathGUID")
+            end
         end
     end
 
@@ -206,10 +210,10 @@ local function firePrisonerEvent()
         warn("❌ Missing Police GUID")
     end
 
-    return hijackGUID, enterGUID, mainRemote
+    return hijackGUID, enterGUID, mainRemote, deathGUID
 end
 
-local hijackGUID, enterGUID, mainRemote = firePrisonerEvent()
+local hijackGUID, enterGUID, mainRemote, deathGUID = firePrisonerEvent()
 
 
 task.wait(0.7)
@@ -247,7 +251,7 @@ end
 if LocalPlayer.Character then
     teleportCharacter(LocalPlayer.Character)
     task.wait(0.5) -- slight delay before killing
-    LocalPlayer.Character:BreakJoints()
+    mainRemote:FireServer(deathGUID, 150)
 end
 
 -- Teleport again after respawn
