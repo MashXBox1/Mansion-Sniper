@@ -227,6 +227,7 @@ end
 task.wait(1)
 
 
+repeat task.wait() until LocalPlayer.Team and LocalPlayer.Team.Name == "Criminal"
 
 -- Wait until the player is on the "Criminal" team
 local Players = game:GetService("Players")
