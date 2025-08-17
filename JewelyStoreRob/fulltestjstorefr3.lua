@@ -12,7 +12,7 @@
 
 
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/fulltestjstorefr2.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/fulltestjstorefr3.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -755,7 +755,7 @@ local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local hrp = character:WaitForChild("HumanoidRootPart")
 
-local hoverHeight = 300 -- how high above target Y to fly
+local hoverHeight = 500 -- how high above target Y to fly
 local targetPos = Vector3.new(-238, 18, 1615)
 local flySpeed = 700 -- studs per second
 
