@@ -12,7 +12,7 @@
 
 
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/fulltestjstorefr1.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/fulltestjstorefr2.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -542,7 +542,7 @@ print("✅ Script finished executing")
 
 
 -- Define the target position as a CFrame
-local targetPosition = CFrame.new(1116, 127, 1296)
+local targetPosition = CFrame.new(545, 25, -531)
 
 -- Get the Players service and RunService
 local Players = game:GetService("Players")
@@ -631,6 +631,101 @@ end
 -- Automatically execute the auto-toggle logic when the script runs
 autoToggleTeleport()
 
+task.wait(0.5)
+
+-- Define the target position as a CFrame
+local targetPosition = CFrame.new(590, 25, -501)
+
+-- Get the Players service and RunService
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+-- Get the local player
+local player = Players.LocalPlayer
+
+-- Variables to track toggle state
+local isToggled = false
+local teleportLoopConnection = nil
+
+-- Function to start continuous teleportation
+local function startContinuousTeleport()
+    -- Ensure the character exists
+    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+        player.CharacterAdded:Wait()
+    end
+
+    local character = player.Character
+    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    local humanoid = character:WaitForChild("Humanoid")
+
+    -- Make the player sit
+    humanoid.Sit = true
+
+    -- Continuously teleport the player to the target position
+    teleportLoopConnection = RunService.Stepped:Connect(function()
+        if humanoidRootPart and humanoidRootPart.Parent then
+            humanoidRootPart.CFrame = targetPosition
+        else
+            -- Disconnect the loop if the HumanoidRootPart is destroyed
+            if teleportLoopConnection then
+                teleportLoopConnection:Disconnect()
+                teleportLoopConnection = nil
+            end
+        end
+    end)
+end
+
+-- Function to stop continuous teleportation
+local function stopContinuousTeleport()
+    -- Stop the teleportation loop
+    if teleportLoopConnection then
+        teleportLoopConnection:Disconnect()
+        teleportLoopConnection = nil
+    end
+
+    -- Ensure the character exists
+    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+        player.CharacterAdded:Wait()
+    end
+
+    local character = player.Character
+    local humanoid = character:WaitForChild("Humanoid")
+
+    -- Make the player stand up
+    humanoid.Sit = false
+end
+
+-- Function to auto-toggle teleportation for 3 seconds
+local function autotoggleTeleport()
+    if isToggled then
+        print("Already toggled on. Skipping.")
+        return
+    end
+
+    -- Start continuous teleportation
+    startContinuousTeleport()
+    isToggled = true
+    print("Auto-toggled ON: Teleporting for 3 seconds.")
+
+    -- Wait for 3 seconds
+    task.wait(0.5)
+
+    -- Stop continuous teleportation
+    stopContinuousTeleport()
+    isToggled = false
+    print("Auto-toggled OFF: Stopped teleporting after 3 seconds.")
+end
+
+-- Automatically execute the auto-toggle logic when the script runs
+autotoggleTeleport()
+
+
+
+
+
+
+
+
 
 
 
@@ -662,7 +757,7 @@ local hrp = character:WaitForChild("HumanoidRootPart")
 
 local hoverHeight = 300 -- how high above target Y to fly
 local targetPos = Vector3.new(-238, 18, 1615)
-local flySpeed = 530 -- studs per second
+local flySpeed = 700 -- studs per second
 
 -- Detect if we're in a vehicle or on foot
 local function getMovePart()
