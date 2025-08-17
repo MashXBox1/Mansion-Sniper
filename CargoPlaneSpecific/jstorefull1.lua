@@ -12,7 +12,7 @@
 
 
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/jstorefull.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelyStoreRob/jstorefull1.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -97,7 +97,7 @@ local function serverHop()
     local candidates = {}
 
     for _, server in ipairs(result.data) do
-        if server.id ~= currentJobId and server.playing >= 2 and server.playing < 24 then
+        if server.id ~= currentJobId and server.playing >= 2 and server.playing < 20 then
             table.insert(candidates, server.id)
         end
     end
