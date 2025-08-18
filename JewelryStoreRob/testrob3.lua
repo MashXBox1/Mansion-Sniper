@@ -1,5 +1,5 @@
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/testrob2.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/testrob3.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -898,7 +898,7 @@ local hrp = character:WaitForChild("HumanoidRootPart")
 
 local hoverHeight = 500 -- how high above target Y to fly
 local targetPos = Vector3.new(-238, 18, 1615)
-local flySpeed = 730 -- studs per second
+local flySpeed = 690 -- studs per second
 
 -- Detect if we're in a vehicle or on foot
 local function getMovePart()
