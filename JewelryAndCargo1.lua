@@ -1,5 +1,5 @@
 --== UNIVERSAL CONFIG ==--
-local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/YourUniversalLinkHere/universal_payload.lua"))()]]
+local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryAndCargo1.lua"))()]]
 
 --== UNIVERSAL SERVICES ==--
 local Players = game:GetService("Players")
