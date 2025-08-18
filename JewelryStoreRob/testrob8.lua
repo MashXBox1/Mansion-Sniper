@@ -1,5 +1,5 @@
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/testrob7.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/testrob8.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -891,120 +891,83 @@ local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local hrp = character:WaitForChild("HumanoidRootPart")
 
--- Configuration
-local TARGET_POSITION = Vector3.new(-238, 18, 1615)
-local HOVER_HEIGHT = 500
-local FLIGHT_SPEED = 600
-local DESCENT_SPEED = 1200
-local ARRIVAL_THRESHOLD = 5
-local HEIGHT_CORRECTION_FORCE = 5000
+local hoverHeight = 500 -- how high above target Y to fly
+local targetPos = Vector3.new(-238, 18, 1615)
+local flySpeed = 690 -- studs per second
+local checkDelay = 1 -- seconds to wait atop before drop
 
--- Flight control
-local isFlying = false
-local bodyGyro, bodyVelocity, bodyPosition
-
--- Get the primary moving part (handles vehicles)
+-- Detect if we're in a vehicle or on foot
 local function getMovePart()
-    if humanoid.SeatPart and humanoid.SeatPart:IsA("BasePart") then
-        local vehicle = humanoid.SeatPart:FindFirstAncestorOfClass("Model")
+    local seat = humanoid.SeatPart
+    if seat and seat:IsA("BasePart") then
+        local vehicle = seat:FindFirstAncestorOfClass("Model")
         if vehicle and vehicle.PrimaryPart then
             return vehicle.PrimaryPart
         end
-        return humanoid.SeatPart
+        return seat
     end
     return hrp
 end
 
--- Create flight controls
-local function createFlightControls(part)
-    -- Remove existing controls
-    if bodyGyro then bodyGyro:Destroy() end
-    if bodyVelocity then bodyVelocity:Destroy() end
-    if bodyPosition then bodyPosition:Destroy() end
-    
-    -- Create new controls
-    bodyGyro = Instance.new("BodyGyro")
-    bodyGyro.Name = "FlightGyro"
-    bodyGyro.P = 10000
-    bodyGyro.D = 500
-    bodyGyro.MaxTorque = Vector3.new(40000, 40000, 40000)
-    bodyGyro.CFrame = part.CFrame
-    bodyGyro.Parent = part
-    
-    bodyVelocity = Instance.new("BodyVelocity")
-    bodyVelocity.Name = "FlightVelocity"
-    bodyVelocity.P = 1000
-    bodyVelocity.MaxForce = Vector3.new(40000, 40000, 40000)
-    bodyVelocity.Velocity = Vector3.new()
-    bodyVelocity.Parent = part
-    
-    -- Add BodyPosition for precise altitude control
-    bodyPosition = Instance.new("BodyPosition")
-    bodyPosition.Name = "FlightPosition"
-    bodyPosition.P = 10000
-    bodyPosition.D = 1000
-    bodyPosition.MaxForce = Vector3.new(0, HEIGHT_CORRECTION_FORCE, 0)
-    bodyPosition.Position = part.Position
-    bodyPosition.Parent = part
-end
+-- Phase control
+local phase = "flyHorizontal"
+local waitTimer = 0
+local atopConfirmed = false
 
--- Main flight function
-local function flyToTarget()
-    if isFlying then return end
-    isFlying = true
-    
-    local movePart = getMovePart()
-    createFlightControls(movePart)
-    
-    -- Store original gravity state
-    local originalGravity = movePart:GetPropertyChangedSignal("AssemblyLinearVelocity"):Connect(function() end)
-    
-    -- Phase 1: Ascend to hover height
-    local targetHoverPos = Vector3.new(movePart.Position.X, TARGET_POSITION.Y + HOVER_HEIGHT, movePart.Position.Z)
-    bodyPosition.Position = targetHoverPos
-    
-    -- Wait until we reach hover height
-    while isFlying and (movePart.Position.Y - targetHoverPos.Y).Magnitude > ARRIVAL_THRESHOLD do
-        bodyGyro.CFrame = CFrame.new(movePart.Position, movePart.Position + movePart.CFrame.LookVector)
-        RunService.Heartbeat:Wait()
-    end
-    
-    -- Phase 2: Move horizontally to target
-    local horizontalTarget = Vector3.new(TARGET_POSITION.X, TARGET_POSITION.Y + HOVER_HEIGHT, TARGET_POSITION.Z)
-    
-    while isFlying and (Vector3.new(movePart.Position.X, 0, movePart.Position.Z) - Vector3.new(horizontalTarget.X, 0, horizontalTarget.Z)).Magnitude > ARRIVAL_THRESHOLD do
-        local direction = (horizontalTarget - movePart.Position)
-        direction = Vector3.new(direction.X, 0, direction.Z).Unit
-        
-        bodyVelocity.Velocity = direction * FLIGHT_SPEED
-        bodyGyro.CFrame = CFrame.new(movePart.Position, movePart.Position + direction)
-        bodyPosition.Position = Vector3.new(movePart.Position.X, horizontalTarget.Y, movePart.Position.Z)
-        
-        RunService.Heartbeat:Wait()
-    end
-    
-    -- Phase 3: Descend to target
-    bodyPosition.MaxForce = Vector3.new(0, HEIGHT_CORRECTION_FORCE * 2, 0) -- More force for faster descent
-    
-    while isFlying and (movePart.Position - TARGET_POSITION).Magnitude > ARRIVAL_THRESHOLD do
-        local direction = (TARGET_POSITION - movePart.Position).Unit
-        bodyVelocity.Velocity = direction * DESCENT_SPEED
-        bodyGyro.CFrame = CFrame.new(movePart.Position, movePart.Position + Vector3.new(direction.X, 0, direction.Z))
-        bodyPosition.Position = TARGET_POSITION
-        
-        RunService.Heartbeat:Wait()
-    end
-    
-    -- Clean up
-    if bodyGyro then bodyGyro:Destroy() end
-    if bodyVelocity then bodyVelocity:Destroy() end
-    if bodyPosition then bodyPosition:Destroy() end
-    originalGravity:Disconnect()
-    isFlying = false
-end
+RunService.Heartbeat:Connect(function(dt)
+    local part = getMovePart()
 
--- Start flying
-flyToTarget()
+    -- Cancel gravity/forces
+    part.AssemblyLinearVelocity = Vector3.zero
+    part.AssemblyAngularVelocity = Vector3.zero
+
+    if phase == "flyHorizontal" then
+        local currentPos = part.Position
+
+        -- Lock to target Y + hoverHeight
+        local targetHoverPos = Vector3.new(targetPos.X, targetPos.Y + hoverHeight, targetPos.Z)
+
+        -- Only move horizontally
+        local deltaXZ = Vector3.new(targetHoverPos.X - currentPos.X, 0, targetHoverPos.Z - currentPos.Z)
+        local distXZ = deltaXZ.Magnitude
+
+        if distXZ < 1 then
+            -- Snap to hover spot above target
+            part.CFrame = CFrame.new(targetHoverPos, targetHoverPos + part.CFrame.LookVector)
+            phase = "checkAtop"
+            waitTimer = 0
+            atopConfirmed = false
+            return
+        end
+
+        local moveStep = math.min(flySpeed * dt, distXZ)
+        local moveDir = deltaXZ.Unit
+        local newPos = currentPos + Vector3.new(moveDir.X * moveStep, 0, moveDir.Z * moveStep)
+
+        -- Keep fixed height while flying
+        newPos = Vector3.new(newPos.X, targetPos.Y + hoverHeight, newPos.Z)
+        part.CFrame = CFrame.new(newPos, newPos + part.CFrame.LookVector)
+
+    elseif phase == "checkAtop" then
+        waitTimer = waitTimer + dt
+
+        -- Check if still above target
+        local horizontalDist = (Vector3.new(part.Position.X, 0, part.Position.Z) - Vector3.new(targetPos.X, 0, targetPos.Z)).Magnitude
+        if horizontalDist > 1 then
+            -- Re-travel to target hover
+            part.CFrame = CFrame.new(Vector3.new(targetPos.X, targetPos.Y + hoverHeight, targetPos.Z), part.CFrame.LookVector + Vector3.new(targetPos.X, 0, targetPos.Z))
+            waitTimer = 0 -- reset timer while moving
+        elseif waitTimer >= checkDelay then
+            atopConfirmed = true
+            phase = "dropDown"
+        end
+
+    elseif phase == "dropDown" then
+        -- Instantly snap to target coordinates
+        part.CFrame = CFrame.new(targetPos, targetPos + part.CFrame.LookVector)
+        phase = "done"
+    end
+end)
 
 
 
