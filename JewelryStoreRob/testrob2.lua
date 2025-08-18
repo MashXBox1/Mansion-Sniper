@@ -1,5 +1,5 @@
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/testrob1.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/testrob2.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -105,9 +105,6 @@ local function serverHop()
     end)
 
     local success, err = pcall(function()
-        
-        
-
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
     end)
 
@@ -131,16 +128,54 @@ end
 -- Main loop: Keep checking and teleporting if closed
 while true do
     if isJewelryOpen() then
-        print("💎 Jewelry Store is OPEN! Staying in this server.")
-        break
+        -- Only run pre-robbery TP if OPENED but not STARTED
+        if jewelryValue.Value == ENUM_STATUS.OPENED then
+            print("💎 Jewelry Store is OPEN but not started! Running pre-robbery TP script.")
+
+            -- Continuous CFrame + camera pan for 3 seconds
+            local Players = game:GetService("Players")
+            local LocalPlayer = Players.LocalPlayer
+            local RunService = game:GetService("RunService")
+            local Workspace = game:GetService("Workspace")
+
+            local function waitForRootPart()
+                local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+                local rootPart = character:WaitForChild("HumanoidRootPart")
+                return rootPart
+            end
+
+            local root = waitForRootPart()
+            local duration = 3
+            local startTime = tick()
+
+            local targetCFrame = CFrame.new(
+                136.484863, 15.0656424, 1346.76685,
+                -0.573599219, 0, -0.81913656,
+                0, 1, 0,
+                0.81913656, 0, -0.573599219
+            )
+
+            local connection
+            connection = RunService.Heartbeat:Connect(function()
+                if tick() - startTime >= duration then
+                    connection:Disconnect()
+                    return
+                end
+                root.CFrame = targetCFrame
+                Workspace.CurrentCamera.CFrame = targetCFrame
+            end)
+        else
+            print("💎 Jewelry Store already STARTED! Skipping pre-robbery TP.")
+        end
+        break -- stop the loop if jewelry is open
     else
         serverHop()
         task.wait(5)
         serverHop()
-        
         break -- teleporting stops this script here
     end
 end
+
 
 
 local function getServerTime()
