@@ -1,5 +1,5 @@
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/testrob.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/testrob1.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -740,53 +740,56 @@ autoToggleTeleport()
 
 task.wait(0.7)
 
--- Define the target position as a Vector3
-local targetPosition = Vector3.new(590, 25, -501)
-
--- Get services
+-- Services
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- Get the local player
+-- Target position
+local targetPosition = Vector3.new(590, 25, -501)
+
+-- Local player
 local player = Players.LocalPlayer
 
--- Function to fly to the target position and block until arrival
-local function flyToTarget()
-    -- Ensure character is ready
-    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
-        player.CharacterAdded:Wait()
-    end
-
-    local character = player.Character
+-- Function to safely tween the player to the target
+local function flyToTargetSafe()
+    -- Wait for character and HumanoidRootPart
+    local character = player.Character or player.CharacterAdded:Wait()
     local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
+    -- Tween parameters
     local speed = 100 -- studs per second
-    local startPos = humanoidRootPart.Position
-    local distance = (targetPosition - startPos).Magnitude
+    local distance = (targetPosition - humanoidRootPart.Position).Magnitude
     local travelTime = distance / speed
-    local startTime = tick()
 
-    -- Move in a straight line until arrival
-    while true do
-        if not humanoidRootPart or not humanoidRootPart.Parent then
-            break
-        end
+    local tweenInfo = TweenInfo.new(
+        travelTime,
+        Enum.EasingStyle.Linear, -- straight linear movement
+        Enum.EasingDirection.Out
+    )
 
-        local elapsed = tick() - startTime
-        local alpha = math.clamp(elapsed / travelTime, 0, 1)
-        local newPos = startPos:Lerp(targetPosition, alpha)
-        humanoidRootPart.CFrame = CFrame.new(newPos, targetPosition)
+    local tweenGoal = {CFrame = CFrame.new(targetPosition, targetPosition + Vector3.new(0,0,-1))}
 
-        if alpha >= 1 then
-            break
-        end
+    local tween = TweenService:Create(humanoidRootPart, tweenInfo, tweenGoal)
+    tween:Play()
 
-        task.wait() -- yield per frame
+    -- Wait for tween to complete
+    local completed = false
+    tween.Completed:Connect(function()
+        completed = true
+    end)
+
+    -- Block until finished
+    while not completed do
+        RunService.RenderStepped:Wait()
+        -- Optional: keep HumanoidRootPart reference safe
+        if not humanoidRootPart.Parent then break end
     end
 end
 
--- Run it (this will block until at target coords)
-flyToTarget()
+-- Execute
+flyToTargetSafe()
+
 
 
 
