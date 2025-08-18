@@ -1,6 +1,6 @@
 
 --== UNIVERSAL CONFIG ==--
-local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JstoreCargoplane.lua"))()]]
+local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JstoreCargoplane1.lua"))()]]
 
 --== UNIVERSAL SERVICES ==--
 local Players = game:GetService("Players")
@@ -50,7 +50,7 @@ local function serverHop()
         warn("⚠️ Teleport timed out. Trying another...")
     end)
     local success, err = pcall(function()
-        
+        task.wait(3)
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
     end)
     if not success then
