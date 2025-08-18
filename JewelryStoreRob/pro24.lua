@@ -1,5 +1,5 @@
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro23.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro24.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -619,96 +619,59 @@ autoToggleTeleport()
 
 task.wait(0.7)
 
--- Define the target position as a CFrame
-local targetPosition = CFrame.new(590, 25, -501)
+-- Define the target position as a Vector3
+local targetPosition = Vector3.new(590, 25, -501)
 
--- Get the Players service and RunService
+-- Get services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 -- Get the local player
 local player = Players.LocalPlayer
 
--- Variables to track toggle state
-local isToggled = false
-local teleportLoopConnection = nil
-
--- Function to start continuous teleportation
-local function startContinuousTeleport()
-    -- Ensure the character exists
+-- Function to fly to the target position
+local function flyToTarget()
+    -- Ensure character is ready
     if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
         player.CharacterAdded:Wait()
     end
 
     local character = player.Character
     local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-    local humanoid = character:WaitForChild("Humanoid")
 
-    -- Make the player sit
-    humanoid.Sit = true
+    local speed = 100 -- studs per second
+    local startPos = humanoidRootPart.Position
+    local distance = (targetPosition - startPos).Magnitude
+    local travelTime = distance / speed
+    local startTime = tick()
 
-    -- Continuously teleport the player to the target position
-    teleportLoopConnection = RunService.Stepped:Connect(function()
-        if humanoidRootPart and humanoidRootPart.Parent then
-            humanoidRootPart.CFrame = targetPosition
-        else
-            -- Disconnect the loop if the HumanoidRootPart is destroyed
-            if teleportLoopConnection then
-                teleportLoopConnection:Disconnect()
-                teleportLoopConnection = nil
-            end
+    -- Move in a straight line
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        if not humanoidRootPart or not humanoidRootPart.Parent then
+            connection:Disconnect()
+            return
+        end
+
+        local elapsed = tick() - startTime
+        local alpha = math.clamp(elapsed / travelTime, 0, 1)
+        local newPos = startPos:Lerp(targetPosition, alpha)
+        humanoidRootPart.CFrame = CFrame.new(newPos, targetPosition)
+
+        -- Stop when reached
+        if alpha >= 1 then
+            connection:Disconnect()
         end
     end)
 end
 
--- Function to stop continuous teleportation
-local function stopContinuousTeleport()
-    -- Stop the teleportation loop
-    if teleportLoopConnection then
-        teleportLoopConnection:Disconnect()
-        teleportLoopConnection = nil
-    end
-
-    -- Ensure the character exists
-    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
-        player.CharacterAdded:Wait()
-    end
-
-    local character = player.Character
-    local humanoid = character:WaitForChild("Humanoid")
-
-    -- Make the player stand up
-    humanoid.Sit = false
-end
-
--- Function to auto-toggle teleportation for 3 seconds
-local function autotoggleTeleport()
-    if isToggled then
-        print("Already toggled on. Skipping.")
-        return
-    end
-
-    -- Start continuous teleportation
-    startContinuousTeleport()
-    isToggled = true
-    print("Auto-toggled ON: Teleporting for 3 seconds.")
-
-    -- Wait for 3 seconds
-    task.wait(0.5)
-
-    -- Stop continuous teleportation
-    stopContinuousTeleport()
-    isToggled = false
-    print("Auto-toggled OFF: Stopped teleporting after 3 seconds.")
-end
-
--- Automatically execute the auto-toggle logic when the script runs
-autotoggleTeleport()
+-- Run it
+flyToTarget()
 
 
 
 
-
+task.wait(0.3)
 
 
 
