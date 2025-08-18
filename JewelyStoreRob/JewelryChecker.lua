@@ -76,7 +76,7 @@ local function serverHop()
 
     if not success or not result or not result.data then
         warn("❌ Failed to get server list for hopping.")
-        task.wait(12)
+        task.wait(7)
         return serverHop()
     end
 
