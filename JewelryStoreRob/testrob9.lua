@@ -1,5 +1,5 @@
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/testrob8.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/testrob9.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -952,23 +952,33 @@ RunService.Heartbeat:Connect(function(dt)
         waitTimer = waitTimer + dt
 
         -- Check if still above target
-        local horizontalDist = (Vector3.new(part.Position.X, 0, part.Position.Z) - Vector3.new(targetPos.X, 0, targetPos.Z)).Magnitude
-        if horizontalDist > 1 then
-            -- Re-travel to target hover
-            part.CFrame = CFrame.new(Vector3.new(targetPos.X, targetPos.Y + hoverHeight, targetPos.Z), part.CFrame.LookVector + Vector3.new(targetPos.X, 0, targetPos.Z))
-            waitTimer = 0 -- reset timer while moving
+        local currentXZ = Vector3.new(part.Position.X, 0, part.Position.Z)
+        local targetXZ = Vector3.new(targetPos.X, 0, targetPos.Z)
+        local horizontalDist = (currentXZ - targetXZ).Magnitude
+        
+        if horizontalDist > 5 then
+            -- If we drifted too far, go back to flying phase
+            phase = "flyHorizontal"
         elseif waitTimer >= checkDelay then
             atopConfirmed = true
             phase = "dropDown"
         end
 
     elseif phase == "dropDown" then
-        -- Instantly snap to target coordinates
-        part.CFrame = CFrame.new(targetPos, targetPos + part.CFrame.LookVector)
-        phase = "done"
+        -- Smooth drop down to target position
+        local currentPos = part.Position
+        local dropSpeed = 1000 -- studs per second for descent
+        
+        if (currentPos - targetPos).Magnitude < 1 then
+            part.CFrame = CFrame.new(targetPos, targetPos + part.CFrame.LookVector)
+            phase = "done"
+        else
+            local dropStep = math.min(dropSpeed * dt, currentPos.Y - targetPos.Y)
+            local newPos = Vector3.new(targetPos.X, currentPos.Y - dropStep, targetPos.Z)
+            part.CFrame = CFrame.new(newPos, newPos + part.CFrame.LookVector)
+        end
     end
 end)
-
 
 
 
