@@ -1,5 +1,5 @@
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro27.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro28.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -232,7 +232,7 @@ local function firePrisonerEvent()
             end
         end
     end
-
+    task.wait(0.7)
     -- Fire prisoner
     if policeGUID then
         mainRemote:FireServer(policeGUID, "Prisoner")
