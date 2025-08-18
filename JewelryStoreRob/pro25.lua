@@ -1,5 +1,5 @@
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro24.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/pro25.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -620,7 +620,7 @@ autoToggleTeleport()
 task.wait(0.7)
 
 -- Define the target position as a Vector3
-local targetPosition = Vector3.new(590, 25, -501)
+local targetPosition = Vector3.new(600, 25, -490)
 
 -- Get services
 local Players = game:GetService("Players")
