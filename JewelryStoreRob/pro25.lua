@@ -620,7 +620,7 @@ autoToggleTeleport()
 task.wait(0.7)
 
 -- Define the target position as a Vector3
-local targetPosition = Vector3.new(600, 25, -490)
+local targetPosition = Vector3.new(590, 25, -501)
 
 -- Get services
 local Players = game:GetService("Players")
@@ -629,7 +629,7 @@ local RunService = game:GetService("RunService")
 -- Get the local player
 local player = Players.LocalPlayer
 
--- Function to fly to the target position
+-- Function to fly to the target position and block until arrival
 local function flyToTarget()
     -- Ensure character is ready
     if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
@@ -645,12 +645,10 @@ local function flyToTarget()
     local travelTime = distance / speed
     local startTime = tick()
 
-    -- Move in a straight line
-    local connection
-    connection = RunService.Heartbeat:Connect(function()
+    -- Move in a straight line until arrival
+    while true do
         if not humanoidRootPart or not humanoidRootPart.Parent then
-            connection:Disconnect()
-            return
+            break
         end
 
         local elapsed = tick() - startTime
@@ -658,15 +656,20 @@ local function flyToTarget()
         local newPos = startPos:Lerp(targetPosition, alpha)
         humanoidRootPart.CFrame = CFrame.new(newPos, targetPosition)
 
-        -- Stop when reached
         if alpha >= 1 then
-            connection:Disconnect()
+            break
         end
-    end)
+
+        task.wait() -- yield per frame
+    end
 end
 
--- Run it
+-- Run it (this will block until at target coords)
 flyToTarget()
+
+
+
+
 
 
 
