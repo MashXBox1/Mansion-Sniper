@@ -1,5 +1,5 @@
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/testrob5.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/testrob6.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -883,116 +883,134 @@ foundRemote.OnClientEvent:Connect(function(firstArg, secondArg)
 end)
 
 
-
-
-
-
-
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
-local player = Players.LocalPlayer
+local player = game:GetService("Players").LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local hrp = character:WaitForChild("HumanoidRootPart")
 
-local hoverHeight = 500 -- height above target
-local targetPos = Vector3.new(-238, 18, 1615)
-local flySpeed = 690 -- studs per second
+-- Configuration
+local TARGET_POSITION = Vector3.new(-238, 18, 1615)
+local HOVER_HEIGHT = 500
+local FLIGHT_SPEED = 600
+local DESCENT_SPEED = 1200  -- Faster speed for descending
+local ARRIVAL_THRESHOLD = 0  -- How close we need to be to consider arrived
 
--- Detect movement part and vehicle
-local function getMoveParts()
-    local seat = humanoid.SeatPart
-    if seat and seat:IsA("BasePart") then
-        local vehicle = seat:FindFirstAncestorOfClass("Model")
+-- Flight state tracking
+local isFlying = false
+local currentPhase = 1  -- 1 = ascending, 2 = moving horizontally, 3 = descending
+local bodyGyro, bodyVelocity
+
+-- Get the primary moving part (handles vehicles)
+local function getMovePart()
+    if humanoid.SeatPart and humanoid.SeatPart:IsA("BasePart") then
+        local vehicle = humanoid.SeatPart:FindFirstAncestorOfClass("Model")
         if vehicle and vehicle.PrimaryPart then
-            -- Return all parts of the vehicle that need to be moved
-            local parts = {}
-            for _, part in ipairs(vehicle:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    table.insert(parts, part)
-                end
-            end
-            return parts, vehicle.PrimaryPart
+            return vehicle.PrimaryPart
         end
-        return {seat}, seat
+        return humanoid.SeatPart
     end
-    return {hrp}, hrp
+    return hrp
 end
 
--- Calculate offset for vehicle parts
-local function calculateOffsets(parts, primaryPart)
-    local offsets = {}
-    local primaryCF = primaryPart.CFrame
+-- Create flight controls
+local function createFlightControls(part)
+    -- Remove existing controls if they exist
+    if bodyGyro then bodyGyro:Destroy() end
+    if bodyVelocity then bodyVelocity:Destroy() end
     
-    for _, part in ipairs(parts) do
-        if part ~= primaryPart then
-            offsets[part] = primaryCF:ToObjectSpace(part.CFrame)
-        end
-    end
+    -- Create new controls
+    bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.Name = "FlightGyro"
+    bodyGyro.P = 10000
+    bodyGyro.D = 500
+    bodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    bodyGyro.CFrame = part.CFrame
+    bodyGyro.Parent = part
     
-    return offsets
+    bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.Name = "FlightVelocity"
+    bodyVelocity.P = 10000
+    bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    bodyVelocity.Velocity = Vector3.new()
+    bodyVelocity.Parent = part
 end
 
--- Apply offsets to maintain vehicle structure
-local function applyOffsets(primaryCF, offsets)
-    for part, offset in pairs(offsets) do
-        part.CFrame = primaryCF * offset
-    end
-end
-
--- Tween helper with vehicle support
-local function tweenTo(primaryPart, parts, offsets, goalCFrame, speed)
-    local distance = (primaryPart.Position - goalCFrame.Position).Magnitude
-    local time = distance / speed
-
+-- Main flight function
+local function flyToTarget()
+    if isFlying then return end
+    isFlying = true
+    
+    local movePart = getMovePart()
+    createFlightControls(movePart)
+    
+    -- Phase 1: Ascend to hover height
+    currentPhase = 1
+    local startPos = movePart.Position
+    local targetHoverPos = Vector3.new(startPos.X, TARGET_POSITION.Y + HOVER_HEIGHT, startPos.Z)
+    
+    -- Phase 2: Move horizontally to target
+    local horizontalTarget = Vector3.new(TARGET_POSITION.X, TARGET_POSITION.Y + HOVER_HEIGHT, TARGET_POSITION.Z)
+    
+    -- Phase 3: Descend to target
+    local finalTarget = TARGET_POSITION
+    
+    -- Flight loop
     local connection
-    local tweenInfo = TweenInfo.new(time, Enum.EasingStyle.Linear)
-    local tween = TweenService:Create(primaryPart, tweenInfo, {CFrame = goalCFrame})
-    
-    -- Update other parts during tween
-    connection = RunService.Heartbeat:Connect(function()
-        applyOffsets(primaryPart.CFrame, offsets)
+    connection = RunService.Heartbeat:Connect(function(dt)
+        local currentPos = movePart.Position
+        
+        -- Update gyro to maintain orientation
+        bodyGyro.CFrame = CFrame.new(currentPos, currentPos + movePart.CFrame.LookVector)
+        
+        if currentPhase == 1 then
+            -- Ascending phase
+            local direction = (targetHoverPos - currentPos).Unit
+            bodyVelocity.Velocity = direction * FLIGHT_SPEED
+            
+            -- Check if we've reached hover height
+            if math.abs(currentPos.Y - targetHoverPos.Y) < ARRIVAL_THRESHOLD then
+                currentPhase = 2
+            end
+        elseif currentPhase == 2 then
+            -- Horizontal movement phase
+            -- Calculate direction only on XZ plane
+            local horizontalDirection = (horizontalTarget - currentPos)
+            horizontalDirection = Vector3.new(horizontalDirection.X, 0, horizontalDirection.Z).Unit
+            
+            -- Apply velocity with vertical stabilization
+            bodyVelocity.Velocity = horizontalDirection * FLIGHT_SPEED + 
+                                  Vector3.new(0, (targetHoverPos.Y - currentPos.Y) * 5, 0)
+            
+            -- Check if we've reached horizontal position
+            local horizontalDistance = (Vector3.new(horizontalTarget.X, 0, horizontalTarget.Z) - 
+                                       Vector3.new(currentPos.X, 0, currentPos.Z)).Magnitude
+            if horizontalDistance < ARRIVAL_THRESHOLD then
+                currentPhase = 3
+            end
+        elseif currentPhase == 3 then
+            -- Descending phase
+            local direction = (finalTarget - currentPos).Unit
+            bodyVelocity.Velocity = direction * DESCENT_SPEED
+            
+            -- Check if we've arrived
+            if (finalTarget - currentPos).Magnitude < ARRIVAL_THRESHOLD then
+                -- Clean up
+                connection:Disconnect()
+                if bodyGyro then bodyGyro:Destroy() end
+                if bodyVelocity then bodyVelocity:Destroy() end
+                isFlying = false
+            end
+        end
     end)
-    
-    tween:Play()
-    tween.Completed:Wait()
-    connection:Disconnect()
 end
 
--- Main sequence
-spawn(function()
-    local parts, primaryPart = getMoveParts()
-    local offsets = calculateOffsets(parts, primaryPart)
-    
-    -- Freeze physics for all parts
-    for _, part in ipairs(parts) do
-        part.Anchored = true
-    end
+-- Start flying
+flyToTarget()
 
-    -- Phase 1: Tween up
-    local upPos = primaryPart.Position + Vector3.new(0, hoverHeight, 0)
-    tweenTo(primaryPart, parts, offsets, CFrame.new(upPos, upPos + primaryPart.CFrame.LookVector), flySpeed)
 
-    -- Phase 2: Fly horizontally to target hover point
-    local targetHover = Vector3.new(targetPos.X, targetPos.Y + hoverHeight, targetPos.Z)
-    tweenTo(primaryPart, parts, offsets, CFrame.new(targetHover, targetHover + primaryPart.CFrame.LookVector), flySpeed)
 
-    -- Phase 3: Tween down to target
-    tweenTo(primaryPart, parts, offsets, CFrame.new(targetPos, targetPos + primaryPart.CFrame.LookVector), flySpeed)
-    
-    -- Restore physics
-    for _, part in ipairs(parts) do
-        part.Anchored = false
-    end
-end)
 
--- Optional: cancel forces while flying
-RunService.Heartbeat:Connect(function()
-    local parts = getMoveParts()
-    for _, part in ipairs(parts) do
-        part.AssemblyLinearVelocity = Vector3.zero
-        part.AssemblyAngularVelocity = Vector3.zero
-    end
-end)
+
