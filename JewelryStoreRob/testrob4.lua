@@ -1,5 +1,5 @@
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/testrob3.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/testrob4.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -889,6 +889,7 @@ end)
 
 
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
@@ -896,11 +897,11 @@ local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local hrp = character:WaitForChild("HumanoidRootPart")
 
-local hoverHeight = 500 -- how high above target Y to fly
+local hoverHeight = 500 -- height above target
 local targetPos = Vector3.new(-238, 18, 1615)
 local flySpeed = 690 -- studs per second
 
--- Detect if we're in a vehicle or on foot
+-- Detect movement part (vehicle or HRP)
 local function getMovePart()
     local seat = humanoid.SeatPart
     if seat and seat:IsA("BasePart") then
@@ -913,43 +914,37 @@ local function getMovePart()
     return hrp
 end
 
--- Phase control
-local phase = "flyHorizontal"
+-- Tween helper
+local function tweenTo(part, goalCFrame, speed)
+    local distance = (part.Position - goalCFrame.Position).Magnitude
+    local time = distance / speed
 
-RunService.Heartbeat:Connect(function(dt)
+    local tweenInfo = TweenInfo.new(time, Enum.EasingStyle.Linear)
+    local tween = TweenService:Create(part, tweenInfo, {CFrame = goalCFrame})
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Main sequence
+spawn(function()
     local part = getMovePart()
 
-    -- Cancel gravity/forces
+    -- Phase 1: Tween up
+    local upPos = part.Position + Vector3.new(0, hoverHeight, 0)
+    tweenTo(part, CFrame.new(upPos, upPos + part.CFrame.LookVector), flySpeed)
+
+    -- Phase 2: Fly horizontally to target hover point
+    local targetHover = Vector3.new(targetPos.X, targetPos.Y + hoverHeight, targetPos.Z)
+    tweenTo(part, CFrame.new(targetHover, targetHover + part.CFrame.LookVector), flySpeed)
+
+    -- Phase 3: Tween down to target
+    tweenTo(part, CFrame.new(targetPos, targetPos + part.CFrame.LookVector), flySpeed)
+end)
+
+-- Optional: cancel gravity/forces while flying
+RunService.Heartbeat:Connect(function()
+    local part = getMovePart()
     part.AssemblyLinearVelocity = Vector3.zero
     part.AssemblyAngularVelocity = Vector3.zero
-
-    if phase == "flyHorizontal" then
-        local currentPos = part.Position
-        -- Lock to target Y + hoverHeight
-        local targetHoverPos = Vector3.new(targetPos.X, targetPos.Y + hoverHeight, targetPos.Z)
-
-        -- Only move horizontally
-        local deltaXZ = Vector3.new(targetHoverPos.X - currentPos.X, 0, targetHoverPos.Z - currentPos.Z)
-        local distXZ = deltaXZ.Magnitude
-
-        if distXZ < 1 then
-            -- Snap to hover spot above target
-            part.CFrame = CFrame.new(targetHoverPos, targetHoverPos + part.CFrame.LookVector)
-            phase = "dropDown"
-            return
-        end
-
-        local moveStep = math.min(flySpeed * dt, distXZ)
-        local moveDir = deltaXZ.Unit
-        local newPos = currentPos + Vector3.new(moveDir.X * moveStep, 0, moveDir.Z * moveStep)
-
-        -- Keep fixed height while flying
-        newPos = Vector3.new(newPos.X, targetPos.Y + hoverHeight, newPos.Z)
-        part.CFrame = CFrame.new(newPos, newPos + part.CFrame.LookVector)
-
-    elseif phase == "dropDown" then
-        -- Instantly snap to target coordinates
-        part.CFrame = CFrame.new(targetPos, targetPos + part.CFrame.LookVector)
-        phase = "done"
-    end
 end)
+
