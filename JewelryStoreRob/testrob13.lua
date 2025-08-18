@@ -1,5 +1,5 @@
 --== CONFIG: Replace this with whatever you want to run in the new server ==--
-local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/testrob12.lua"))()]]
+local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JewelryStoreRob/testrob13.lua"))()]]
 
 --== SERVICES ==--
 local Players = game:GetService("Players")
@@ -630,7 +630,7 @@ end
 local function fireEvents()
     for i = 1, 10 do  -- Fire 10 times
         foundRemote:FireServer(DiamondGUID)
-        task.wait(0.2  -- Fire every 0.2 seconds
+        task.wait(0.2)  -- Fire every 0.2 seconds
     end
 end
 
@@ -674,7 +674,7 @@ for i, waypoint in ipairs(path) do
         break
     else
         print("❌ Not enough cash - continuing to next waypoint")
-        task.wait(1)  -- Wait before next waypoint
+        task.wait(0.5)  -- Wait before next waypoint
     end
 end
 
@@ -896,7 +896,7 @@ local hrp = character:WaitForChild("HumanoidRootPart")
 
 local hoverHeight = 500 -- how high above target Y to fly
 local targetPos = Vector3.new(-238, 18, 1615)
-local flySpeed = 690 -- studs per second
+local flySpeed = 720 -- studs per second
 local checkDelay = 1 -- seconds to wait atop before drop
 
 -- Detect if we're in a vehicle or on foot
