@@ -1,6 +1,6 @@
 
 --== UNIVERSAL CONFIG ==--
-local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JstorePlaneCasino1.lua"))()]]
+local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JstorePlaneCasino2.lua"))()]]
 
 --== UNIVERSAL SERVICES ==--
 local Players = game:GetService("Players")
@@ -474,6 +474,7 @@ local function JewelryRob()
 
     if not targetVehicle or not targetVehicle:FindFirstChild("Seat") then
         warn("❌ No suitable vehicle with Seat found")
+        serverHop()
         return
     end
 
@@ -1327,6 +1328,7 @@ local function CargoPlaneRob()
 
     if not targetVehicle or not targetVehicle:FindFirstChild("Seat") then
         warn("❌ No suitable vehicle with Seat found")
+        serverHop()
         return
     end
 
