@@ -1,6 +1,6 @@
 
 --== UNIVERSAL CONFIG ==--
-local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JstoreCargoplane2.lua"))()]]
+local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JstoreCargoplane3.lua"))()]]
 
 --== UNIVERSAL SERVICES ==--
 local Players = game:GetService("Players")
@@ -1516,7 +1516,7 @@ local function CargoPlaneRob()
         local crateNames = {"Crate1", "Crate2", "Crate3", "Crate4", "Crate5", "Crate6", "Crate7"}
         
         while not hasCrate() do
-            isCargoPlaneOpen()
+            if not isCargoPlaneOpen() then serverHop() end
             
             for _, crateName in ipairs(crateNames) do
                 foundRemote:FireServer(CratePickupGUID, crateName)
