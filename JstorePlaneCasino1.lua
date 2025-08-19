@@ -1,6 +1,6 @@
 
 --== UNIVERSAL CONFIG ==--
-local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JstorePlaneCasino.lua"))()]]
+local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JstorePlaneCasino1.lua"))()]]
 
 --== UNIVERSAL SERVICES ==--
 local Players = game:GetService("Players")
@@ -581,7 +581,7 @@ local function JewelryRob()
         local humanoid = character:WaitForChild("Humanoid")
 
         -- Make the player stand up
-        humanoid.Sit = false
+        
     end
 
     -- Function to auto-toggle teleportation for 3 seconds
@@ -1616,6 +1616,31 @@ local function CargoPlaneRob()
 
     task.wait(3)
 
+    local function getServerTime()
+        local timeFetch = ReplicatedStorage:FindFirstChild("GetServerTime")
+        if timeFetch and timeFetch:IsA("RemoteFunction") then
+            return timeFetch:InvokeServer()
+        else
+            return os.time()
+        end
+    end
+
+    -- Wait exactly 360 seconds from server time
+    local function wait360Seconds()
+        local startTime = getServerTime()
+        local endTime = startTime + 30
+
+        local connection
+        connection = RunService.Heartbeat:Connect(function()
+            if os.time() >= endTime then
+                connection:Disconnect() -- Stop checking
+                serverHop()
+            end
+        end)
+    end
+
+    wait360Seconds()
+
 
 
     foundRemote.OnClientEvent:Connect(function(firstArg, secondArg)
@@ -1709,10 +1734,35 @@ local function CargoPlaneRob()
 end
 
 local function CasinoRob()
+    
     --== SERVICES ==--
     local Players = game:GetService("Players")
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local LocalPlayer = Players.LocalPlayer
+    local function getServerTime()
+        local timeFetch = ReplicatedStorage:FindFirstChild("GetServerTime")
+        if timeFetch and timeFetch:IsA("RemoteFunction") then
+            return timeFetch:InvokeServer()
+        else
+            return os.time()
+        end
+    end
+
+    -- Wait exactly 360 seconds from server time
+    local function wait360Seconds()
+        local startTime = getServerTime()
+        local endTime = startTime + 65
+
+        local connection
+        connection = RunService.Heartbeat:Connect(function()
+            if os.time() >= endTime then
+                connection:Disconnect() -- Stop checking
+                serverHop()
+            end
+        end)
+    end
+
+    wait360Seconds()
 
     --== CONFIG: Script to run after teleport ==--
 
