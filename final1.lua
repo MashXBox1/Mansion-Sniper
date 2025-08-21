@@ -1,6 +1,10 @@
 
 --== UNIVERSAL CONFIG ==--
-local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/final.lua"))()]]
+local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/final1.lua"))()]]
+
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
 --== Services ==--
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -111,9 +115,7 @@ local LocalPlayer = Players.LocalPlayer
 queue_on_teleport(universalPayloadScript)
 
 -- Wait for game fully loaded
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
+
 
 -- Universal server hopping logic using Raise API
 local function serverHop()
