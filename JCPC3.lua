@@ -1,6 +1,6 @@
 
 --== UNIVERSAL CONFIG ==--
-local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JCPC2.lua"))()]]
+local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/JCPC3.lua"))()]]
 
 --== UNIVERSAL SERVICES ==--
 local Players = game:GetService("Players")
@@ -1282,7 +1282,7 @@ local function CargoPlaneRob()
         end
         return nil
     end
-    repeat task.wait() until player.Team.Name == "Criminal"
+    
     local function startTeleportToPlane()
         local HEIGHT_ABOVE_PLANE = 10
         
