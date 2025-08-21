@@ -1,6 +1,6 @@
 
 --== UNIVERSAL CONFIG ==--
-local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/diddy.lua"))()]]
+local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/diddy1.lua"))()]]
 
 --== UNIVERSAL SERVICES ==--
 local Players = game:GetService("Players")
@@ -516,7 +516,7 @@ local function JewelryRob()
         
         local part = getNearestBoxPart()
         if part then
-            hrp.CFrame = part.CFrame + Vector3.new(0, 1, 0) -- teleport slightly above the part
+            hrp.CFrame = part.CFrame + Vector3.new(0, 2, 0) -- teleport slightly above the part
         end
     end)
 
