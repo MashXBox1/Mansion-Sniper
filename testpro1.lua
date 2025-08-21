@@ -1,6 +1,6 @@
 
 --== UNIVERSAL CONFIG ==--
-local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testpro.lua"))()]]
+local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testpro1.lua"))()]]
 
 if not game:IsLoaded() then
     game.Loaded:Wait()
@@ -70,24 +70,47 @@ Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.BackgroundTransparency = 1
 Title.Parent = Frame
 
--- Add LogBox for logs
-local LogBox = Instance.new("TextBox")
-LogBox.Size = UDim2.new(1, -20, 0, 60) -- Adjust height as needed
-LogBox.Position = UDim2.new(0, 10, 0, 160) -- Position below toggles
-LogBox.BackgroundTransparency = 0.5
-LogBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-LogBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-LogBox.TextWrapped = true
-LogBox.ClearTextOnFocus = false
-LogBox.TextYAlignment = Enum.TextYAlignment.Top
-LogBox.Text = ""
-LogBox.Parent = Frame
+-- Add ScrollingFrame for logs
+local LogFrame = Instance.new("ScrollingFrame")
+LogFrame.Size = UDim2.new(1, -20, 0, 60) -- Adjust height as needed
+LogFrame.Position = UDim2.new(0, 10, 0, 160) -- Position below toggles
+LogFrame.BackgroundTransparency = 0.5
+LogFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+LogFrame.BorderSizePixel = 0
+LogFrame.ScrollBarThickness = 6
+LogFrame.CanvasSize = UDim2.new(0, 0, 0, 0) -- Dynamic size
+LogFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+LogFrame.Parent = Frame
 
--- Log function to append messages to the LogBox
+-- Add UIListLayout to manage log entries
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 2)
+UIListLayout.Parent = LogFrame
+
+-- Log function to append messages to the LogFrame
 local function log(message)
-    LogBox.Text = LogBox.Text .. "\n" .. message
-    -- Optional: Scroll to the bottom
-    LogBox.CanvasPosition = Vector2.new(0, LogBox.AbsoluteSize.Y)
+    -- Create a new TextLabel for the log message
+    local logEntry = Instance.new("TextLabel")
+    logEntry.Size = UDim2.new(1, -10, 0, 20) -- Adjust height as needed
+    logEntry.BackgroundTransparency = 1
+    logEntry.TextColor3 = Color3.fromRGB(255, 255, 255)
+    logEntry.TextXAlignment = Enum.TextXAlignment.Left
+    logEntry.TextYAlignment = Enum.TextYAlignment.Top
+    logEntry.Font = Enum.Font.SourceSans
+    logEntry.TextSize = 14
+    logEntry.TextWrapped = true
+    logEntry.Text = message
+    logEntry.Parent = LogFrame
+
+    -- Update CanvasSize to fit all log entries
+    local totalHeight = 0
+    for _, child in ipairs(LogFrame:GetChildren()) do
+        if child:IsA("TextLabel") then
+            totalHeight += child.AbsoluteSize.Y + UIListLayout.Padding.Offset
+        end
+    end
+    LogFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
 end
 
 
