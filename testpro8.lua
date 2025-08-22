@@ -1,6 +1,6 @@
-
+task.wait(3)
 --== UNIVERSAL CONFIG ==--
-local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testpro7.lua"))()]]
+local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testpro8.lua"))()]]
 
 if not game:IsLoaded() then
     game.Loaded:Wait()
