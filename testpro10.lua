@@ -1,6 +1,6 @@
 task.wait(3)
 --== UNIVERSAL CONFIG ==--
-local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testpro9.lua"))()]]
+local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testpro10.lua"))()]]
 
 if not game:IsLoaded() then
     game.Loaded:Wait()
@@ -1736,7 +1736,9 @@ local function CargoPlaneRob()
         wait360Seconds()
         executeScript()
     else
-        log("❌ Script completed but failed to obtain crate.")
+        stopTeleportToPlane()
+        wait360Seconds()
+        executeScript()
     end
 end
 
