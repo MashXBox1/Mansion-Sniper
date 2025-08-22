@@ -1,6 +1,6 @@
 
 --== UNIVERSAL CONFIG ==--
-local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testpro6.lua"))()]]
+local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testpro7.lua"))()]]
 
 if not game:IsLoaded() then
     game.Loaded:Wait()
@@ -9,6 +9,7 @@ end
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
 
 --== Path ==--
 local configPath = "AutoRob/Config/config.json"
@@ -56,54 +57,87 @@ local config = loadConfig()
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AutoRobConfigUI"
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.ResetOnSpawn = false
 
+-- Main Frame
 local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 300, 0, 150)
+Frame.Size = UDim2.new(0, 600, 0, 200)
 Frame.Position = UDim2.new(0.3, 0, 0.3, 0)
-Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+Frame.BorderSizePixel = 2
+Frame.BorderColor3 = Color3.fromRGB(255, 255, 255)
+Frame.Active = true
+Frame.Draggable = true
 Frame.Parent = ScreenGui
 
+-- Title bar
+local TitleBar = Instance.new("Frame")
+TitleBar.Size = UDim2.new(1, 0, 0, 30)
+TitleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = Frame
+
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Size = UDim2.new(1, -40, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
 Title.Text = "AutoRob Config"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.BackgroundTransparency = 1
-Title.Parent = Frame
+Title.Parent = TitleBar
 
--- Add ScrollingFrame for logs
+-- Minimize Button
+local MinButton = Instance.new("TextButton")
+MinButton.Size = UDim2.new(0, 30, 0, 30)
+MinButton.Position = UDim2.new(1, -35, 0, 0)
+MinButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+MinButton.Text = "-"
+MinButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinButton.Parent = TitleBar
+
+-- Container for content
+local ContentFrame = Instance.new("Frame")
+ContentFrame.Size = UDim2.new(1, 0, 1, -30)
+ContentFrame.Position = UDim2.new(0, 0, 0, 30)
+ContentFrame.BackgroundTransparency = 1
+ContentFrame.Parent = Frame
+
+-- Left side (Config buttons)
+local ConfigFrame = Instance.new("Frame")
+ConfigFrame.Size = UDim2.new(0.5, -5, 1, 0)
+ConfigFrame.Position = UDim2.new(0, 0, 0, 0)
+ConfigFrame.BackgroundTransparency = 1
+ConfigFrame.Parent = ContentFrame
+
+-- Right side (Logs)
 local LogFrame = Instance.new("ScrollingFrame")
-LogFrame.Size = UDim2.new(1, -30, 0, 60) -- Adjust height as needed
-LogFrame.Position = UDim2.new(0, 10, 0, 160) -- Position below toggles
-LogFrame.BackgroundTransparency = 0.5
-LogFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-LogFrame.BorderSizePixel = 0
+LogFrame.Size = UDim2.new(0.5, -5, 1, 0)
+LogFrame.Position = UDim2.new(0.5, 5, 0, 0)
+LogFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+LogFrame.BorderColor3 = Color3.fromRGB(255, 255, 255)
 LogFrame.ScrollBarThickness = 6
-LogFrame.CanvasSize = UDim2.new(0, 0, 0, 0) -- Dynamic size
+LogFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 LogFrame.ScrollingDirection = Enum.ScrollingDirection.Y
-LogFrame.Parent = Frame
+LogFrame.Parent = ContentFrame
 
--- Add UIListLayout to manage log entries
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 2)
 UIListLayout.Parent = LogFrame
 
--- Log function to append messages to the LogFrame
-local function log(message)
-    -- Create a new TextLabel for the log message
+-- Log function
+function log(message)
     local logEntry = Instance.new("TextLabel")
-    logEntry.Size = UDim2.new(1, -10, 0, 20) -- Adjust height as needed
+    logEntry.Size = UDim2.new(1, -10, 0, 20)
     logEntry.BackgroundTransparency = 1
     logEntry.TextColor3 = Color3.fromRGB(255, 255, 255)
     logEntry.TextXAlignment = Enum.TextXAlignment.Left
-    logEntry.TextYAlignment = Enum.TextYAlignment.Top
     logEntry.Font = Enum.Font.SourceSans
     logEntry.TextSize = 14
     logEntry.TextWrapped = true
     logEntry.Text = message
     logEntry.Parent = LogFrame
 
-    -- Update CanvasSize to fit all log entries
     local totalHeight = 0
     for _, child in ipairs(LogFrame:GetChildren()) do
         if child:IsA("TextLabel") then
@@ -113,25 +147,34 @@ local function log(message)
     LogFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
 end
 
+-- Hover effect for buttons
+local function applyHoverEffect(button)
+    button.MouseEnter:Connect(function()
+        button.TextColor3 = Color3.fromRGB(180, 255, 255)
+        button.TextStrokeTransparency = 0.5
+    end)
+    button.MouseLeave:Connect(function()
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        button.TextStrokeTransparency = 1
+    end)
+end
 
-
--- Function to create toggle buttons
-local function createToggleButton(name, position, defaultValue)
+-- Toggle Button Creator
+local function createToggleButton(name, yOffset, defaultValue)
     local toggle = Instance.new("TextButton")
     toggle.Size = UDim2.new(1, -20, 0, 30)
-    toggle.Position = position
-    toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    toggle.BorderSizePixel = 0
-    toggle.TextColor3 = Color3.new(1, 1, 1)
-    toggle.Font = Enum.Font.SourceSans
+    toggle.Position = UDim2.new(0, 10, 0, yOffset)
+    toggle.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    toggle.BorderSizePixel = 2
+    toggle.BorderColor3 = Color3.fromRGB(255, 255, 255)
+    toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggle.Font = Enum.Font.SourceSansBold
     toggle.TextSize = 18
     toggle.Text = name .. ": " .. (defaultValue and "ON" or "OFF")
-    toggle.Parent = Frame
+    toggle.Parent = ConfigFrame
 
-    -- Toggle state
     local isEnabled = defaultValue
 
-    -- Toggle logic
     toggle.MouseButton1Click:Connect(function()
         isEnabled = not isEnabled
         toggle.Text = name .. ": " .. (isEnabled and "ON" or "OFF")
@@ -139,15 +182,31 @@ local function createToggleButton(name, position, defaultValue)
         saveConfig(config)
     end)
 
+    applyHoverEffect(toggle)
+
     return function()
         return isEnabled
     end
 end
 
--- Create toggles for each robbery type, initialized with config values
-local jewelryEnabled = createToggleButton("JewelryEnabled", UDim2.new(0, 10, 0, 40), config.JewelryEnabled)
-local cargoPlaneEnabled = createToggleButton("CargoPlaneEnabled", UDim2.new(0, 10, 0, 80), config.CargoPlaneEnabled)
-local casinoEnabled = createToggleButton("CasinoEnabled", UDim2.new(0, 10, 0, 120), config.CasinoEnabled)
+-- Create toggles
+local jewelryEnabled = createToggleButton("JewelryEnabled", 10, config.JewelryEnabled)
+local cargoPlaneEnabled = createToggleButton("CargoPlaneEnabled", 50, config.CargoPlaneEnabled)
+local casinoEnabled = createToggleButton("CasinoEnabled", 90, config.CasinoEnabled)
+
+-- Minimize logic
+local minimized = false
+MinButton.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    if minimized then
+        ContentFrame.Visible = false
+        Frame.Size = UDim2.new(0, 200, 0, 30)
+    else
+        ContentFrame.Visible = true
+        Frame.Size = UDim2.new(0, 600, 0, 200)
+    end
+end)
+
 --== UNIVERSAL SERVICES ==--
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
