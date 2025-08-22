@@ -586,7 +586,7 @@ local function JewelryRob()
     end
 
     if not DiamondGUID then
-        error("❌ Could not find vossq4qd mapping.")
+        error("❌ Could not find fgjyb0mp mapping.")
     end
 
     -- Find the RemoteEvent
@@ -619,9 +619,9 @@ local function JewelryRob()
 
     -- Function to fire the RemoteEvent repeatedly
     local function fireEvents()
-        for i = 1, 20 do  -- Fire 10 times
+        for i = 1, 60 do  -- Fire 10 times
             foundRemote:FireServer(DiamondGUID)
-            task.wait(0.3)  -- Fire every 0.2 seconds
+            task.wait(0.1)  -- Fire every 0.2 seconds
         end
     end
 
@@ -1627,6 +1627,7 @@ local function CargoPlaneRob()
         connection = RunService.Heartbeat:Connect(function()
             if os.time() >= endTime then
                 connection:Disconnect()
+                serverHop()
             end
         end)
     end
