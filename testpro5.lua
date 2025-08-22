@@ -1,6 +1,6 @@
 
 --== UNIVERSAL CONFIG ==--
-local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testpro4.lua"))()]]
+local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testpro5.lua"))()]]
 
 if not game:IsLoaded() then
     game.Loaded:Wait()
@@ -476,7 +476,7 @@ local function JewelryRob()
     -- Wait exactly 360 seconds from server time
     local function wait360Seconds()
         local startTime = getServerTime()
-        local endTime = startTime + 110
+        local endTime = startTime + 115
 
         local connection
         connection = RunService.Heartbeat:Connect(function()
@@ -888,7 +888,7 @@ local function JewelryRob()
 
     local hoverHeight = 500 -- how high above target Y to fly
     local targetPos = Vector3.new(-238, 18, 1615)
-    local flySpeed = 720 -- studs per second
+    local flySpeed = 500 -- studs per second
     local checkDelay = 1 -- seconds to wait atop before drop
 
     -- Detect if we're in a vehicle or on foot
@@ -961,6 +961,7 @@ local function JewelryRob()
 
         elseif phase == "dropDown" then
             -- Smooth drop down to target position
+            task.wait(7)
             local currentPos = part.Position
             local dropSpeed = 1000 -- studs per second for descent
             
@@ -998,7 +999,7 @@ local function CargoPlaneRob()
     repeat task.wait() until player
 
     --== CONFIG: Script to run after teleport ==--
-    local payloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/CargoPlaneSpecific/FullPlaneAutoRob.lua"))()]]
+    
 
     -- Wait for RobberyConsts module to load
     local function waitForRobberyConsts()
@@ -1537,7 +1538,7 @@ local function CargoPlaneRob()
 
         local hoverHeight = 500
         local targetPos = Vector3.new(-345, 21, 2052)
-        local flySpeed = 720
+        local flySpeed = 500
         local checkDelay = 1
 
         local function getMovePart()
@@ -1595,6 +1596,7 @@ local function CargoPlaneRob()
                 end
 
             elseif phase == "dropDown" then
+                task.wait(7)
                 local currentPos = part.Position
                 local dropSpeed = 1000
                 
@@ -1621,7 +1623,7 @@ local function CargoPlaneRob()
 
     local function wait360Seconds()
         local startTime = getServerTime()
-        local endTime = startTime + 30
+        local endTime = startTime + 40
 
         local connection
         connection = RunService.Heartbeat:Connect(function()
@@ -2151,7 +2153,7 @@ local function CasinoRob()
 
     local hoverHeight = 500 -- how high above target Y to fly
     local targetPos = Vector3.new(-238, 18, 1615)
-    local flySpeed = 720 -- studs per second
+    local flySpeed = 500 -- studs per second
     local checkDelay = 1 -- seconds to wait atop before drop
 
     -- Detect if we're in a vehicle or on foot
