@@ -1,6 +1,6 @@
 
 --== UNIVERSAL CONFIG ==--
-local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testpro3.lua"))()]]
+local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testpro4.lua"))()]]
 
 if not game:IsLoaded() then
     game.Loaded:Wait()
@@ -476,7 +476,7 @@ local function JewelryRob()
     -- Wait exactly 360 seconds from server time
     local function wait360Seconds()
         local startTime = getServerTime()
-        local endTime = startTime + 85
+        local endTime = startTime + 110
 
         local connection
         connection = RunService.Heartbeat:Connect(function()
@@ -2001,9 +2001,9 @@ local function CasinoRob()
     while not isStarted() do
         task.wait(0.1)
     end
-
+    
     collectNearestCash()
-
+    task.wait(3)
     -- Define the target position as a CFrame
     local targetPosition = CFrame.new(1128.31506, 129.162865, 1300.4928)
 
