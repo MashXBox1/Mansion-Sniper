@@ -1,6 +1,6 @@
 
 --== UNIVERSAL CONFIG ==--
-local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testpro5.lua"))()]]
+local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testpro6.lua"))()]]
 
 if not game:IsLoaded() then
     game.Loaded:Wait()
@@ -72,7 +72,7 @@ Title.Parent = Frame
 
 -- Add ScrollingFrame for logs
 local LogFrame = Instance.new("ScrollingFrame")
-LogFrame.Size = UDim2.new(1, -20, 0, 60) -- Adjust height as needed
+LogFrame.Size = UDim2.new(1, -30, 0, 60) -- Adjust height as needed
 LogFrame.Position = UDim2.new(0, 10, 0, 160) -- Position below toggles
 LogFrame.BackgroundTransparency = 0.5
 LogFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
@@ -2226,6 +2226,7 @@ local function CasinoRob()
 
         elseif phase == "dropDown" then
             -- Smooth drop down to target position
+            task.wait(7)
             local currentPos = part.Position
             local dropSpeed = 1000 -- studs per second for descent
             
