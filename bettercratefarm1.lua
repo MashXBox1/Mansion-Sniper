@@ -5,7 +5,7 @@ local function isLoaded()
 end
 isLoaded()
 
-queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/bettercratefarm.lua"))()]])
+queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/bettercratefarm1.lua"))()]])
 
 
 
@@ -115,25 +115,57 @@ end
 if not MainRemote then error("❌ Could not find RemoteEvent with '-' in name.") end
 
 -- Get Police GUID
-local PoliceGUID = nil
+local deathGUID = nil
+local policeGUID = nil
 for _, t in pairs(getgc(true)) do
     if typeof(t) == "table" and not getmetatable(t) then
         if t["p14s6fjq"] and t["p14s6fjq"]:sub(1,1) == "!" then
-            PoliceGUID = t["p14s6fjq"]
-            print("✅ Police GUID found:", PoliceGUID)
-            break
+            deathGUID = t["p14s6fjq"]
+            print("✅ death GUID found:", deathGUID)
+            
         end
+        if t["lnu8qihc"] and type(t["lnu8qihc"]) == "string" and t["lnu8qihc"]:sub(1,1) == "!" then
+            policeGUID = t["lnu8qihc"]
+            print("✅ Found Police GUID")
+        end
+
     end
 end
 
+MainRemote:FireServer(policeGUID, "Prisoner")
+
+task.wait(3)
+
+
+
+
 local function executePoliceRemote()
-    if PoliceGUID and MainRemote and foundDrop:GetAttribute("BriefcaseLanded") then
-        print("🚨 Executing Police Remote with GUID:", PoliceGUID)
-        MainRemote:FireServer(PoliceGUID, 1000)
+    if deathGUID and MainRemote and foundDrop:GetAttribute("BriefcaseLanded") then
+        print("🚨 Executing Police Remote with GUID:", deathGUID)
+        MainRemote:FireServer(deathGUID, 1000)
     else
         warn("❌ Cannot execute Police Remote - GUID or Remote not found, or BriefcaseLanded is false")
     end
 end
+
+local PistolGUID = nil
+local BuyPistolGUID = nil
+
+for _, t in pairs(getgc(true)) do
+    if typeof(t) == "table" and not getmetatable(t) then
+        if t["katagsfs"] and t["katagsfs"]:sub(1, 1) == "!" then
+            PistolGUID = t["katagsfs"]
+            print("✅ Pistol GUID (l5cuht8e):", PistolGUID)
+        end
+        
+        if t["bwwv3rxj"] and t["bwwv3rxj"]:sub(1, 1) == "!" then
+            BuyPistolGUID = t["bwwv3rxj"]
+            print("✅ Buy Pistol GUID (izwo0hcg):", BuyPistolGUID)
+        end
+    end
+end
+
+
 
 -- Pistol Remote Setup
 local PistolRemote = nil
@@ -209,11 +241,38 @@ local function interactWithBriefcase()
         foundDropPos = getPrimaryPosition(foundDrop)
         print("📍 Updated briefcase position to landed position:", foundDropPos)
     end
+    --== SERVICES ==--
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+
+    local LocalPlayer = Players.LocalPlayer
+    local Humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+
+    -- Re-acquire humanoid if character respawns
+    LocalPlayer.CharacterAdded:Connect(function(char)
+    Humanoid = char:WaitForChild("Humanoid")
+    end)
+
+    -- Function to start toggling Sit every frame
+    local function startSitToggle()
+        RunService.Heartbeat:Connect(function()
+            if Humanoid then
+                Humanoid.Sit = not Humanoid.Sit
+            end
+        end)
+    end
+
+    -- Call the function to activate it
+    
 
     -- Wait for the player to join the "Criminal" team
     print("⏳ Waiting for LocalPlayer to join the 'Criminal' team...")
     repeat task.wait() until LocalPlayer.Team and LocalPlayer.Team.Name == "Criminal"
     print("✅ Joined 'Criminal' team, starting briefcase interaction...")
+    startSitToggle()
+    MainRemote:FireServer(BuyPistolGUID, "Pistol")
+
+    MainRemote:FireServer(PistolGUID, "Pistol")
 
     local pressRemote = foundDrop:FindFirstChild(BriefcaseConsts.PRESS_REMOTE_NAME)
     local collectRemote = foundDrop:FindFirstChild(BriefcaseConsts.COLLECT_REMOTE_NAME)
