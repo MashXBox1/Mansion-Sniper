@@ -5,7 +5,7 @@ local function isLoaded()
 end
 isLoaded()
 
-queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/bettercratefarm1.lua"))()]])
+queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/bettercratefarm2.lua"))()]])
 
 
 
@@ -168,10 +168,7 @@ end
 
 
 -- Pistol Remote Setup
-local PistolRemote = nil
-if LocalPlayer:FindFirstChild("Folder") and LocalPlayer.Folder:FindFirstChild("Pistol") then
-    PistolRemote = LocalPlayer.Folder.Pistol:FindFirstChild("InventoryEquipRemote")
-end
+
 
 -- Utility: Get closest police player
 local function getClosestPolice(originPosition)
@@ -196,28 +193,31 @@ local function getClosestPolice(originPosition)
 end
 
 -- Background Task: Monitor Police Proximity
-task.spawn(function()
-    while task.wait(0.5) do
-        if PistolRemote then
-            local character = LocalPlayer.Character
-            if character then
-                local root = character:FindFirstChild("HumanoidRootPart")
-                if root then
-                    local closestPolice = getClosestPolice(root.Position)
-                    if closestPolice then
-                        print("👮 Police detected within range, firing PistolRemote with true...")
-                        PistolRemote:FireServer(true)
-                    else
-                        print("🔍 No police within range, firing PistolRemote with false...")
-                        PistolRemote:FireServer(false)
+local function startPoliceMonitor(PistolRemote)
+    task.spawn(function()
+        while task.wait(0.5) do
+            if PistolRemote then
+                local character = LocalPlayer.Character
+                if character then
+                    local root = character:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        local closestPolice = getClosestPolice(root.Position)
+                        if closestPolice then
+                            print("👮 Police detected within range, firing PistolRemote with true...")
+                            PistolRemote:FireServer(true)
+                        else
+                            print("🔍 No police within range, firing PistolRemote with false...")
+                            PistolRemote:FireServer(false)
+                        end
                     end
                 end
+            else
+                warn("❌ PistolRemote not found, skipping police monitoring...")
             end
-        else
-            warn("❌ PistolRemote not found, skipping police monitoring...")
         end
-    end
-end)
+    end)
+end
+
 
 local function interactWithBriefcase()
     if not foundDrop or not foundDrop:IsDescendantOf(Workspace) then
@@ -273,7 +273,17 @@ local function interactWithBriefcase()
     MainRemote:FireServer(BuyPistolGUID, "Pistol")
 
     MainRemote:FireServer(PistolGUID, "Pistol")
+    task.wait(2)
+    
+    local PistolRemote = nil
+    
+    if LocalPlayer:FindFirstChild("Folder") and LocalPlayer.Folder:FindFirstChild("Pistol") then
+        PistolRemote = LocalPlayer.Folder.Pistol:FindFirstChild("InventoryEquipRemote")
+        print("found pistol")
+    end
 
+
+    startPoliceMonitor(PistolRemote)
     local pressRemote = foundDrop:FindFirstChild(BriefcaseConsts.PRESS_REMOTE_NAME)
     local collectRemote = foundDrop:FindFirstChild(BriefcaseConsts.COLLECT_REMOTE_NAME)
 
