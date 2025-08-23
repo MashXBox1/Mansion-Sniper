@@ -4,7 +4,7 @@ local function isLoaded()
 end
 isLoaded()
 
-queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/bettercratefarm10.lua"))()]])
+queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/bettercratefarm11.lua"))()]])
 
 task.wait(3)
 
@@ -497,20 +497,11 @@ local function interactWithBriefcase()
 end
 
 local function teleportToDrop()
-    if not foundDrop or not foundDropPos then return end
-
-    -- Kill current character to trigger respawn
-    local character = LocalPlayer.Character
-    if character then
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.Health = 0
-        end
-    end
+    
 
     -- Setup respawn handler to teleport to drop
     LocalPlayer.CharacterAdded:Connect(function(newChar)
-        task.wait() -- Wait a bit after respawn
+        task.wait(0.5) -- Wait a bit after respawn
 
         local root = newChar:FindFirstChild("HumanoidRootPart") or newChar:FindFirstChildWhichIsA("BasePart")
         if not root then return end
