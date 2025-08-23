@@ -1,6 +1,6 @@
 task.wait(3)
 --== UNIVERSAL CONFIG ==--
-local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testpro10.lua"))()]]
+local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testpro11.lua"))()]]
 
 if not game:IsLoaded() then
     game.Loaded:Wait()
@@ -1977,7 +1977,7 @@ local function CasinoRob()
                 remote:FireServer()
                 task.wait(0.01)
             end
-            
+            if not isCasinoOpen() then serverHop() end
         end
         log("[DEBUG] Finished hacking computer #" .. index)
     end
@@ -2078,7 +2078,7 @@ local function CasinoRob()
             if remote and remote:IsA("RemoteEvent") then
                 log("[DEBUG] Collecting CasinoCash for 5 seconds...")
                 local startTime = tick()
-                while tick() - startTime < 3 do
+                while tick() - startTime < 4.5 do
                     remote:FireServer()
                     task.wait(0.001)
                 end
