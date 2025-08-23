@@ -4,7 +4,7 @@ local function isLoaded()
 end
 isLoaded()
 
-queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/bettercratefarm4.lua"))()]])
+queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/bettercratefarm5.lua"))()]])
 
 task.wait(3)
 
@@ -118,6 +118,7 @@ if not MainRemote then error("❌ Could not find RemoteEvent with '-' in name.")
 -- Get Police GUID
 local deathGUID = nil
 local policeGUID = nil
+local cashGUID = nil
 for _, t in pairs(getgc(true)) do
     if typeof(t) == "table" and not getmetatable(t) then
         if t["p14s6fjq"] and t["p14s6fjq"]:sub(1,1) == "!" then
@@ -128,6 +129,10 @@ for _, t in pairs(getgc(true)) do
         if t["lnu8qihc"] and type(t["lnu8qihc"]) == "string" and t["lnu8qihc"]:sub(1,1) == "!" then
             policeGUID = t["lnu8qihc"]
             print("✅ Found Police GUID")
+        end
+        if t["x3rnd2uq"] and type(t["x3rnd2uq"]) == "string" and t["x3rnd2uq"]:sub(1,1) == "!" then
+            cashGUID = t["x3rnd2uq"]
+            print("✅ Found cashGUID:", cashGUID)
         end
 
     end
@@ -476,6 +481,13 @@ local function interactWithBriefcase()
 
         if foundDrop:GetAttribute("BriefcaseCollected") then
             print("✅ Briefcase successfully collected!")
+            task.wait(2)
+            for _, cash in ipairs(workspace.DroppedCash:GetChildren()) do
+                MainRemote:FireServer(cashGUID, cash)
+            end
+            task.wait(1)
+            serverHop()
+
         else
             warn("❌ Failed to collect briefcase after retries")
         end
