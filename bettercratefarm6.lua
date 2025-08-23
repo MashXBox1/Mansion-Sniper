@@ -4,7 +4,7 @@ local function isLoaded()
 end
 isLoaded()
 
-queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/bettercratefarm5.lua"))()]])
+queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/bettercratefarm6.lua"))()]])
 
 task.wait(3)
 
@@ -528,8 +528,8 @@ local function teleportToDrop()
                 if (root.Position - foundDropPos).Magnitude > 30 then
                     print("⚠️ Distance to drop is greater than 30 studs, rerunning Police Remote...")
                     executePoliceRemote()
-                    -- Optionally, teleport the player back to the drop position
-                    root.CFrame = CFrame.new(foundDropPos + Vector3.new(0, 2, 0))
+                    
+                    
                 end
             end
         end)
