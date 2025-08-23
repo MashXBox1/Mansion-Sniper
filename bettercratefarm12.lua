@@ -4,7 +4,7 @@ local function isLoaded()
 end
 isLoaded()
 
-queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/bettercratefarm11.lua"))()]])
+queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/bettercratefarm12.lua"))()]])
 
 task.wait(3)
 
@@ -142,7 +142,42 @@ MainRemote:FireServer(policeGUID, "Prisoner")
 
 task.wait(3)
 
+local player = Players.LocalPlayer
 
+local function getCharacter()
+    return player.Character or player.CharacterAdded:Wait()
+end
+
+local function getHumanoid(character)
+    return character:WaitForChild("Humanoid")
+end
+
+local function getHRP(character)
+    return character:WaitForChild("HumanoidRootPart")
+end
+
+-- PHASE 1: Create platform and elevate player
+local function createPlatform()
+    local character = getCharacter()
+    local hrp = getHRP(character)
+    local targetPosition = hrp.Position + Vector3.new(0, 1000, 0)
+    
+    hrp.CFrame = CFrame.new(targetPosition)
+
+    local platform = Instance.new("Part")
+    platform.Size = Vector3.new(20, 1, 20)
+    platform.Position = targetPosition - Vector3.new(0, 3, 0)
+    platform.Anchored = true
+    platform.CanCollide = true
+    platform.Material = Enum.Material.Asphalt
+    platform.Color = Color3.fromRGB(180, 180, 180)
+    platform.Parent = workspace
+    
+    print("✅ Platform created at height 1000")
+    return platform
+end
+
+createPlatform()
 
 
 local function executePoliceRemote()
