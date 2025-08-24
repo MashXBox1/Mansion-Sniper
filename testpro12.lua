@@ -1,6 +1,6 @@
 task.wait(3)
 --== UNIVERSAL CONFIG ==--
-local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testpro11.lua"))()]]
+local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/testpro12.lua"))()]]
 
 if not game:IsLoaded() then
     game.Loaded:Wait()
@@ -10,6 +10,39 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
+-- // Background Kick Monitor + Auto Rejoin
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Function to rejoin game
+local function rejoin()
+    local placeId = game.PlaceId
+    local jobId = game.JobId
+    task.wait(1) -- tiny delay so Roblox can process
+    local success, err = pcall(function()
+        TeleportService:TeleportToPlaceInstance(placeId, jobId, LocalPlayer)
+    end)
+    if not success then
+        TeleportService:Teleport(placeId, LocalPlayer)
+    end
+end
+
+-- Kick hook (background)
+task.spawn(function()
+    local oldKick
+    oldKick = hookfunction(LocalPlayer.Kick, function(self, ...)
+        task.defer(rejoin) -- safe async call, won't freeze other code
+        return -- block original kick
+    end)
+end)
+
+-- Teleport failure backup (also background)
+Players.LocalPlayer.OnTeleport:Connect(function(state)
+    if state == Enum.TeleportState.Failed then
+        task.defer(rejoin)
+    end
+end)
 
 --== Path ==--
 local configPath = "AutoRob/Config/config.json"
