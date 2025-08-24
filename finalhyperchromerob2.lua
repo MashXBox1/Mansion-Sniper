@@ -1,6 +1,6 @@
 
 --== UNIVERSAL CONFIG ==--
-local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/finalhyperchromerob1.lua"))()]]
+local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/finalhyperchromerob2.lua"))()]]
 
 if not game:IsLoaded() then
     game.Loaded:Wait()
@@ -367,7 +367,7 @@ local function serverHop()
     end)
     if not success or not result or not result.data then
         warn("❌ Failed to get server list.")
-        task.wait(5)
+        task.wait(2)
         return serverHop()
     end
     local currentJobId = game.JobId
@@ -390,7 +390,7 @@ local function serverHop()
         warn("⚠️ Teleport timed out. Trying another...")
     end)
     local success, err = pcall(function()
-        task.wait(3)
+        task.wait(1)
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
     end)
     if not success then
