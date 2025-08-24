@@ -1,6 +1,6 @@
 
 --== UNIVERSAL CONFIG ==--
-local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/finalhyperchromerob2.lua"))()]]
+local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/finalhyperchromerob3.lua"))()]]
 
 if not game:IsLoaded() then
     game.Loaded:Wait()
@@ -373,7 +373,7 @@ local function serverHop()
     local currentJobId = game.JobId
     local candidates = {}
     for _, server in ipairs(result.data) do
-        if server.id ~= currentJobId and server.playing < 23 then
+        if server.id ~= currentJobId and server.playing < 33 then
             table.insert(candidates, server.id)
         end
     end
