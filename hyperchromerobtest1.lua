@@ -1,12 +1,12 @@
 
 --== UNIVERSAL CONFIG ==--
-local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/hyperchromerobtest.lua"))()]]
+local universalPayloadScript = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/hyperchromerobtest1.lua"))()]]
 
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
-task.wait(5)
+task.wait(4)
 --== Services ==--
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -353,7 +353,7 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
 -- Queue the universal payload for after teleport
-queue_on_teleport(universalPayloadScript)
+
 
 -- Wait for game fully loaded
 
@@ -390,7 +390,7 @@ local function serverHop()
         warn("⚠️ Teleport timed out. Trying another...")
     end)
     local success, err = pcall(function()
-        task.wait(3)
+        task.wait(2)
         TeleportService:TeleportToPlaceInstance(game.PlaceId, chosenServer, LocalPlayer)
     end)
     if not success then
@@ -1059,8 +1059,8 @@ local function JewelryRob()
         local displayName = LocalPlayer.DisplayName
 
         -- Pattern to match both name variations and any number after the $
-        local pattern1 = "^" .. playerName .. " just robbed a jewelry store for %$%d+$"
-        local pattern2 = "^" .. displayName .. " just robbed a jewelry store for %$%d+$"
+        local pattern1 = "^" .. playerName .. " just robbed a jewelry store for %$[%d,]+$"
+        local pattern2 = "^" .. displayName .. " just robbed a jewelry store for %$[%d,]+$"
 
         if string.match(secondArg, pattern1) or string.match(secondArg, pattern2) then
             log("🚨 Detected robbery message for local player!")
