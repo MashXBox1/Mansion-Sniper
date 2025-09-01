@@ -1,5 +1,4 @@
 -- FULL AIMBOT SCRIPT --
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
@@ -9,13 +8,13 @@ local BuyPistolGUID = nil
 
 for _, t in pairs(getgc(true)) do
     if typeof(t) == "table" and not getmetatable(t) then
-        if t["katagsfs"] and t["katagsfs"]:sub(1, 1) == "!" then
-            PistolGUID = t["katagsfs"]
+        if t["vw6q83wu"] and t["vw6q83wu"]:sub(1, 1) == "!" then
+            PistolGUID = t["vw6q83wu"]
             print("✅ Pistol GUID (l5cuht8e):", PistolGUID)
         end
         
-        if t["bwwv3rxj"] and t["bwwv3rxj"]:sub(1, 1) == "!" then
-            BuyPistolGUID = t["bwwv3rxj"]
+        if t["ph981ygt"] and t["ph981ygt"]:sub(1, 1) == "!" then
+            BuyPistolGUID = t["ph981ygt"]
             print("✅ Buy Pistol GUID (izwo0hcg):", BuyPistolGUID)
         end
     end
@@ -78,7 +77,7 @@ local function getClosestCriminal(originPosition)
 
     for _, player in pairs(Players:GetPlayers()) do
         if player == Players.LocalPlayer then continue end
-        if player.Team and player.Team.Name == "Criminal" and player.Character then
+        if player.Team and player.Team.Name == "Police" and player.Character then
             local root = player.Character:FindFirstChild("HumanoidRootPart")
             if root then
                 local dist = (root.Position - originPosition).Magnitude
