@@ -4,7 +4,7 @@ local function isLoaded()
 end
 isLoaded()
 
-queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/bettercratefarm12.lua"))()]])
+queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/MashXBox1/Mansion-Sniper/refs/heads/main/bettercratefarm13.lua"))()]])
 
 task.wait(3)
 
@@ -126,8 +126,8 @@ for _, t in pairs(getgc(true)) do
             print("✅ death GUID found:", deathGUID)
             
         end
-        if t["lnu8qihc"] and type(t["lnu8qihc"]) == "string" and t["lnu8qihc"]:sub(1,1) == "!" then
-            policeGUID = t["lnu8qihc"]
+        if t["rj2dsdw1"] and type(t["rj2dsdw1"]) == "string" and t["rj2dsdw1"]:sub(1,1) == "!" then
+            policeGUID = t["rj2dsdw1"]
             print("✅ Found Police GUID")
         end
         if t["x3rnd2uq"] and type(t["x3rnd2uq"]) == "string" and t["x3rnd2uq"]:sub(1,1) == "!" then
@@ -194,14 +194,14 @@ local BuyPistolGUID = nil
 
 for _, t in pairs(getgc(true)) do
     if typeof(t) == "table" and not getmetatable(t) then
-        if t["katagsfs"] and t["katagsfs"]:sub(1, 1) == "!" then
-            PistolGUID = t["katagsfs"]
-            print("✅ Pistol GUID (l5cuht8e):", PistolGUID)
+        if t["vw6q83wu"] and t["vw6q83wu"]:sub(1, 1) == "!" then
+            PistolGUID = t["vw6q83wu"]
+            print("✅ Pistol GUID (vw6q83wu):", PistolGUID)
         end
         
-        if t["bwwv3rxj"] and t["bwwv3rxj"]:sub(1, 1) == "!" then
-            BuyPistolGUID = t["bwwv3rxj"]
-            print("✅ Buy Pistol GUID (izwo0hcg):", BuyPistolGUID)
+        if t["ph981ygt"] and t["ph981ygt"]:sub(1, 1) == "!" then
+            BuyPistolGUID = t["ph981ygt"]
+            print("✅ Buy Pistol GUID (ph981ygt):", BuyPistolGUID)
         end
     end
 end
@@ -461,7 +461,7 @@ local function interactWithBriefcase()
                 task.wait(0.1)
                 if (root.Position - foundDropPos).Magnitude >= 5 then
                     print("⚠️ Player moved too far, teleporting back to drop position...")
-                    root.CFrame = CFrame.new(foundDropPos + Vector3.new(0, 2, 0))
+                    TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
                 end
             end
         end
