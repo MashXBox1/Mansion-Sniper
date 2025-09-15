@@ -54,6 +54,38 @@ arrestTarget("Pistol")
 
 task.wait(0.5)
 
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local function onCharacterAdded(char)
+    -- Run in background so it doesn't block
+    task.spawn(function()
+        task.wait(0.5) -- give character time to load in
+        if BuyPistolGUID and foundRemote then
+            foundRemote:FireServer(BuyPistolGUID, "Pistol")
+        end
+        arrestTarget("Pistol")
+        task.wait(1)
+        local PistolRemote = Players.LocalPlayer:FindFirstChild("Folder") and Players.LocalPlayer.Folder:FindFirstChild("Pistol")
+        if PistolRemote then
+            PistolRemote = PistolRemote:FindFirstChild("InventoryEquipRemote")
+            if PistolRemote then
+                PistolRemote:FireServer(true)
+            end
+        end
+    end)
+end
+
+-- Hook CharacterAdded
+player.CharacterAdded:Connect(onCharacterAdded)
+
+-- Run once if already spawned
+if player.Character then
+    onCharacterAdded(player.Character)
+end
+
+
 local PistolRemote = Players.LocalPlayer:FindFirstChild("Folder") and Players.LocalPlayer.Folder:FindFirstChild("Pistol")
 if PistolRemote then
     PistolRemote = PistolRemote:FindFirstChild("InventoryEquipRemote")
