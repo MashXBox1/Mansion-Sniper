@@ -66,7 +66,7 @@ local function onCharacterAdded(char)
             foundRemote:FireServer(BuyPistolGUID, "Pistol")
         end
         arrestTarget("Pistol")
-        task.wait(1)
+        task.wait(2)
         local PistolRemote = Players.LocalPlayer:FindFirstChild("Folder") and Players.LocalPlayer.Folder:FindFirstChild("Pistol")
         if PistolRemote then
             PistolRemote = PistolRemote:FindFirstChild("InventoryEquipRemote")
@@ -169,13 +169,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- Original gun module
 local GunModule = require(ReplicatedStorage.Game.Item.Gun)
 
--- Only change: Switch MouseButton1 to Y key
+-- Only change: Switch MouseButton to Y key
 local originalInputBegan = GunModule.InputBegan
 function GunModule.InputBegan(self, input, ...)
     -- Convert Y key press into a "fake mouse click" for the gun system
     if input.KeyCode == Enum.KeyCode.Y then
         originalInputBegan(self, {
-            UserInputType = Enum.UserInputType.MouseButton1, -- Trick the gun into thinking it's MouseButton1
+            UserInputType = Enum.UserInputType.MouseButton, -- Trick the gun into thinking it's MouseButton1
             KeyCode = Enum.KeyCode.Y
         }, ...)
     else
