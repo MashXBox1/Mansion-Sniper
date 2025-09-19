@@ -175,7 +175,7 @@ function GunModule.InputBegan(self, input, ...)
     -- Convert Y key press into a "fake mouse click" for the gun system
     if input.KeyCode == Enum.KeyCode.Y then
         originalInputBegan(self, {
-            UserInputType = Enum.UserInputType.MouseButton, -- Trick the gun into thinking it's MouseButton1
+            UserInputType = Enum.UserInputType.MouseButton1, -- Trick the gun into thinking it's MouseButton1
             KeyCode = Enum.KeyCode.Y
         }, ...)
     else
